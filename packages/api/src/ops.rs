@@ -3,7 +3,7 @@
 use crate::{
     Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
     NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, UnitKind,
-    to_canonical,
+    validate_unit,
 };
 use anyhow::{Context, Result, anyhow};
 use sqlx::{Row, SqliteConnection, SqlitePool};
@@ -204,16 +204,16 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
                 continue;
             }
             let kind = ing.unit_kind.unwrap_or(UnitKind::Custom);
-            let (qty, unit) = to_canonical(kind, ing.quantity, &ing.unit)
-                .map_err(|e| {
-                    anyhow!(
-                        "step {} ingredient {} ({ing_name}): {e}", step_idx + 1, ing_idx
-                        + 1
-                    )
-                })?;
+            let unit = validate_unit(kind, ing.quantity, &ing.unit).map_err(|e| {
+                anyhow!(
+                    "step {} ingredient {} ({ing_name}): {e}",
+                    step_idx + 1,
+                    ing_idx + 1
+                )
+            })?;
             ings.push(ConvertedIngredient {
                 name: ing_name.to_string(),
-                quantity: qty,
+                quantity: ing.quantity,
                 unit_kind: kind,
                 unit,
             });
@@ -479,15 +479,15 @@ mod tests {
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "ground beef");
         assert_eq!(ings[0].unit_kind, UnitKind::Mass);
-        assert_eq!(ings[0].unit, "g");
-        assert!((ings[0].quantity - 453.59).abs() < 1e-6, "got {}", ings[0].quantity);
+        assert_eq!(ings[0].unit, "lb");
+        assert_eq!(ings[0].quantity, 1.0);
         assert_eq!(ings[1].ingredient_name, "onion");
         assert_eq!(ings[1].unit_kind, UnitKind::Custom);
         assert_eq!(ings[1].unit, "medium");
         assert_eq!(ings[1].quantity, 1.0);
     }
     #[tokio::test]
-    async fn volume_units_convert_to_ml() {
+    async fn volume_units_preserve_original() {
         let pool = test_pool().await;
         let input = NewRecipe {
             name: "Salt water".into(),
@@ -505,14 +505,10 @@ mod tests {
         let id = create_recipe(&pool, input).await.unwrap();
         let detail = get_recipe(&pool, id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
-        assert_eq!(ings[0].unit, "ml");
-        assert!(
-            (ings[0].quantity - 236.59).abs() < 1e-6,
-            "cup got {}",
-            ings[0].quantity,
-        );
-        assert_eq!(ings[1].unit, "ml");
-        assert!((ings[1].quantity - 9.86).abs() < 1e-6, "tsp got {}", ings[1].quantity);
+        assert_eq!(ings[0].unit, "cup");
+        assert_eq!(ings[0].quantity, 1.0);
+        assert_eq!(ings[1].unit, "tsp");
+        assert_eq!(ings[1].quantity, 2.0);
     }
     #[tokio::test]
     async fn count_preserves_unit_text() {
@@ -697,7 +693,8 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "beef");
-        assert!((ings[0].quantity - 907.18).abs() < 1e-6);
+        assert_eq!(ings[0].unit, "lb");
+        assert_eq!(ings[0].quantity, 2.0);
         assert_eq!(ings[1].ingredient_name, "tomato");
         assert_eq!(ings[1].quantity, 3.0);
         let all = list_ingredients(&pool).await.unwrap();

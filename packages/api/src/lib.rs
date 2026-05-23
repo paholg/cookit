@@ -59,52 +59,48 @@ pub fn unit_names_for(kind: UnitKind) -> &'static [(&'static str, f64)] {
         UnitKind::Count | UnitKind::Custom => &[],
     }
 }
-/// Convert a user-supplied (kind, qty, unit) into the canonical storage form.
-/// - Mass → grams (unit becomes "g")
-/// - Volume → ml (unit becomes "ml")
-/// - Count → quantity preserved, unit forced to empty
-/// - Custom → quantity preserved, unit preserved (trimmed)
+/// Validate a user-supplied (kind, qty, unit) for storage in its original units.
+/// - Mass/Volume → unit must be a known unit name; returns its canonical spelling
+/// - Count/Custom → unit preserved (trimmed)
 ///
 /// Returns `Err` for an unknown mass/volume unit, or for non-finite/negative quantities.
-pub fn to_canonical(
-    kind: UnitKind,
-    quantity: f64,
-    unit: &str,
-) -> Result<(f64, String), String> {
+pub fn validate_unit(kind: UnitKind, quantity: f64, unit: &str) -> Result<String, String> {
     if !quantity.is_finite() || quantity < 0.0 {
-        return Err(format!("quantity must be a non-negative number, got {quantity}"));
+        return Err(format!(
+            "quantity must be a non-negative number, got {quantity}"
+        ));
     }
     let unit_trim = unit.trim();
     match kind {
-        UnitKind::Mass => {
-            MASS_UNITS
-                .iter()
-                .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
-                .map(|(_, factor)| (quantity * factor, "g".to_string()))
-                .ok_or_else(|| {
-                    format!(
-                        "unknown mass unit `{unit_trim}`; known: {}",
-                        MASS_UNITS.iter().map(|(u, _)| *u).collect::<Vec<_>>().join(", "),
-                    )
-                })
-        }
-        UnitKind::Volume => {
-            VOLUME_UNITS
-                .iter()
-                .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
-                .map(|(_, factor)| (quantity * factor, "ml".to_string()))
-                .ok_or_else(|| {
-                    format!(
-                        "unknown volume unit `{unit_trim}`; known: {}",
-                        VOLUME_UNITS
-                            .iter()
-                            .map(|(u, _)| *u)
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                    )
-                })
-        }
-        UnitKind::Count | UnitKind::Custom => Ok((quantity, unit_trim.to_string())),
+        UnitKind::Mass => MASS_UNITS
+            .iter()
+            .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
+            .map(|(u, _)| (*u).to_string())
+            .ok_or_else(|| {
+                format!(
+                    "unknown mass unit `{unit_trim}`; known: {}",
+                    MASS_UNITS
+                        .iter()
+                        .map(|(u, _)| *u)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            }),
+        UnitKind::Volume => VOLUME_UNITS
+            .iter()
+            .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
+            .map(|(u, _)| (*u).to_string())
+            .ok_or_else(|| {
+                format!(
+                    "unknown volume unit `{unit_trim}`; known: {}",
+                    VOLUME_UNITS
+                        .iter()
+                        .map(|(u, _)| *u)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            }),
+        UnitKind::Count | UnitKind::Custom => Ok(unit_trim.to_string()),
     }
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,8 +121,7 @@ impl Ingredient {
     /// True if the ingredient needs the user's attention — missing a grocery
     /// section, or missing a density that hasn't been explicitly ignored.
     pub fn is_incomplete(&self) -> bool {
-        self.grocery_section.is_none()
-            || (self.density_g_per_ml.is_none() && !self.ignore_density)
+        self.grocery_section.is_none() || (self.density_g_per_ml.is_none() && !self.ignore_density)
     }
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -221,10 +216,7 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 #[post("/api/ingredients/:id/update")]
-pub async fn update_ingredient(
-    id: i64,
-    input: IngredientUpdate,
-) -> Result<(), ServerFnError> {
+pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<(), ServerFnError> {
     ops::update_ingredient(db::pool().await, id, input)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
