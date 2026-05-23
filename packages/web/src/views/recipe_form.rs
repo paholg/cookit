@@ -17,20 +17,20 @@ pub struct IngDraft {
 #[derive(Default, Clone, PartialEq)]
 pub struct StepDraft {
     pub instruction: String,
-    pub ingredients: Vec<IngDraft>,
+    pub ingredients: Vec<Signal<IngDraft>>,
 }
 
 #[derive(Default, Clone, PartialEq)]
 pub struct RecipeDraft {
     pub name: String,
     pub source: String,
-    pub steps: Vec<StepDraft>,
+    pub steps: Vec<Signal<StepDraft>>,
 }
 
 impl RecipeDraft {
     pub fn empty() -> Self {
         Self {
-            steps: vec![StepDraft::default()],
+            steps: vec![Signal::new(StepDraft::default())],
             ..Self::default()
         }
     }
@@ -42,17 +42,21 @@ impl RecipeDraft {
             steps: detail
                 .steps
                 .into_iter()
-                .map(|s| StepDraft {
-                    instruction: s.instruction,
-                    ingredients: s
-                        .ingredients
-                        .into_iter()
-                        .map(|i| IngDraft {
-                            name: i.ingredient_name,
-                            quantity: format_qty(i.quantity),
-                            unit: i.unit.label(),
-                        })
-                        .collect(),
+                .map(|s| {
+                    Signal::new(StepDraft {
+                        instruction: s.instruction,
+                        ingredients: s
+                            .ingredients
+                            .into_iter()
+                            .map(|i| {
+                                Signal::new(IngDraft {
+                                    name: i.ingredient_name,
+                                    quantity: format_qty(i.quantity),
+                                    unit: i.unit.label(),
+                                })
+                            })
+                            .collect(),
+                    })
                 })
                 .collect(),
         }
@@ -60,9 +64,11 @@ impl RecipeDraft {
 
     fn to_payload(&self) -> Result<NewRecipe, String> {
         let mut steps = Vec::with_capacity(self.steps.len());
-        for (step_idx, step) in self.steps.iter().enumerate() {
+        for (step_idx, step_sig) in self.steps.iter().enumerate() {
+            let step = step_sig.read();
             let mut ings = Vec::with_capacity(step.ingredients.len());
-            for (ing_idx, ing) in step.ingredients.iter().enumerate() {
+            for (ing_idx, ing_sig) in step.ingredients.iter().enumerate() {
+                let ing = ing_sig.read();
                 if ing.name.trim().is_empty() {
                     continue;
                 }
@@ -215,7 +221,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
             let new_step_idx = {
                 let mut d = draft.write();
                 let i = d.steps.len();
-                d.steps.push(StepDraft::default());
+                d.steps.push(Signal::new(StepDraft::default()));
                 i
             };
             focus_field(format!("instr-{new_step_idx}"));
@@ -267,15 +273,20 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
 
             h2 { "Steps" }
             {
-                let step_count = draft.read().steps.len();
+                let steps = draft.read().steps.clone();
+                let multi_step = steps.len() > 1;
                 let names = ingredient_names.clone();
                 let units = unit_options.clone();
                 rsx! {
-                    for step_idx in 0..step_count {
+                    for (step_idx, step) in steps.into_iter().enumerate() {
                         StepEditor {
                             key: "{step_idx}",
+                            step,
                             step_idx,
-                            draft,
+                            multi_step,
+                            on_remove: Callback::new(move |_| {
+                                draft.write().steps.remove(step_idx);
+                            }),
                             existing_names: names.clone(),
                             unit_options: units.clone(),
                         }
@@ -289,7 +300,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                     let new_step_idx = {
                         let mut d = draft.write();
                         let i = d.steps.len();
-                        d.steps.push(StepDraft::default());
+                        d.steps.push(Signal::new(StepDraft::default()));
                         i
                     };
                     focus_field(format!("instr-{new_step_idx}"));
@@ -327,24 +338,15 @@ fn has_command_modifier(m: &Modifiers) -> bool {
 
 #[component]
 fn StepEditor(
+    mut step: Signal<StepDraft>,
     step_idx: usize,
-    draft: Signal<RecipeDraft>,
+    multi_step: bool,
+    on_remove: Callback<()>,
     existing_names: Vec<String>,
     unit_options: Vec<String>,
 ) -> Element {
-    let instruction = draft
-        .read()
-        .steps
-        .get(step_idx)
-        .map(|s| s.instruction.clone())
-        .unwrap_or_default();
-    let ingredient_count = draft
-        .read()
-        .steps
-        .get(step_idx)
-        .map(|s| s.ingredients.len())
-        .unwrap_or(0);
-    let multi_step = draft.read().steps.len() > 1;
+    let instruction = step.read().instruction.clone();
+    let ingredients = step.read().ingredients.clone();
 
     rsx! {
         fieldset { class: "step",
@@ -357,10 +359,7 @@ fn StepEditor(
                         rows: "2",
                         "data-focus-key": "instr-{step_idx}",
                         oninput: move |e| {
-                            let mut d = draft.write();
-                            if let Some(step) = d.steps.get_mut(step_idx) {
-                                step.instruction = e.value();
-                            }
+                            step.write().instruction = e.value();
                         },
                         "{instruction}"
                     }
@@ -369,12 +368,26 @@ fn StepEditor(
 
             div { class: "ingredients-editor",
                 h3 { "Ingredients" }
-                for ing_idx in 0..ingredient_count {
+                for (ing_idx, ing) in ingredients.into_iter().enumerate() {
                     IngredientEditor {
                         key: "{step_idx}-{ing_idx}",
-                        step_idx,
-                        ing_idx,
-                        draft,
+                        ing,
+                        focus_key_suffix: format!("{step_idx}-{ing_idx}"),
+                        on_remove: Callback::new(move |_| {
+                            let mut s = step.write();
+                            if ing_idx < s.ingredients.len() {
+                                s.ingredients.remove(ing_idx);
+                            }
+                        }),
+                        on_enter_add: Callback::new(move |_| {
+                            let new_idx = {
+                                let mut s = step.write();
+                                let i = s.ingredients.len();
+                                s.ingredients.push(Signal::new(IngDraft::default()));
+                                i
+                            };
+                            focus_field(format!("qty-{step_idx}-{new_idx}"));
+                        }),
                         existing_names: existing_names.clone(),
                         unit_options: unit_options.clone(),
                     }
@@ -384,10 +397,9 @@ fn StepEditor(
                     class: "secondary",
                     onclick: move |_| {
                         let new_idx = {
-                            let mut d = draft.write();
-                            let Some(step) = d.steps.get_mut(step_idx) else { return };
-                            let i = step.ingredients.len();
-                            step.ingredients.push(IngDraft::default());
+                            let mut s = step.write();
+                            let i = s.ingredients.len();
+                            s.ingredients.push(Signal::new(IngDraft::default()));
                             i
                         };
                         focus_field(format!("qty-{step_idx}-{new_idx}"));
@@ -401,9 +413,7 @@ fn StepEditor(
                     r#type: "button",
                     class: "danger",
                     tabindex: "-1",
-                    onclick: move |_| {
-                        draft.write().steps.remove(step_idx);
-                    },
+                    onclick: move |_| on_remove.call(()),
                     "Remove step"
                 }
             }
@@ -413,23 +423,19 @@ fn StepEditor(
 
 #[component]
 fn IngredientEditor(
-    step_idx: usize,
-    ing_idx: usize,
-    draft: Signal<RecipeDraft>,
+    mut ing: Signal<IngDraft>,
+    focus_key_suffix: String,
+    on_remove: Callback<()>,
+    on_enter_add: Callback<()>,
     existing_names: Vec<String>,
     unit_options: Vec<String>,
 ) -> Element {
-    let row = draft
-        .read()
-        .steps
-        .get(step_idx)
-        .and_then(|s| s.ingredients.get(ing_idx).cloned())
-        .unwrap_or_default();
+    let row = ing.read().clone();
     let status = ingredient_status(&row.name, &existing_names);
 
-    let qty_focus_key = format!("qty-{step_idx}-{ing_idx}");
-    let unit_focus_key = format!("unit-{step_idx}-{ing_idx}");
-    let name_focus_key = format!("name-{step_idx}-{ing_idx}");
+    let qty_focus_key = format!("qty-{focus_key_suffix}");
+    let unit_focus_key = format!("unit-{focus_key_suffix}");
+    let name_focus_key = format!("name-{focus_key_suffix}");
 
     let unit_key_for_qty_enter = unit_focus_key.clone();
     let name_key_for_unit_enter = name_focus_key.clone();
@@ -445,14 +451,7 @@ fn IngredientEditor(
                 autocomplete: "off",
                 "data-focus-key": "{qty_focus_key}",
                 oninput: move |e| {
-                    let mut d = draft.write();
-                    if let Some(ing) = d
-                        .steps
-                        .get_mut(step_idx)
-                        .and_then(|s| s.ingredients.get_mut(ing_idx))
-                    {
-                        ing.quantity = e.value();
-                    }
+                    ing.write().quantity = e.value();
                 },
                 onkeydown: move |e| {
                     if e.key() == Key::Enter && e.modifiers().is_empty() {
@@ -468,14 +467,7 @@ fn IngredientEditor(
                 focus_key: unit_focus_key.clone(),
                 wrapper_class: "unit-cell".to_string(),
                 oninput: move |v: String| {
-                    let mut d = draft.write();
-                    if let Some(ing) = d
-                        .steps
-                        .get_mut(step_idx)
-                        .and_then(|s| s.ingredients.get_mut(ing_idx))
-                    {
-                        ing.unit = v;
-                    }
+                    ing.write().unit = v;
                 },
                 onenter: move |_| {
                     focus_field(name_key_for_unit_enter.clone());
@@ -489,27 +481,13 @@ fn IngredientEditor(
                     focus_key: name_focus_key.clone(),
                     wrapper_class: String::new(),
                     oninput: move |v: String| {
-                        let mut d = draft.write();
-                        if let Some(ing) = d
-                            .steps
-                            .get_mut(step_idx)
-                            .and_then(|s| s.ingredients.get_mut(ing_idx))
-                        {
-                            ing.name = v;
-                        }
+                        ing.write().name = v;
                     },
                     onenter: move |_| {
-                        let new_idx = {
-                            let mut d = draft.write();
-                            let Some(step) = d.steps.get_mut(step_idx) else { return };
-                            if step.ingredients.get(ing_idx).is_some_and(|c| c.name.trim().is_empty()) {
-                                return;
-                            }
-                            let i = step.ingredients.len();
-                            step.ingredients.push(IngDraft::default());
-                            i
-                        };
-                        focus_field(format!("qty-{step_idx}-{new_idx}"));
+                        if ing.read().name.trim().is_empty() {
+                            return;
+                        }
+                        on_enter_add.call(());
                     },
                 }
                 match status {
@@ -526,14 +504,7 @@ fn IngredientEditor(
                 r#type: "button",
                 class: "danger small",
                 tabindex: "-1",
-                onclick: move |_| {
-                    let mut d = draft.write();
-                    if let Some(step) = d.steps.get_mut(step_idx)
-                        && ing_idx < step.ingredients.len()
-                    {
-                        step.ingredients.remove(ing_idx);
-                    }
-                },
+                onclick: move |_| on_remove.call(()),
                 "×"
             }
         }
@@ -603,8 +574,8 @@ fn Autocomplete(
                                     }
                                 }
                             }
-                            Key::ArrowUp => {
-                                if open() && n > 0 {
+                            Key::ArrowUp
+                                if open() && n > 0 => {
                                     e.prevent_default();
                                     let cur = highlight_offset().min(n - 1);
                                     if cur == 0 {
@@ -615,18 +586,16 @@ fn Autocomplete(
                                         highlight_offset.set(cur - 1);
                                     }
                                 }
-                            }
-                            Key::Escape => {
-                                if open() {
+                            Key::Escape
+                                if open() => {
                                     e.prevent_default();
                                     open.set(false);
                                     highlight_offset.set(0);
                                 }
-                            }
-                            Key::Tab => {
+                            Key::Tab
                                 // Accept selection if popup is open, then let
                                 // Tab keep its default focus-advance behavior.
-                                if open() && n > 0 {
+                                if open() && n > 0 => {
                                     let i = highlight_offset().min(n - 1);
                                     if let Some(s) = filtered.get(i) {
                                         oninput.call(s.clone());
@@ -634,7 +603,6 @@ fn Autocomplete(
                                     open.set(false);
                                     highlight_offset.set(0);
                                 }
-                            }
                             Key::Enter => {
                                 if has_command_modifier(&e.modifiers()) {
                                     return;

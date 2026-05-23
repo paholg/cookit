@@ -13,6 +13,7 @@ up:
 
 fix:
     cargo clippy --fix --allow-staged
+    cargo fmt
 
 lint: fmt-check clippy
 

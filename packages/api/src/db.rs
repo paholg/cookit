@@ -32,7 +32,9 @@ async fn build_pool() -> Result<SqlitePool> {
 }
 pub async fn pool() -> &'static SqlitePool {
     POOL.get_or_init(|| async {
-            build_pool().await.expect("failed to initialize sqlite pool")
-        })
-        .await
+        build_pool()
+            .await
+            .expect("failed to initialize sqlite pool")
+    })
+    .await
 }

@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 use ui::Navbar;
 use views::{
-    Home, IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail,
-    RecipeEdit, RecipeList, RecipeNew,
+    Home, IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
+    RecipeList, RecipeNew,
 };
 mod views;
 #[derive(Debug, Clone, Routable, PartialEq)]

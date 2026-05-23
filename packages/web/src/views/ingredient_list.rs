@@ -16,7 +16,10 @@ impl RowDraft {
         Self {
             id: i.id,
             name: i.name.clone(),
-            density: i.density_g_per_ml.map(|d| format!("{d}")).unwrap_or_default(),
+            density: i
+                .density_g_per_ml
+                .map(|d| format!("{d}"))
+                .unwrap_or_default(),
             section: i.grocery_section.clone().unwrap_or_default(),
             ignore_density: i.ignore_density,
             saving: false,
@@ -41,13 +44,10 @@ impl RowDraft {
             None
         } else {
             Some(
-                self
-                    .density
+                self.density
                     .trim()
                     .parse::<f64>()
-                    .map_err(|_| {
-                        format!("`{}` is not a valid density", self.density.trim())
-                    })?,
+                    .map_err(|_| format!("`{}` is not a valid density", self.density.trim()))?,
             )
         };
         Ok(IngredientUpdate {
@@ -64,7 +64,11 @@ fn parse_optional_density(s: &str) -> Option<f64> {
 }
 fn trimmed_to_option(s: &str) -> Option<String> {
     let t = s.trim();
-    if t.is_empty() { None } else { Some(t.to_string()) }
+    if t.is_empty() {
+        None
+    } else {
+        Some(t.to_string())
+    }
 }
 #[component]
 pub fn IngredientList() -> Element {
