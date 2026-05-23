@@ -59,6 +59,19 @@
             ];
           };
 
+          devPackages =
+            with pkgs;
+            [
+              cargo-dist
+              cargo-edit
+              cargo-nextest
+              just
+              pkg-config
+              openssl
+              sqlx-cli
+            ]
+            ++ [ rustDev ];
+
           package = pkgs.rustPlatform.buildRustPackage {
             pname = "cookit";
             version = "0.1.0";
@@ -89,18 +102,7 @@
         {
           packages.default = package;
           devShells.default = pkgs.mkShell {
-            packages =
-              with pkgs;
-              [
-                cargo-dist
-                cargo-edit
-                cargo-nextest
-                just
-                pkg-config
-                openssl
-                sqlx-cli
-              ]
-              ++ [ rustDev ];
+            packages = devPackages;
           };
         }
       );

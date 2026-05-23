@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+    init: true
+    command: sleep infinity
+    volumes:
+      - ..:/workspace:cached
+      - ~/.claude:/home/vscode/.claude
+      - ~/.claude.json:/home/vscode/.claude.json
+    environment:
+      COLORTERM: truecolor

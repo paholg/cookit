@@ -1,0 +1,33 @@
+{
+  "name": "CookIt!",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "initializeCommand": ".devcontainer/initialize.sh",
+  "forwardPorts": [
+    8080
+  ],
+  "customizations": {
+    "devconcurrent": {
+      "defaultExec": "/bin/zsh",
+      "worktreeFolder": ".worktrees/",
+      "proxy": {
+        "enable": true,
+        "services": {
+          "app": {
+            "ports": [
+              {
+                "host": 80,
+                "container": 8080
+              },
+              {
+                "host": 443,
+                "container": 8080
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

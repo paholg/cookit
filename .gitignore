@@ -11,3 +11,4 @@ result
 .direnv/
 dev/*
 !dev/.keep
+.worktrees/
