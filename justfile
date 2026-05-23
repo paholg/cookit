@@ -1,11 +1,11 @@
 serve *args:
-    cd web && dx serve {{args}}
+    cd packages/web && dx serve {{args}}
 
 build *args:
-    cd web && dx build {{args}}
+    cd packages/web && dx build {{args}}
 
 test *args:
-    cargo nextest run --no-fail-fast {{args}}
+    cargo nextest run --no-fail-fast --features server {{args}}
 
 up:
     nix flake update
@@ -20,4 +20,5 @@ fmt-check:
     cargo fmt --all -- --check
 
 clippy:
-    cargo clippy -- -D warnings
+    cargo clippy --workspace --features web -- -D warnings
+    cargo clippy --workspace --features server -- -D warnings

@@ -1,16 +1,27 @@
 #navbar {
-  display: flex;
-  flex-direction: row;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
 }
 
 #navbar a {
-  color: #ffffff;
-  margin-right: 20px;
-  text-decoration: none;
-  transition: color 0.2s ease;
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 500;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+#navbar a:first-child {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1.1rem;
 }
 
 #navbar a:hover {
-  cursor: pointer;
-  color: #91a4d2;
+    text-decoration: underline;
 }

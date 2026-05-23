@@ -7,7 +7,7 @@ pub fn Navbar(children: Element) -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: NAVBAR_CSS }
 
-        div {
+        nav {
             id: "navbar",
             {children}
         }

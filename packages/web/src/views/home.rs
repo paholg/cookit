@@ -1,10 +1,18 @@
+use crate::Route;
 use dioxus::prelude::*;
-use ui::{Echo, Hero};
 
 #[component]
 pub fn Home() -> Element {
     rsx! {
-        Hero {}
-        Echo {}
+        section {
+            class: "hero",
+            h1 { "CookIt" }
+            p { "Your self-hosted recipe collection." }
+            Link {
+                to: Route::RecipeList {},
+                class: "button",
+                "Browse recipes"
+            }
+        }
     }
 }
