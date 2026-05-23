@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-dioxus = { workspace = true, features = ["router", "fullstack"] }
-ui     = { workspace = true }
-api    = { workspace = true }
-strum  = { version = "0.28", features = ["derive"] }
+dioxus         = { workspace = true, features = ["router", "fullstack"] }
+ui             = { workspace = true }
+api            = { workspace = true }
+strum          = { version = "0.28", features = ["derive"] }
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 
 [features]
 default = []

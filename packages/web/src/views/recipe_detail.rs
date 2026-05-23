@@ -1,6 +1,8 @@
 use crate::Route;
 use api::{RecipeStepIngredient, get_recipe};
 use dioxus::prelude::*;
+use pulldown_cmark::{Options, Parser, html};
+
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {
     let recipe = use_server_future(move || get_recipe(id))?;
@@ -22,15 +24,17 @@ pub fn RecipeDetail(id: i64) -> Element {
                             }
                         }
                     }
-                    ol { class: "steps",
-                        for step in detail.steps {
-                            li { key: "{step.id}",
-                                p { class: "instruction", "{step.instruction}" }
-                                if !step.ingredients.is_empty() {
-                                    ul { class: "ingredients",
-                                        for ing in step.ingredients {
-                                            li { key: "{ing.ingredient_id}-{ing.position}",
-                                                "{format_ingredient_line(&ing)}"
+                    table { class: "recipe-steps",
+                        tbody {
+                            for step in detail.steps {
+                                tr { key: "{step.id}",
+                                    td { class: "instruction",
+                                        div { dangerous_inner_html: render_markdown(&step.instruction) }
+                                    }
+                                    td { class: "ingredients",
+                                        for (i, ing) in step.ingredients.iter().enumerate() {
+                                            div { key: "{ing.ingredient_id}-{ing.position}-{i}",
+                                                "• {format_ingredient_line(ing)}"
                                             }
                                         }
                                     }
@@ -49,6 +53,18 @@ pub fn RecipeDetail(id: i64) -> Element {
         }
     }
 }
+
+fn render_markdown(src: &str) -> String {
+    let mut opts = Options::empty();
+    opts.insert(Options::ENABLE_STRIKETHROUGH);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_SMART_PUNCTUATION);
+    let parser = Parser::new_ext(src, opts);
+    let mut out = String::new();
+    html::push_html(&mut out, parser);
+    out
+}
+
 fn format_quantity(q: f64) -> String {
     if (q.fract()).abs() < f64::EPSILON {
         format!("{}", q as i64)
@@ -56,6 +72,7 @@ fn format_quantity(q: f64) -> String {
         format!("{q}")
     }
 }
+
 fn format_ingredient_line(ing: &RecipeStepIngredient) -> String {
     let qty = format_quantity(ing.quantity);
     let unit = ing.unit.label();
