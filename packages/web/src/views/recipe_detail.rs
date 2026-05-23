@@ -1,28 +1,19 @@
 use crate::Route;
 use api::{RecipeStepIngredient, get_recipe};
 use dioxus::prelude::*;
-
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {
     let recipe = use_server_future(move || get_recipe(id))?;
-
     rsx! {
         match recipe.cloned() {
             Some(Ok(detail)) => rsx! {
-                article {
-                    class: "recipe",
-                    header {
-                        class: "page-header",
+                article { class: "recipe",
+                    header { class: "page-header",
                         h1 { "{detail.recipe.name}" }
-                        Link {
-                            to: Route::RecipeEdit { id },
-                            class: "button-link",
-                            "Edit"
-                        }
+                        Link { to: Route::RecipeEdit { id }, class: "button-link", "Edit" }
                     }
                     if let Some(source) = detail.recipe.source.as_deref() {
-                        p {
-                            class: "source",
+                        p { class: "source",
                             "Source: "
                             if source.starts_with("http") {
                                 a { href: "{source}", "{source}" }
@@ -31,19 +22,14 @@ pub fn RecipeDetail(id: i64) -> Element {
                             }
                         }
                     }
-
-                    ol {
-                        class: "steps",
+                    ol { class: "steps",
                         for step in detail.steps {
-                            li {
-                                key: "{step.id}",
+                            li { key: "{step.id}",
                                 p { class: "instruction", "{step.instruction}" }
                                 if !step.ingredients.is_empty() {
-                                    ul {
-                                        class: "ingredients",
+                                    ul { class: "ingredients",
                                         for ing in step.ingredients {
-                                            li {
-                                                key: "{ing.ingredient_id}-{ing.position}",
+                                            li { key: "{ing.ingredient_id}-{ing.position}",
                                                 "{format_ingredient_line(&ing)}"
                                             }
                                         }
@@ -63,7 +49,6 @@ pub fn RecipeDetail(id: i64) -> Element {
         }
     }
 }
-
 fn format_quantity(q: f64) -> String {
     if (q.fract()).abs() < f64::EPSILON {
         format!("{}", q as i64)
@@ -71,7 +56,6 @@ fn format_quantity(q: f64) -> String {
         format!("{q}")
     }
 }
-
 fn format_ingredient_line(ing: &RecipeStepIngredient) -> String {
     let qty = format_quantity(ing.quantity);
     if ing.unit.is_empty() {

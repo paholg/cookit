@@ -1,29 +1,26 @@
 use crate::Route;
-use api::{
-    MealDetail, NewMeal, NewMealRecipe, Recipe, create_meal, list_recipes, update_meal,
-};
+use api::{MealDetail, NewMeal, NewMealRecipe, Recipe, create_meal, list_recipes, update_meal};
 use dioxus::prelude::*;
-
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
     pub recipe_id: Option<i64>,
     pub multiplier: String,
 }
-
 #[derive(Default, Clone, PartialEq)]
 pub struct MealDraft {
     pub name: String,
     pub recipes: Vec<MealRecipeDraft>,
 }
-
 impl MealDraft {
     pub fn empty() -> Self {
         Self {
-            recipes: vec![MealRecipeDraft { recipe_id: None, multiplier: "1".into() }],
+            recipes: vec![MealRecipeDraft {
+                recipe_id: None,
+                multiplier: "1".into(),
+            }],
             ..Self::default()
         }
     }
-
     pub fn from_detail(detail: MealDetail) -> Self {
         Self {
             name: detail.meal.name,
@@ -37,7 +34,6 @@ impl MealDraft {
                 .collect(),
         }
     }
-
     fn to_payload(&self) -> Result<NewMeal, String> {
         let mut recipes = Vec::with_capacity(self.recipes.len());
         for (idx, r) in self.recipes.iter().enumerate() {
@@ -48,11 +44,14 @@ impl MealDraft {
             let multiplier: f64 = if m_text.is_empty() {
                 return Err(format!("row {}: multiplier is required", idx + 1));
             } else {
-                m_text.parse().map_err(|_| {
-                    format!("row {}: `{m_text}` is not a valid number", idx + 1)
-                })?
+                m_text
+                    .parse()
+                    .map_err(|_| format!("row {}: `{m_text}` is not a valid number", idx + 1))?
             };
-            recipes.push(NewMealRecipe { recipe_id, multiplier });
+            recipes.push(NewMealRecipe {
+                recipe_id,
+                multiplier,
+            });
         }
         Ok(NewMeal {
             name: self.name.clone(),
@@ -60,7 +59,6 @@ impl MealDraft {
         })
     }
 }
-
 fn format_mult(m: f64) -> String {
     if (m.fract()).abs() < f64::EPSILON {
         format!("{}", m as i64)
@@ -68,26 +66,22 @@ fn format_mult(m: f64) -> String {
         format!("{m}")
     }
 }
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum MealFormMode {
     Create,
     Edit { id: i64 },
 }
-
 #[component]
 pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
     let mut draft = use_signal(|| initial.clone());
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
     let nav = use_navigator();
-
     let recipes = use_server_future(list_recipes)?;
     let available: Vec<Recipe> = match recipes.cloned() {
         Some(Ok(list)) => list,
         _ => Vec::new(),
     };
-
     let submit = move |e: FormEvent| {
         e.prevent_default();
         if submitting() {
@@ -121,7 +115,6 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             }
         });
     };
-
     let title = match mode {
         MealFormMode::Create => "New meal",
         MealFormMode::Edit { .. } => "Edit meal",
@@ -130,25 +123,19 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
         MealFormMode::Create => "Save meal",
         MealFormMode::Edit { .. } => "Save changes",
     };
-
     rsx! {
-        header {
-            class: "page-header",
+        header { class: "page-header",
             h1 { "{title}" }
         }
-
         if available.is_empty() {
             p { class: "empty",
                 "You don't have any recipes yet. "
-                Link { to: Route::RecipeNew {}, "Create one" }
+                Link { to: Route::RecipeNew
+                                                                                        {}, "Create one" }
                 " before building a meal."
             }
         }
-
-        form {
-            class: "recipe-form",
-            onsubmit: submit,
-
+        form { class: "recipe-form", onsubmit: submit,
             label {
                 "Name"
                 input {
@@ -158,7 +145,6 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                     oninput: move |e| draft.write().name = e.value(),
                 }
             }
-
             h2 { "Recipes" }
             {
                 let count = draft.read().recipes.len();
@@ -178,50 +164,44 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 r#type: "button",
                 class: "secondary",
                 disabled: available.is_empty(),
-                onclick: move |_| draft.write().recipes.push(MealRecipeDraft {
-                    recipe_id: None,
-                    multiplier: "1".into(),
-                }),
+                onclick: move |_| {
+                    draft
+                        .write()
+                        .recipes
+                        .push(MealRecipeDraft {
+                            recipe_id: None,
+                            multiplier: "1".into(),
+                        })
+                },
                 "+ Add recipe"
             }
-
             if let Some(err) = error.read().clone() {
                 p { class: "error", "{err}" }
             }
-
-            div {
-                class: "form-actions",
+            div { class: "form-actions",
                 button {
                     r#type: "submit",
                     class: "primary",
                     disabled: submitting(),
-                    if submitting() { "Saving..." } else { "{submit_label_idle}" }
+                    if submitting() {
+                        "Saving..."
+                    } else {
+                        "{submit_label_idle}"
+                    }
                 }
                 if let MealFormMode::Edit { id } = mode {
-                    Link {
-                        to: Route::MealDetail { id },
-                        class: "button-link",
-                        "Cancel"
-                    }
+                    Link { to: Route::MealDetail { id }, class: "button-link", "Cancel" }
                 }
             }
         }
     }
 }
-
 #[component]
 fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> Element {
-    let row = draft
-        .read()
-        .recipes
-        .get(idx)
-        .cloned()
-        .unwrap_or_default();
+    let row = draft.read().recipes.get(idx).cloned().unwrap_or_default();
     let selected = row.recipe_id.map(|i| i.to_string()).unwrap_or_default();
-
     rsx! {
-        div {
-            class: "meal-row",
+        div { class: "meal-row",
             select {
                 value: "{selected}",
                 oninput: move |e| {

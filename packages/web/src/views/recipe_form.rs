@@ -107,7 +107,11 @@ impl RecipeDraft {
             name: self.name.clone(),
             source: {
                 let t = self.source.trim();
-                if t.is_empty() { None } else { Some(t.to_string()) }
+                if t.is_empty() {
+                    None
+                } else {
+                    Some(t.to_string())
+                }
             },
             steps,
         })
@@ -157,9 +161,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         error.set(None);
         spawn(async move {
             let result: Result<i64, String> = match mode {
-                RecipeFormMode::Create => {
-                    create_recipe(payload).await.map_err(|e| e.to_string())
-                }
+                RecipeFormMode::Create => create_recipe(payload).await.map_err(|e| e.to_string()),
                 RecipeFormMode::Edit { id } => match update_recipe(id, payload).await {
                     Ok(()) => Ok(id),
                     Err(e) => Err(e.to_string()),
@@ -190,14 +192,11 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         UnitDatalists {}
         IngredientDatalist { names: ingredient_names.clone() }
 
-        header {
-            class: "page-header",
+        header { class: "page-header",
             h1 { "{title}" }
         }
 
-        form {
-            class: "recipe-form",
-            onsubmit: submit,
+        form { class: "recipe-form", onsubmit: submit,
 
             label {
                 "Name"
@@ -244,20 +243,19 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                 p { class: "error", "{err}" }
             }
 
-            div {
-                class: "form-actions",
+            div { class: "form-actions",
                 button {
                     r#type: "submit",
                     class: "primary",
                     disabled: submitting(),
-                    if submitting() { "Saving..." } else { "{submit_label_idle}" }
+                    if submitting() {
+                        "Saving..."
+                    } else {
+                        "{submit_label_idle}"
+                    }
                 }
                 if let RecipeFormMode::Edit { id } = mode {
-                    Link {
-                        to: Route::RecipeDetail { id },
-                        class: "button-link",
-                        "Cancel"
-                    }
+                    Link { to: Route::RecipeDetail { id }, class: "button-link", "Cancel" }
                 }
             }
         }
@@ -267,14 +265,12 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
 #[component]
 fn UnitDatalists() -> Element {
     rsx! {
-        datalist {
-            id: MASS_LIST_ID,
+        datalist { id: MASS_LIST_ID,
             for (name, _) in MASS_UNITS.iter() {
                 option { value: *name }
             }
         }
-        datalist {
-            id: VOLUME_LIST_ID,
+        datalist { id: VOLUME_LIST_ID,
             for (name, _) in VOLUME_UNITS.iter() {
                 option { value: *name }
             }
@@ -285,8 +281,7 @@ fn UnitDatalists() -> Element {
 #[component]
 fn IngredientDatalist(names: Vec<String>) -> Element {
     rsx! {
-        datalist {
-            id: INGREDIENT_LIST_ID,
+        datalist { id: INGREDIENT_LIST_ID,
             for name in names {
                 option { value: "{name}" }
             }
@@ -295,11 +290,7 @@ fn IngredientDatalist(names: Vec<String>) -> Element {
 }
 
 #[component]
-fn StepEditor(
-    step_idx: usize,
-    draft: Signal<RecipeDraft>,
-    existing_names: Vec<String>,
-) -> Element {
+fn StepEditor(step_idx: usize, draft: Signal<RecipeDraft>, existing_names: Vec<String>) -> Element {
     let instruction = draft
         .read()
         .steps
@@ -315,8 +306,7 @@ fn StepEditor(
     let multi_step = draft.read().steps.len() > 1;
 
     rsx! {
-        fieldset {
-            class: "step",
+        fieldset { class: "step",
             legend { "Step {step_idx + 1}" }
 
             label {
@@ -333,8 +323,7 @@ fn StepEditor(
                 }
             }
 
-            div {
-                class: "ingredients-editor",
+            div { class: "ingredients-editor",
                 h3 { "Ingredients" }
                 for ing_idx in 0..ingredient_count {
                     IngredientEditor {
@@ -389,33 +378,70 @@ fn IngredientEditor(
     let status = ingredient_status(&row.name, &existing_names);
 
     rsx! {
-        div {
-            class: "ingredient-row",
+        div { class: "ingredient-row",
             input {
                 r#type: "text",
                 inputmode: "decimal",
                 class: "qty",
-                placeholder: "Qty",
+                placeholder: "qty",
                 value: "{row.quantity}",
                 oninput: move |e| {
                     let mut d = draft.write();
-                    if let Some(ing) = d.steps.get_mut(step_idx)
+                    if let Some(ing) = d
+                        .steps
+                        .get_mut(step_idx)
                         .and_then(|s| s.ingredients.get_mut(ing_idx))
                     {
                         ing.quantity = e.value();
                     }
                 },
             }
-            div {
-                class: "name-cell",
+            select {
+                value: "{unit_kind_value(kind)}",
+                oninput: move |e| {
+                    let v = e.value();
+                    let mut d = draft.write();
+                    if let Some(ing) = d
+                        .steps
+                        .get_mut(step_idx)
+                        .and_then(|s| s.ingredients.get_mut(ing_idx))
+                    {
+                        ing.unit_kind = UnitKind::parse(&v);
+                        ing.unit.clear();
+                    }
+                },
+                option { value: "", "—" }
+                option { value: "mass", "mass" }
+                option { value: "volume", "volume" }
+                option { value: "count", "count" }
+            }
+            input {
+                r#type: "text",
+                placeholder: "unit",
+                value: "{row.unit}",
+                list: unit_list_for(kind),
+                oninput: move |e| {
+                    let mut d = draft.write();
+                    if let Some(ing) = d
+                        .steps
+                        .get_mut(step_idx)
+                        .and_then(|s| s.ingredients.get_mut(ing_idx))
+                    {
+                        ing.unit = e.value();
+                    }
+                },
+            }
+            div { class: "name-cell",
                 input {
                     r#type: "text",
-                    placeholder: "Ingredient (e.g. onion)",
+                    placeholder: "name",
                     value: "{row.name}",
                     list: INGREDIENT_LIST_ID,
                     oninput: move |e| {
                         let mut d = draft.write();
-                        if let Some(ing) = d.steps.get_mut(step_idx)
+                        if let Some(ing) = d
+                            .steps
+                            .get_mut(step_idx)
                             .and_then(|s| s.ingredients.get_mut(ing_idx))
                         {
                             ing.name = e.value();
@@ -431,37 +457,6 @@ fn IngredientEditor(
                         span { class: "ingredient-status new", "✨ new ingredient" }
                     },
                 }
-            }
-            select {
-                value: "{unit_kind_value(kind)}",
-                oninput: move |e| {
-                    let v = e.value();
-                    let mut d = draft.write();
-                    if let Some(ing) = d.steps.get_mut(step_idx)
-                        .and_then(|s| s.ingredients.get_mut(ing_idx))
-                    {
-                        ing.unit_kind = UnitKind::parse(&v);
-                        ing.unit.clear();
-                    }
-                },
-                option { value: "", "—" }
-                option { value: "mass", "mass" }
-                option { value: "volume", "volume" }
-                option { value: "count", "count" }
-            }
-            input {
-                r#type: "text",
-                placeholder: unit_placeholder(kind),
-                value: "{row.unit}",
-                list: unit_list_for(kind),
-                oninput: move |e| {
-                    let mut d = draft.write();
-                    if let Some(ing) = d.steps.get_mut(step_idx)
-                        .and_then(|s| s.ingredients.get_mut(ing_idx))
-                    {
-                        ing.unit = e.value();
-                    }
-                },
             }
             button {
                 r#type: "button",
@@ -505,16 +500,6 @@ fn unit_kind_value(uk: Option<UnitKind>) -> &'static str {
         Some(UnitKind::Count) => "count",
         Some(UnitKind::Custom) => "custom",
         None => "",
-    }
-}
-
-fn unit_placeholder(uk: Option<UnitKind>) -> &'static str {
-    match uk {
-        Some(UnitKind::Mass) => "g, kg, oz, lb…",
-        Some(UnitKind::Volume) => "ml, tsp, cup…",
-        Some(UnitKind::Count) => "medium, clove… (optional)",
-        Some(UnitKind::Custom) => "medium, clove…",
-        None => "unit",
     }
 }
 
