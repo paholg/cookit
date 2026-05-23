@@ -18,6 +18,8 @@ For the final product:
 * We won't worry about auth yet, but we'll do this with a 3rd party via OIDC or
  something. For now, we should just have a users table, and meals and shopping
  lists should be attached to users.
+* accessing meals and shopping_lists should be a very nice experience on a phone
+  or tablet.
 
 We want to store data in a highly relational way for easier querying.
 
