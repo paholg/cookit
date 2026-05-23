@@ -1,106 +1,123 @@
 //! Shared fullstack types and server functions for CookIt.
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use strum::{Display, EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 #[cfg(feature = "server")]
 pub mod db;
 #[cfg(feature = "server")]
 pub mod ops;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum UnitKind {
-    Mass,
-    Volume,
-    Count,
-    Custom,
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString, EnumIter,
+)]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
+pub enum MassUnit {
+    G,
+    Kg,
+    Mg,
+    Oz,
+    Lb,
 }
-impl UnitKind {
-    pub fn as_str(self) -> &'static str {
+impl MassUnit {
+    /// Multiplier to canonical grams.
+    pub fn grams(self) -> f64 {
         match self {
-            UnitKind::Mass => "mass",
-            UnitKind::Volume => "volume",
-            UnitKind::Count => "count",
-            UnitKind::Custom => "custom",
-        }
-    }
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "mass" => Some(UnitKind::Mass),
-            "volume" => Some(UnitKind::Volume),
-            "count" => Some(UnitKind::Count),
-            "custom" => Some(UnitKind::Custom),
-            _ => None,
+            MassUnit::G => 1.0,
+            MassUnit::Kg => 1000.0,
+            MassUnit::Mg => 0.001,
+            MassUnit::Oz => 28.35,
+            MassUnit::Lb => 453.59,
         }
     }
 }
-/// Known mass units, each with its multiplier to canonical grams.
-pub const MASS_UNITS: &[(&str, f64)] = &[
-    ("g", 1.0),
-    ("kg", 1000.0),
-    ("mg", 0.001),
-    ("oz", 28.35),
-    ("lb", 453.59),
-];
-/// Known volume units, each with its multiplier to canonical milliliters.
-pub const VOLUME_UNITS: &[(&str, f64)] = &[
-    ("ml", 1.0),
-    ("l", 1000.0),
-    ("tsp", 4.93),
-    ("tbsp", 14.79),
-    ("fl oz", 29.57),
-    ("cup", 236.59),
-    ("pt", 473.18),
-    ("qt", 946.35),
-    ("gal", 3_785.41),
-];
-pub fn unit_names_for(kind: UnitKind) -> &'static [(&'static str, f64)] {
-    match kind {
-        UnitKind::Mass => MASS_UNITS,
-        UnitKind::Volume => VOLUME_UNITS,
-        UnitKind::Count | UnitKind::Custom => &[],
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString, EnumIter,
+)]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
+pub enum VolumeUnit {
+    Ml,
+    L,
+    Tsp,
+    Tbsp,
+    #[strum(serialize = "fl oz")]
+    FlOz,
+    Cup,
+    Pt,
+    Qt,
+    Gal,
+}
+impl VolumeUnit {
+    /// Multiplier to canonical milliliters.
+    pub fn ml(self) -> f64 {
+        match self {
+            VolumeUnit::Ml => 1.0,
+            VolumeUnit::L => 1000.0,
+            VolumeUnit::Tsp => 4.93,
+            VolumeUnit::Tbsp => 14.79,
+            VolumeUnit::FlOz => 29.57,
+            VolumeUnit::Cup => 236.59,
+            VolumeUnit::Pt => 473.18,
+            VolumeUnit::Qt => 946.35,
+            VolumeUnit::Gal => 3_785.41,
+        }
     }
 }
-/// Validate a user-supplied (kind, qty, unit) for storage in its original units.
-/// - Mass/Volume → unit must be a known unit name; returns its canonical spelling
-/// - Count/Custom → unit preserved (trimmed)
-///
-/// Returns `Err` for an unknown mass/volume unit, or for non-finite/negative quantities.
-pub fn validate_unit(kind: UnitKind, quantity: f64, unit: &str) -> Result<String, String> {
-    if !quantity.is_finite() || quantity < 0.0 {
-        return Err(format!(
-            "quantity must be a non-negative number, got {quantity}"
-        ));
-    }
-    let unit_trim = unit.trim();
-    match kind {
-        UnitKind::Mass => MASS_UNITS
-            .iter()
-            .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
-            .map(|(u, _)| (*u).to_string())
-            .ok_or_else(|| {
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumDiscriminants)]
+#[strum_discriminants(
+    name(UnitKind),
+    derive(Hash, Serialize, Deserialize, Display, EnumString),
+    strum(serialize_all = "lowercase", ascii_case_insensitive),
+    serde(rename_all = "lowercase")
+)]
+pub enum Unit {
+    Mass(MassUnit),
+    Volume(VolumeUnit),
+    Count(String),
+    Custom(String),
+}
+impl Unit {
+    /// Build a `Unit` from a kind selector and the user-typed unit text.
+    /// For Mass/Volume, the text must name a known unit (case-insensitive).
+    pub fn new(kind: UnitKind, text: &str) -> Result<Self, String> {
+        let t = text.trim();
+        match kind {
+            UnitKind::Mass => MassUnit::from_str(t).map(Unit::Mass).map_err(|_| {
                 format!(
-                    "unknown mass unit `{unit_trim}`; known: {}",
-                    MASS_UNITS
-                        .iter()
-                        .map(|(u, _)| *u)
+                    "unknown mass unit `{t}`; known: {}",
+                    MassUnit::iter()
+                        .map(|u| u.to_string())
                         .collect::<Vec<_>>()
                         .join(", "),
                 )
             }),
-        UnitKind::Volume => VOLUME_UNITS
-            .iter()
-            .find(|(u, _)| u.eq_ignore_ascii_case(unit_trim))
-            .map(|(u, _)| (*u).to_string())
-            .ok_or_else(|| {
+            UnitKind::Volume => VolumeUnit::from_str(t).map(Unit::Volume).map_err(|_| {
                 format!(
-                    "unknown volume unit `{unit_trim}`; known: {}",
-                    VOLUME_UNITS
-                        .iter()
-                        .map(|(u, _)| *u)
+                    "unknown volume unit `{t}`; known: {}",
+                    VolumeUnit::iter()
+                        .map(|u| u.to_string())
                         .collect::<Vec<_>>()
                         .join(", "),
                 )
             }),
-        UnitKind::Count | UnitKind::Custom => Ok(unit_trim.to_string()),
+            UnitKind::Count => Ok(Unit::Count(t.to_string())),
+            UnitKind::Custom => Ok(Unit::Custom(t.to_string())),
+        }
+    }
+    pub fn kind(&self) -> UnitKind {
+        self.into()
+    }
+    /// The user-visible unit text (e.g. "lb", "cup", "medium", or "").
+    pub fn label(&self) -> String {
+        match self {
+            Unit::Mass(m) => m.to_string(),
+            Unit::Volume(v) => v.to_string(),
+            Unit::Count(s) | Unit::Custom(s) => s.clone(),
+        }
+    }
+}
+impl std::fmt::Display for Unit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.label())
     }
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -136,8 +153,7 @@ pub struct RecipeStepIngredient {
     pub ingredient_id: i64,
     pub ingredient_name: String,
     pub quantity: f64,
-    pub unit_kind: UnitKind,
-    pub unit: String,
+    pub unit: Unit,
     pub position: i64,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

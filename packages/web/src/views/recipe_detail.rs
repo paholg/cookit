@@ -58,9 +58,10 @@ fn format_quantity(q: f64) -> String {
 }
 fn format_ingredient_line(ing: &RecipeStepIngredient) -> String {
     let qty = format_quantity(ing.quantity);
-    if ing.unit.is_empty() {
+    let unit = ing.unit.label();
+    if unit.is_empty() {
         format!("{qty} {}", ing.ingredient_name)
     } else {
-        format!("{qty} {} {}", ing.unit, ing.ingredient_name)
+        format!("{qty} {unit} {}", ing.ingredient_name)
     }
 }

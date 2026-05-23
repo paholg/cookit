@@ -1,9 +1,11 @@
 use crate::Route;
 use api::{
-    MASS_UNITS, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, VOLUME_UNITS,
+    MassUnit, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, VolumeUnit,
     create_recipe, list_ingredients, update_recipe,
 };
 use dioxus::prelude::*;
+use std::str::FromStr;
+use strum::IntoEnumIterator;
 
 const MASS_LIST_ID: &str = "mass-units";
 const VOLUME_LIST_ID: &str = "volume-units";
@@ -50,16 +52,19 @@ impl RecipeDraft {
                     ingredients: s
                         .ingredients
                         .into_iter()
-                        .map(|i| IngDraft {
-                            name: i.ingredient_name,
-                            quantity: format_qty(i.quantity),
-                            // Custom is legacy — treat it as Count in the form
+                        .map(|i| {
+                            // Custom is legacy — present it as Count in the form
                             // so the dropdown selection round-trips.
-                            unit_kind: Some(match i.unit_kind {
+                            let kind = match i.unit.kind() {
                                 UnitKind::Custom => UnitKind::Count,
                                 other => other,
-                            }),
-                            unit: i.unit,
+                            };
+                            IngDraft {
+                                name: i.ingredient_name,
+                                quantity: format_qty(i.quantity),
+                                unit_kind: Some(kind),
+                                unit: i.unit.label(),
+                            }
                         })
                         .collect(),
                 })
@@ -266,13 +271,13 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
 fn UnitDatalists() -> Element {
     rsx! {
         datalist { id: MASS_LIST_ID,
-            for (name, _) in MASS_UNITS.iter() {
-                option { value: *name }
+            for u in MassUnit::iter() {
+                option { value: "{u}" }
             }
         }
         datalist { id: VOLUME_LIST_ID,
-            for (name, _) in VOLUME_UNITS.iter() {
-                option { value: *name }
+            for u in VolumeUnit::iter() {
+                option { value: "{u}" }
             }
         }
     }
@@ -406,7 +411,7 @@ fn IngredientEditor(
                         .get_mut(step_idx)
                         .and_then(|s| s.ingredients.get_mut(ing_idx))
                     {
-                        ing.unit_kind = UnitKind::parse(&v);
+                        ing.unit_kind = UnitKind::from_str(&v).ok();
                         ing.unit.clear();
                     }
                 },
@@ -493,14 +498,8 @@ fn ingredient_status(name: &str, existing: &[String]) -> IngredientStatus {
     }
 }
 
-fn unit_kind_value(uk: Option<UnitKind>) -> &'static str {
-    match uk {
-        Some(UnitKind::Mass) => "mass",
-        Some(UnitKind::Volume) => "volume",
-        Some(UnitKind::Count) => "count",
-        Some(UnitKind::Custom) => "custom",
-        None => "",
-    }
+fn unit_kind_value(uk: Option<UnitKind>) -> String {
+    uk.map(|k| k.to_string()).unwrap_or_default()
 }
 
 fn unit_list_for(uk: Option<UnitKind>) -> Option<&'static str> {

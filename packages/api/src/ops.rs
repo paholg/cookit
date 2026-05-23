@@ -2,11 +2,11 @@
 //! can be exercised by integration tests against a throwaway in-memory database.
 use crate::{
     Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
-    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, UnitKind,
-    validate_unit,
+    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
 use anyhow::{Context, Result, anyhow};
 use sqlx::{Row, SqliteConnection, SqlitePool};
+use std::str::FromStr;
 const DEFAULT_USER_ID: i64 = 1;
 pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
     let rows = sqlx::query("SELECT id, name, source FROM recipes ORDER BY name")
@@ -61,21 +61,20 @@ pub async fn get_recipe(pool: &SqlitePool, id: i64) -> Result<Option<RecipeDetai
             .fetch_all(pool)
             .await
             .context("get_recipe step ingredients select")?;
-        let ingredients = ing_rows
-            .into_iter()
-            .map(|r| {
-                let unit_kind_str: String = r.get("unit_kind");
-                RecipeStepIngredient {
-                    ingredient_id: r.get("ingredient_id"),
-                    ingredient_name: r.get("ingredient_name"),
-                    quantity: r.get("quantity"),
-                    unit_kind: UnitKind::parse(&unit_kind_str)
-                        .unwrap_or(UnitKind::Custom),
-                    unit: r.get("unit"),
-                    position: r.get("position"),
-                }
-            })
-            .collect();
+        let mut ingredients = Vec::with_capacity(ing_rows.len());
+        for r in ing_rows {
+            let unit_kind_str: String = r.get("unit_kind");
+            let unit_text: String = r.get("unit");
+            let kind = UnitKind::from_str(&unit_kind_str).unwrap_or(UnitKind::Custom);
+            let unit = Unit::new(kind, &unit_text).unwrap_or(Unit::Custom(unit_text));
+            ingredients.push(RecipeStepIngredient {
+                ingredient_id: r.get("ingredient_id"),
+                ingredient_name: r.get("ingredient_name"),
+                quantity: r.get("quantity"),
+                unit,
+                position: r.get("position"),
+            });
+        }
         steps
             .push(RecipeStep {
                 id: step_id,
@@ -193,9 +192,7 @@ pub async fn update_recipe(pool: &SqlitePool, id: i64, input: NewRecipe) -> Resu
     Ok(())
 }
 fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredient>)>> {
-    let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(
-        steps.len(),
-    );
+    let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(steps.len());
     for (step_idx, step) in steps.iter().enumerate() {
         let mut ings = Vec::with_capacity(step.ingredients.len());
         for (ing_idx, ing) in step.ingredients.iter().enumerate() {
@@ -203,8 +200,16 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
             if ing_name.is_empty() {
                 continue;
             }
+            if !ing.quantity.is_finite() || ing.quantity < 0.0 {
+                return Err(anyhow!(
+                    "step {} ingredient {} ({ing_name}): quantity must be a non-negative number, got {}",
+                    step_idx + 1,
+                    ing_idx + 1,
+                    ing.quantity,
+                ));
+            }
             let kind = ing.unit_kind.unwrap_or(UnitKind::Custom);
-            let unit = validate_unit(kind, ing.quantity, &ing.unit).map_err(|e| {
+            let unit = Unit::new(kind, &ing.unit).map_err(|e| {
                 anyhow!(
                     "step {} ingredient {} ({ing_name}): {e}",
                     step_idx + 1,
@@ -214,7 +219,6 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
             ings.push(ConvertedIngredient {
                 name: ing_name.to_string(),
                 quantity: ing.quantity,
-                unit_kind: kind,
                 unit,
             });
         }
@@ -260,19 +264,19 @@ async fn insert_steps_into(
                 }
             };
             sqlx::query(
-                    "INSERT INTO recipe_step_ingredients \
+                "INSERT INTO recipe_step_ingredients \
                  (step_id, ingredient_id, quantity, unit_kind, unit, position) \
                  VALUES (?, ?, ?, ?, ?, ?)",
-                )
-                .bind(step_id)
-                .bind(ingredient_id)
-                .bind(ing.quantity)
-                .bind(ing.unit_kind.as_str())
-                .bind(&ing.unit)
-                .bind(ing_idx as i64)
-                .execute(&mut *conn)
-                .await
-                .context("insert step ingredient")?;
+            )
+            .bind(step_id)
+            .bind(ingredient_id)
+            .bind(ing.quantity)
+            .bind(ing.unit.kind().to_string())
+            .bind(ing.unit.label())
+            .bind(ing_idx as i64)
+            .execute(&mut *conn)
+            .await
+            .context("insert step ingredient")?;
         }
     }
     Ok(())
@@ -280,8 +284,7 @@ async fn insert_steps_into(
 struct ConvertedIngredient {
     name: String,
     quantity: f64,
-    unit_kind: UnitKind,
-    unit: String,
+    unit: Unit,
 }
 pub async fn list_meals(pool: &SqlitePool) -> Result<Vec<Meal>> {
     let rows = sqlx::query("SELECT id, name FROM meals ORDER BY name")
@@ -417,7 +420,7 @@ async fn insert_meal_recipes_into(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{NewRecipe, NewStep, NewStepIngredient, UnitKind};
+    use crate::{MassUnit, NewRecipe, NewStep, NewStepIngredient, UnitKind, VolumeUnit};
     use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     use std::str::FromStr;
     async fn test_pool() -> SqlitePool {
@@ -478,12 +481,10 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "ground beef");
-        assert_eq!(ings[0].unit_kind, UnitKind::Mass);
-        assert_eq!(ings[0].unit, "lb");
+        assert_eq!(ings[0].unit, Unit::Mass(MassUnit::Lb));
         assert_eq!(ings[0].quantity, 1.0);
         assert_eq!(ings[1].ingredient_name, "onion");
-        assert_eq!(ings[1].unit_kind, UnitKind::Custom);
-        assert_eq!(ings[1].unit, "medium");
+        assert_eq!(ings[1].unit, Unit::Custom("medium".into()));
         assert_eq!(ings[1].quantity, 1.0);
     }
     #[tokio::test]
@@ -505,9 +506,9 @@ mod tests {
         let id = create_recipe(&pool, input).await.unwrap();
         let detail = get_recipe(&pool, id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
-        assert_eq!(ings[0].unit, "cup");
+        assert_eq!(ings[0].unit, Unit::Volume(VolumeUnit::Cup));
         assert_eq!(ings[0].quantity, 1.0);
-        assert_eq!(ings[1].unit, "tsp");
+        assert_eq!(ings[1].unit, Unit::Volume(VolumeUnit::Tsp));
         assert_eq!(ings[1].quantity, 2.0);
     }
     #[tokio::test]
@@ -526,9 +527,9 @@ mod tests {
             .await
             .unwrap();
         let detail = get_recipe(&pool, id).await.unwrap().unwrap();
-        assert_eq!(detail.steps[0].ingredients[0].unit, "");
+        assert_eq!(detail.steps[0].ingredients[0].unit, Unit::Count(String::new()));
         assert_eq!(detail.steps[0].ingredients[0].quantity, 3.0);
-        assert_eq!(detail.steps[0].ingredients[1].unit, "medium");
+        assert_eq!(detail.steps[0].ingredients[1].unit, Unit::Count("medium".into()));
         assert_eq!(detail.steps[0].ingredients[1].quantity, 3.0);
     }
     #[tokio::test]
@@ -693,7 +694,7 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "beef");
-        assert_eq!(ings[0].unit, "lb");
+        assert_eq!(ings[0].unit, Unit::Mass(MassUnit::Lb));
         assert_eq!(ings[0].quantity, 2.0);
         assert_eq!(ings[1].ingredient_name, "tomato");
         assert_eq!(ings[1].quantity, 3.0);

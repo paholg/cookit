@@ -108,9 +108,10 @@ fn format_quantity(q: f64) -> String {
 }
 fn scaled_line(ing: &RecipeStepIngredient, multiplier: f64) -> String {
     let qty = format_quantity(ing.quantity * multiplier);
-    if ing.unit.is_empty() {
+    let unit = ing.unit.label();
+    if unit.is_empty() {
         format!("{qty} {}", ing.ingredient_name)
     } else {
-        format!("{qty} {} {}", ing.unit, ing.ingredient_name)
+        format!("{qty} {unit} {}", ing.ingredient_name)
     }
 }
