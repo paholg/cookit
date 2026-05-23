@@ -5,106 +5,92 @@ use crate::{
     NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
 use anyhow::{Context, Result, anyhow};
-use sqlx::{Row, SqliteConnection, SqlitePool};
+use sqlx::{SqliteConnection, SqlitePool};
 use std::str::FromStr;
 const DEFAULT_USER_ID: i64 = 1;
 pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
-    let rows = sqlx::query("SELECT id, name, source FROM recipes ORDER BY name")
-        .fetch_all(pool)
-        .await
-        .context("list_recipes select")?;
-    Ok(
-        rows
-            .into_iter()
-            .map(|r| Recipe {
-                id: r.get("id"),
-                name: r.get("name"),
-                source: r.get("source"),
-            })
-            .collect(),
+    sqlx::query_as!(
+        Recipe,
+        r#"SELECT id as "id!: i64", name as "name!", source
+           FROM recipes ORDER BY name"#,
     )
+    .fetch_all(pool)
+    .await
+    .context("list_recipes select")
 }
 pub async fn get_recipe(pool: &SqlitePool, id: i64) -> Result<Option<RecipeDetail>> {
-    let Some(recipe_row) = sqlx::query(
-            "SELECT id, name, source FROM recipes WHERE id = ?",
-        )
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .context("get_recipe select")? else {
+    let Some(recipe) = sqlx::query_as!(
+        Recipe,
+        r#"SELECT id as "id!: i64", name as "name!", source
+           FROM recipes WHERE id = ?"#,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("get_recipe select")?
+    else {
         return Ok(None);
     };
-    let recipe = Recipe {
-        id: recipe_row.get("id"),
-        name: recipe_row.get("name"),
-        source: recipe_row.get("source"),
-    };
-    let step_rows = sqlx::query(
-            "SELECT id, position, instruction FROM recipe_steps \
-         WHERE recipe_id = ? ORDER BY position",
-        )
-        .bind(id)
-        .fetch_all(pool)
-        .await
-        .context("get_recipe steps select")?;
+    let step_rows = sqlx::query!(
+        r#"SELECT id as "id!: i64", position as "position!: i64",
+                  instruction as "instruction!"
+           FROM recipe_steps WHERE recipe_id = ? ORDER BY position"#,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+    .context("get_recipe steps select")?;
     let mut steps = Vec::with_capacity(step_rows.len());
     for sr in step_rows {
-        let step_id: i64 = sr.get("id");
-        let ing_rows = sqlx::query(
-                "SELECT rsi.ingredient_id, i.name AS ingredient_name, rsi.quantity, \
-                    rsi.unit_kind, rsi.unit, rsi.position \
-             FROM recipe_step_ingredients rsi \
-             JOIN ingredients i ON i.id = rsi.ingredient_id \
-             WHERE rsi.step_id = ? ORDER BY rsi.position",
-            )
-            .bind(step_id)
-            .fetch_all(pool)
-            .await
-            .context("get_recipe step ingredients select")?;
-        let mut ingredients = Vec::with_capacity(ing_rows.len());
-        for r in ing_rows {
-            let unit_kind_str: String = r.get("unit_kind");
-            let unit_text: String = r.get("unit");
-            let kind = UnitKind::from_str(&unit_kind_str).unwrap_or(UnitKind::Custom);
-            let unit = Unit::new(kind, &unit_text).unwrap_or(Unit::Custom(unit_text));
-            ingredients.push(RecipeStepIngredient {
-                ingredient_id: r.get("ingredient_id"),
-                ingredient_name: r.get("ingredient_name"),
-                quantity: r.get("quantity"),
-                unit,
-                position: r.get("position"),
-            });
-        }
-        steps
-            .push(RecipeStep {
-                id: step_id,
-                position: sr.get("position"),
-                instruction: sr.get("instruction"),
-                ingredients,
-            });
+        let ing_rows = sqlx::query!(
+            r#"SELECT rsi.ingredient_id as "ingredient_id!: i64",
+                      i.name as "ingredient_name!",
+                      rsi.quantity as "quantity!: f64",
+                      rsi.unit_kind as "unit_kind!",
+                      rsi.unit as "unit!",
+                      rsi.position as "position!: i64"
+               FROM recipe_step_ingredients rsi
+               JOIN ingredients i ON i.id = rsi.ingredient_id
+               WHERE rsi.step_id = ? ORDER BY rsi.position"#,
+            sr.id,
+        )
+        .fetch_all(pool)
+        .await
+        .context("get_recipe step ingredients select")?;
+        let ingredients = ing_rows
+            .into_iter()
+            .map(|r| {
+                let kind = UnitKind::from_str(&r.unit_kind).unwrap_or(UnitKind::Custom);
+                let unit = Unit::new(kind, &r.unit).unwrap_or(Unit::Custom(r.unit));
+                RecipeStepIngredient {
+                    ingredient_id: r.ingredient_id,
+                    ingredient_name: r.ingredient_name,
+                    quantity: r.quantity,
+                    unit,
+                    position: r.position,
+                }
+            })
+            .collect();
+        steps.push(RecipeStep {
+            id: sr.id,
+            position: sr.position,
+            instruction: sr.instruction,
+            ingredients,
+        });
     }
     Ok(Some(RecipeDetail { recipe, steps }))
 }
 pub async fn list_ingredients(pool: &SqlitePool) -> Result<Vec<Ingredient>> {
-    let rows = sqlx::query(
-            "SELECT id, name, density_g_per_ml, grocery_section, ignore_density \
-         FROM ingredients ORDER BY name",
-        )
-        .fetch_all(pool)
-        .await
-        .context("list_ingredients select")?;
-    Ok(
-        rows
-            .into_iter()
-            .map(|r| Ingredient {
-                id: r.get("id"),
-                name: r.get("name"),
-                density_g_per_ml: r.get("density_g_per_ml"),
-                grocery_section: r.get("grocery_section"),
-                ignore_density: r.get("ignore_density"),
-            })
-            .collect(),
+    sqlx::query_as!(
+        Ingredient,
+        r#"SELECT id as "id!: i64", name as "name!",
+                  density_g_per_ml, grocery_section,
+                  ignore_density as "ignore_density!: bool"
+           FROM ingredients ORDER BY name"#,
     )
+    .fetch_all(pool)
+    .await
+    .context("list_ingredients select")
 }
 pub async fn update_ingredient(
     pool: &SqlitePool,
@@ -123,20 +109,20 @@ pub async fn update_ingredient(
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let affected = sqlx::query(
-            "UPDATE ingredients \
-         SET name = ?, density_g_per_ml = ?, grocery_section = ?, ignore_density = ? \
-         WHERE id = ?",
-        )
-        .bind(name)
-        .bind(input.density_g_per_ml)
-        .bind(section)
-        .bind(input.ignore_density)
-        .bind(id)
-        .execute(pool)
-        .await
-        .context("update_ingredient")?
-        .rows_affected();
+    let affected = sqlx::query!(
+        r#"UPDATE ingredients
+           SET name = ?, density_g_per_ml = ?, grocery_section = ?, ignore_density = ?
+           WHERE id = ?"#,
+        name,
+        input.density_g_per_ml,
+        section,
+        input.ignore_density,
+        id,
+    )
+    .execute(pool)
+    .await
+    .context("update_ingredient")?
+    .rows_affected();
     if affected == 0 {
         return Err(anyhow!("ingredient {id} not found"));
     }
@@ -150,15 +136,16 @@ pub async fn create_recipe(pool: &SqlitePool, input: NewRecipe) -> Result<i64> {
     let source = input.source.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
     let mut tx = pool.begin().await.context("begin tx")?;
-    let recipe_id: i64 = sqlx::query(
-            "INSERT INTO recipes (name, source) VALUES (?, ?) RETURNING id",
-        )
-        .bind(name)
-        .bind(source)
-        .fetch_one(&mut *tx)
-        .await
-        .context("insert recipe")?
-        .get("id");
+    let recipe_id = sqlx::query!(
+        r#"INSERT INTO recipes (name, source) VALUES (?, ?)
+           RETURNING id as "id!: i64""#,
+        name,
+        source,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .context("insert recipe")?
+    .id;
     insert_steps_into(&mut tx, recipe_id, converted).await?;
     tx.commit().await.context("commit tx")?;
     Ok(recipe_id)
@@ -171,19 +158,20 @@ pub async fn update_recipe(pool: &SqlitePool, id: i64, input: NewRecipe) -> Resu
     let source = input.source.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
     let mut tx = pool.begin().await.context("begin tx")?;
-    let affected = sqlx::query("UPDATE recipes SET name = ?, source = ? WHERE id = ?")
-        .bind(name)
-        .bind(source)
-        .bind(id)
-        .execute(&mut *tx)
-        .await
-        .context("update recipe")?
-        .rows_affected();
+    let affected = sqlx::query!(
+        "UPDATE recipes SET name = ?, source = ? WHERE id = ?",
+        name,
+        source,
+        id,
+    )
+    .execute(&mut *tx)
+    .await
+    .context("update recipe")?
+    .rows_affected();
     if affected == 0 {
         return Err(anyhow!("recipe {id} not found"));
     }
-    sqlx::query("DELETE FROM recipe_steps WHERE recipe_id = ?")
-        .bind(id)
+    sqlx::query!("DELETE FROM recipe_steps WHERE recipe_id = ?", id)
         .execute(&mut *tx)
         .await
         .context("delete old steps")?;
@@ -233,47 +221,56 @@ async fn insert_steps_into(
 ) -> Result<()> {
     for (step_idx, (instruction, ingredients)) in converted_steps.into_iter().enumerate()
     {
-        let step_id: i64 = sqlx::query(
-                "INSERT INTO recipe_steps (recipe_id, position, instruction) \
-             VALUES (?, ?, ?) RETURNING id",
-            )
-            .bind(recipe_id)
-            .bind(step_idx as i64)
-            .bind(&instruction)
-            .fetch_one(&mut *conn)
-            .await
-            .context("insert step")?
-            .get("id");
+        let step_position = step_idx as i64;
+        let step_id = sqlx::query!(
+            r#"INSERT INTO recipe_steps (recipe_id, position, instruction)
+               VALUES (?, ?, ?)
+               RETURNING id as "id!: i64""#,
+            recipe_id,
+            step_position,
+            instruction,
+        )
+        .fetch_one(&mut *conn)
+        .await
+        .context("insert step")?
+        .id;
         for (ing_idx, ing) in ingredients.iter().enumerate() {
-            let ingredient_id: i64 = match sqlx::query(
-                    "SELECT id FROM ingredients WHERE name = ? COLLATE NOCASE",
-                )
-                .bind(&ing.name)
-                .fetch_optional(&mut *conn)
-                .await
-                .context("select ingredient")?
+            let ingredient_id = match sqlx::query!(
+                r#"SELECT id as "id!: i64" FROM ingredients
+                   WHERE name = ? COLLATE NOCASE"#,
+                ing.name,
+            )
+            .fetch_optional(&mut *conn)
+            .await
+            .context("select ingredient")?
             {
-                Some(row) => row.get("id"),
+                Some(row) => row.id,
                 None => {
-                    sqlx::query("INSERT INTO ingredients (name) VALUES (?) RETURNING id")
-                        .bind(&ing.name)
-                        .fetch_one(&mut *conn)
-                        .await
-                        .context("insert ingredient")?
-                        .get("id")
+                    sqlx::query!(
+                        r#"INSERT INTO ingredients (name) VALUES (?)
+                           RETURNING id as "id!: i64""#,
+                        ing.name,
+                    )
+                    .fetch_one(&mut *conn)
+                    .await
+                    .context("insert ingredient")?
+                    .id
                 }
             };
-            sqlx::query(
-                "INSERT INTO recipe_step_ingredients \
-                 (step_id, ingredient_id, quantity, unit_kind, unit, position) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
+            let unit_kind = ing.unit.kind().to_string();
+            let unit_label = ing.unit.label();
+            let ing_position = ing_idx as i64;
+            sqlx::query!(
+                r#"INSERT INTO recipe_step_ingredients
+                   (step_id, ingredient_id, quantity, unit_kind, unit, position)
+                   VALUES (?, ?, ?, ?, ?, ?)"#,
+                step_id,
+                ingredient_id,
+                ing.quantity,
+                unit_kind,
+                unit_label,
+                ing_position,
             )
-            .bind(step_id)
-            .bind(ingredient_id)
-            .bind(ing.quantity)
-            .bind(ing.unit.kind().to_string())
-            .bind(ing.unit.label())
-            .bind(ing_idx as i64)
             .execute(&mut *conn)
             .await
             .context("insert step ingredient")?;
@@ -287,52 +284,50 @@ struct ConvertedIngredient {
     unit: Unit,
 }
 pub async fn list_meals(pool: &SqlitePool) -> Result<Vec<Meal>> {
-    let rows = sqlx::query("SELECT id, name FROM meals ORDER BY name")
-        .fetch_all(pool)
-        .await
-        .context("list_meals select")?;
-    Ok(
-        rows
-            .into_iter()
-            .map(|r| Meal {
-                id: r.get("id"),
-                name: r.get("name"),
-            })
-            .collect(),
+    sqlx::query_as!(
+        Meal,
+        r#"SELECT id as "id!: i64", name as "name!"
+           FROM meals ORDER BY name"#,
     )
+    .fetch_all(pool)
+    .await
+    .context("list_meals select")
 }
 pub async fn get_meal(pool: &SqlitePool, id: i64) -> Result<Option<MealDetail>> {
-    let Some(meal_row) = sqlx::query("SELECT id, name FROM meals WHERE id = ?")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .context("get_meal select")? else {
+    let Some(meal) = sqlx::query_as!(
+        Meal,
+        r#"SELECT id as "id!: i64", name as "name!"
+           FROM meals WHERE id = ?"#,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("get_meal select")?
+    else {
         return Ok(None);
     };
-    let meal = Meal {
-        id: meal_row.get("id"),
-        name: meal_row.get("name"),
-    };
-    let mr_rows = sqlx::query(
-            "SELECT recipe_id, multiplier, position FROM meal_recipes \
-         WHERE meal_id = ? ORDER BY position",
-        )
-        .bind(id)
-        .fetch_all(pool)
-        .await
-        .context("get_meal recipes select")?;
+    let mr_rows = sqlx::query!(
+        r#"SELECT recipe_id as "recipe_id!: i64",
+                  multiplier as "multiplier!: f64",
+                  position as "position!: i64"
+           FROM meal_recipes WHERE meal_id = ? ORDER BY position"#,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+    .context("get_meal recipes select")?;
     let mut recipes = Vec::with_capacity(mr_rows.len());
     for row in mr_rows {
-        let recipe_id: i64 = row.get("recipe_id");
-        let detail = get_recipe(pool, recipe_id)
+        let detail = get_recipe(pool, row.recipe_id)
             .await?
-            .ok_or_else(|| anyhow!("meal {id} references missing recipe {recipe_id}"))?;
-        recipes
-            .push(MealRecipe {
-                multiplier: row.get("multiplier"),
-                position: row.get("position"),
-                recipe: detail,
-            });
+            .ok_or_else(|| {
+                anyhow!("meal {id} references missing recipe {}", row.recipe_id)
+            })?;
+        recipes.push(MealRecipe {
+            multiplier: row.multiplier,
+            position: row.position,
+            recipe: detail,
+        });
     }
     Ok(Some(MealDetail { meal, recipes }))
 }
@@ -343,15 +338,16 @@ pub async fn create_meal(pool: &SqlitePool, input: NewMeal) -> Result<i64> {
     }
     validate_meal_recipes(&input.recipes)?;
     let mut tx = pool.begin().await.context("begin tx")?;
-    let meal_id: i64 = sqlx::query(
-            "INSERT INTO meals (user_id, name) VALUES (?, ?) RETURNING id",
-        )
-        .bind(DEFAULT_USER_ID)
-        .bind(name)
-        .fetch_one(&mut *tx)
-        .await
-        .context("insert meal")?
-        .get("id");
+    let meal_id = sqlx::query!(
+        r#"INSERT INTO meals (user_id, name) VALUES (?, ?)
+           RETURNING id as "id!: i64""#,
+        DEFAULT_USER_ID,
+        name,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .context("insert meal")?
+    .id;
     insert_meal_recipes_into(&mut tx, meal_id, &input.recipes).await?;
     tx.commit().await.context("commit tx")?;
     Ok(meal_id)
@@ -363,9 +359,7 @@ pub async fn update_meal(pool: &SqlitePool, id: i64, input: NewMeal) -> Result<(
     }
     validate_meal_recipes(&input.recipes)?;
     let mut tx = pool.begin().await.context("begin tx")?;
-    let affected = sqlx::query("UPDATE meals SET name = ? WHERE id = ?")
-        .bind(name)
-        .bind(id)
+    let affected = sqlx::query!("UPDATE meals SET name = ? WHERE id = ?", name, id)
         .execute(&mut *tx)
         .await
         .context("update meal")?
@@ -373,8 +367,7 @@ pub async fn update_meal(pool: &SqlitePool, id: i64, input: NewMeal) -> Result<(
     if affected == 0 {
         return Err(anyhow!("meal {id} not found"));
     }
-    sqlx::query("DELETE FROM meal_recipes WHERE meal_id = ?")
-        .bind(id)
+    sqlx::query!("DELETE FROM meal_recipes WHERE meal_id = ?", id)
         .execute(&mut *tx)
         .await
         .context("clear meal recipes")?;
@@ -401,19 +394,20 @@ async fn insert_meal_recipes_into(
     recipes: &[crate::NewMealRecipe],
 ) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
-        sqlx::query(
-                "INSERT INTO meal_recipes (meal_id, recipe_id, multiplier, position) \
-             VALUES (?, ?, ?, ?)",
-            )
-            .bind(meal_id)
-            .bind(mr.recipe_id)
-            .bind(mr.multiplier)
-            .bind(idx as i64)
-            .execute(&mut *conn)
-            .await
-            .with_context(|| {
-                format!("insert meal_recipe (recipe_id={})", mr.recipe_id)
-            })?;
+        let position = idx as i64;
+        sqlx::query!(
+            r#"INSERT INTO meal_recipes (meal_id, recipe_id, multiplier, position)
+               VALUES (?, ?, ?, ?)"#,
+            meal_id,
+            mr.recipe_id,
+            mr.multiplier,
+            position,
+        )
+        .execute(&mut *conn)
+        .await
+        .with_context(|| {
+            format!("insert meal_recipe (recipe_id={})", mr.recipe_id)
+        })?;
     }
     Ok(())
 }

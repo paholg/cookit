@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE ingredients\n           SET name = ?, density_g_per_ml = ?, grocery_section = ?, ignore_density = ?\n           WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "904fd7fbea380d1f305c1db0ce9bb7de54a2f98774db5191fba3117a449b9cf6"
+}
