@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
 
 use ui::Navbar;
-use views::{Home, RecipeDetail, RecipeEdit, RecipeList, RecipeNew};
+use views::{
+    Home, IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
+    RecipeList, RecipeNew,
+};
 
 mod views;
 
@@ -19,6 +22,16 @@ enum Route {
         RecipeDetail { id: i64 },
         #[route("/recipes/:id/edit")]
         RecipeEdit { id: i64 },
+        #[route("/meals")]
+        MealList {},
+        #[route("/meals/new")]
+        MealNew {},
+        #[route("/meals/:id")]
+        MealDetail { id: i64 },
+        #[route("/meals/:id/edit")]
+        MealEdit { id: i64 },
+        #[route("/ingredients")]
+        IngredientList {},
 }
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -45,6 +58,8 @@ fn AppNavbar() -> Element {
         Navbar {
             Link { to: Route::Home {}, "CookIt" }
             Link { to: Route::RecipeList {}, "Recipes" }
+            Link { to: Route::MealList {}, "Meals" }
+            Link { to: Route::IngredientList {}, "Ingredients" }
         }
 
         main {

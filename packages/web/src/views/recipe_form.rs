@@ -53,7 +53,12 @@ impl RecipeDraft {
                         .map(|i| IngDraft {
                             name: i.ingredient_name,
                             quantity: format_qty(i.quantity),
-                            unit_kind: Some(i.unit_kind),
+                            // Custom is legacy — treat it as Count in the form
+                            // so the dropdown selection round-trips.
+                            unit_kind: Some(match i.unit_kind {
+                                UnitKind::Custom => UnitKind::Count,
+                                other => other,
+                            }),
                             unit: i.unit,
                         })
                         .collect(),
@@ -183,7 +188,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
 
     rsx! {
         UnitDatalists {}
-        IngredientDatalist { names: ingredient_names }
+        IngredientDatalist { names: ingredient_names.clone() }
 
         header {
             class: "page-header",
@@ -216,12 +221,14 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
             h2 { "Steps" }
             {
                 let step_count = draft.read().steps.len();
+                let names = ingredient_names.clone();
                 rsx! {
                     for step_idx in 0..step_count {
                         StepEditor {
                             key: "{step_idx}",
                             step_idx,
                             draft,
+                            existing_names: names.clone(),
                         }
                     }
                 }
@@ -288,7 +295,11 @@ fn IngredientDatalist(names: Vec<String>) -> Element {
 }
 
 #[component]
-fn StepEditor(step_idx: usize, draft: Signal<RecipeDraft>) -> Element {
+fn StepEditor(
+    step_idx: usize,
+    draft: Signal<RecipeDraft>,
+    existing_names: Vec<String>,
+) -> Element {
     let instruction = draft
         .read()
         .steps
@@ -331,6 +342,7 @@ fn StepEditor(step_idx: usize, draft: Signal<RecipeDraft>) -> Element {
                         step_idx,
                         ing_idx,
                         draft,
+                        existing_names: existing_names.clone(),
                     }
                 }
                 button {
@@ -361,7 +373,12 @@ fn StepEditor(step_idx: usize, draft: Signal<RecipeDraft>) -> Element {
 }
 
 #[component]
-fn IngredientEditor(step_idx: usize, ing_idx: usize, draft: Signal<RecipeDraft>) -> Element {
+fn IngredientEditor(
+    step_idx: usize,
+    ing_idx: usize,
+    draft: Signal<RecipeDraft>,
+    existing_names: Vec<String>,
+) -> Element {
     let row = draft
         .read()
         .steps
@@ -369,27 +386,15 @@ fn IngredientEditor(step_idx: usize, ing_idx: usize, draft: Signal<RecipeDraft>)
         .and_then(|s| s.ingredients.get(ing_idx).cloned())
         .unwrap_or_default();
     let kind = row.unit_kind;
+    let status = ingredient_status(&row.name, &existing_names);
 
     rsx! {
         div {
             class: "ingredient-row",
             input {
                 r#type: "text",
-                placeholder: "Name (e.g. onion)",
-                value: "{row.name}",
-                list: INGREDIENT_LIST_ID,
-                oninput: move |e| {
-                    let mut d = draft.write();
-                    if let Some(ing) = d.steps.get_mut(step_idx)
-                        .and_then(|s| s.ingredients.get_mut(ing_idx))
-                    {
-                        ing.name = e.value();
-                    }
-                },
-            }
-            input {
-                r#type: "text",
                 inputmode: "decimal",
+                class: "qty",
                 placeholder: "Qty",
                 value: "{row.quantity}",
                 oninput: move |e| {
@@ -400,6 +405,32 @@ fn IngredientEditor(step_idx: usize, ing_idx: usize, draft: Signal<RecipeDraft>)
                         ing.quantity = e.value();
                     }
                 },
+            }
+            div {
+                class: "name-cell",
+                input {
+                    r#type: "text",
+                    placeholder: "Ingredient (e.g. onion)",
+                    value: "{row.name}",
+                    list: INGREDIENT_LIST_ID,
+                    oninput: move |e| {
+                        let mut d = draft.write();
+                        if let Some(ing) = d.steps.get_mut(step_idx)
+                            .and_then(|s| s.ingredients.get_mut(ing_idx))
+                        {
+                            ing.name = e.value();
+                        }
+                    },
+                }
+                match status {
+                    IngredientStatus::Empty => rsx! {},
+                    IngredientStatus::Existing => rsx! {
+                        span { class: "ingredient-status existing", "✓ existing" }
+                    },
+                    IngredientStatus::New => rsx! {
+                        span { class: "ingredient-status new", "✨ new ingredient" }
+                    },
+                }
             }
             select {
                 value: "{unit_kind_value(kind)}",
@@ -417,13 +448,11 @@ fn IngredientEditor(step_idx: usize, ing_idx: usize, draft: Signal<RecipeDraft>)
                 option { value: "mass", "mass" }
                 option { value: "volume", "volume" }
                 option { value: "count", "count" }
-                option { value: "custom", "custom" }
             }
             input {
                 r#type: "text",
                 placeholder: unit_placeholder(kind),
                 value: "{row.unit}",
-                disabled: matches!(kind, Some(UnitKind::Count)),
                 list: unit_list_for(kind),
                 oninput: move |e| {
                     let mut d = draft.write();
@@ -451,6 +480,24 @@ fn IngredientEditor(step_idx: usize, ing_idx: usize, draft: Signal<RecipeDraft>)
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum IngredientStatus {
+    Empty,
+    Existing,
+    New,
+}
+
+fn ingredient_status(name: &str, existing: &[String]) -> IngredientStatus {
+    let t = name.trim();
+    if t.is_empty() {
+        IngredientStatus::Empty
+    } else if existing.iter().any(|n| n.eq_ignore_ascii_case(t)) {
+        IngredientStatus::Existing
+    } else {
+        IngredientStatus::New
+    }
+}
+
 fn unit_kind_value(uk: Option<UnitKind>) -> &'static str {
     match uk {
         Some(UnitKind::Mass) => "mass",
@@ -465,7 +512,7 @@ fn unit_placeholder(uk: Option<UnitKind>) -> &'static str {
     match uk {
         Some(UnitKind::Mass) => "g, kg, oz, lb…",
         Some(UnitKind::Volume) => "ml, tsp, cup…",
-        Some(UnitKind::Count) => "",
+        Some(UnitKind::Count) => "medium, clove… (optional)",
         Some(UnitKind::Custom) => "medium, clove…",
         None => "unit",
     }

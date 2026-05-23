@@ -14,3 +14,20 @@ pub use recipe_new::RecipeNew;
 
 mod recipe_edit;
 pub use recipe_edit::RecipeEdit;
+
+mod meal_list;
+pub use meal_list::MealList;
+
+mod meal_detail;
+pub use meal_detail::MealDetail;
+
+mod meal_form;
+
+mod meal_new;
+pub use meal_new::MealNew;
+
+mod meal_edit;
+pub use meal_edit::MealEdit;
+
+mod ingredient_list;
+pub use ingredient_list::IngredientList;

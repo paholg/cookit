@@ -11,6 +11,3 @@ result
 .direnv/
 dev/*
 !dev/.keep
-
-packages/web/dev/
-!packages/web/dev/.keep

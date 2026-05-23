@@ -43,21 +43,21 @@ pub const MASS_UNITS: &[(&str, f64)] = &[
     ("g", 1.0),
     ("kg", 1000.0),
     ("mg", 0.001),
-    ("oz", 28.349_523_125),
-    ("lb", 453.592_37),
+    ("oz", 28.35),
+    ("lb", 453.59),
 ];
 
 /// Known volume units, each with its multiplier to canonical milliliters.
 pub const VOLUME_UNITS: &[(&str, f64)] = &[
     ("ml", 1.0),
     ("l", 1000.0),
-    ("tsp", 4.928_921_593_75),
-    ("tbsp", 14.786_764_781_25),
-    ("fl oz", 29.573_529_562_5),
-    ("cup", 236.588_236_5),
-    ("pt", 473.176_473),
-    ("qt", 946.352_946),
-    ("gal", 3_785.411_784),
+    ("tsp", 4.93),
+    ("tbsp", 14.79),
+    ("fl oz", 29.57),
+    ("cup", 236.59),
+    ("pt", 473.18),
+    ("qt", 946.35),
+    ("gal", 3_785.41),
 ];
 
 pub fn unit_names_for(kind: UnitKind) -> &'static [(&'static str, f64)] {
@@ -75,13 +75,11 @@ pub fn unit_names_for(kind: UnitKind) -> &'static [(&'static str, f64)] {
 /// - Custom → quantity preserved, unit preserved (trimmed)
 ///
 /// Returns `Err` for an unknown mass/volume unit, or for non-finite/negative quantities.
-pub fn to_canonical(
-    kind: UnitKind,
-    quantity: f64,
-    unit: &str,
-) -> Result<(f64, String), String> {
+pub fn to_canonical(kind: UnitKind, quantity: f64, unit: &str) -> Result<(f64, String), String> {
     if !quantity.is_finite() || quantity < 0.0 {
-        return Err(format!("quantity must be a non-negative number, got {quantity}"));
+        return Err(format!(
+            "quantity must be a non-negative number, got {quantity}"
+        ));
     }
     let unit_trim = unit.trim();
     match kind {
@@ -92,7 +90,11 @@ pub fn to_canonical(
             .ok_or_else(|| {
                 format!(
                     "unknown mass unit `{unit_trim}`; known: {}",
-                    MASS_UNITS.iter().map(|(u, _)| *u).collect::<Vec<_>>().join(", ")
+                    MASS_UNITS
+                        .iter()
+                        .map(|(u, _)| *u)
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )
             }),
         UnitKind::Volume => VOLUME_UNITS
@@ -102,11 +104,14 @@ pub fn to_canonical(
             .ok_or_else(|| {
                 format!(
                     "unknown volume unit `{unit_trim}`; known: {}",
-                    VOLUME_UNITS.iter().map(|(u, _)| *u).collect::<Vec<_>>().join(", ")
+                    VOLUME_UNITS
+                        .iter()
+                        .map(|(u, _)| *u)
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )
             }),
-        UnitKind::Count => Ok((quantity, String::new())),
-        UnitKind::Custom => Ok((quantity, unit_trim.to_string())),
+        UnitKind::Count | UnitKind::Custom => Ok((quantity, unit_trim.to_string())),
     }
 }
 
@@ -123,6 +128,23 @@ pub struct Ingredient {
     pub name: String,
     pub density_g_per_ml: Option<f64>,
     pub grocery_section: Option<String>,
+    pub ignore_density: bool,
+}
+
+impl Ingredient {
+    /// True if the ingredient needs the user's attention — missing a grocery
+    /// section, or missing a density that hasn't been explicitly ignored.
+    pub fn is_incomplete(&self) -> bool {
+        self.grocery_section.is_none() || (self.density_g_per_ml.is_none() && !self.ignore_density)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct IngredientUpdate {
+    pub name: String,
+    pub density_g_per_ml: Option<f64>,
+    pub grocery_section: Option<String>,
+    pub ignore_density: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -170,6 +192,37 @@ pub struct NewRecipe {
     pub steps: Vec<NewStep>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Meal {
+    pub id: i64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MealRecipe {
+    pub multiplier: f64,
+    pub position: i64,
+    pub recipe: RecipeDetail,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MealDetail {
+    pub meal: Meal,
+    pub recipes: Vec<MealRecipe>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct NewMealRecipe {
+    pub recipe_id: i64,
+    pub multiplier: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct NewMeal {
+    pub name: String,
+    pub recipes: Vec<NewMealRecipe>,
+}
+
 #[get("/api/recipes")]
 pub async fn list_recipes() -> Result<Vec<Recipe>, ServerFnError> {
     ops::list_recipes(db::pool().await)
@@ -192,6 +245,13 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
+#[post("/api/ingredients/:id/update")]
+pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<(), ServerFnError> {
+    ops::update_ingredient(db::pool().await, id, input)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
 #[post("/api/recipes")]
 pub async fn create_recipe(input: NewRecipe) -> Result<i64, ServerFnError> {
     ops::create_recipe(db::pool().await, input)
@@ -202,6 +262,35 @@ pub async fn create_recipe(input: NewRecipe) -> Result<i64, ServerFnError> {
 #[post("/api/recipes/:id/update")]
 pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<(), ServerFnError> {
     ops::update_recipe(db::pool().await, id, input)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[get("/api/meals")]
+pub async fn list_meals() -> Result<Vec<Meal>, ServerFnError> {
+    ops::list_meals(db::pool().await)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[get("/api/meals/:id")]
+pub async fn get_meal(id: i64) -> Result<MealDetail, ServerFnError> {
+    ops::get_meal(db::pool().await, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?
+        .ok_or_else(|| ServerFnError::new(format!("meal {id} not found")))
+}
+
+#[post("/api/meals")]
+pub async fn create_meal(input: NewMeal) -> Result<i64, ServerFnError> {
+    ops::create_meal(db::pool().await, input)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[post("/api/meals/:id/update")]
+pub async fn update_meal(id: i64, input: NewMeal) -> Result<(), ServerFnError> {
+    ops::update_meal(db::pool().await, id, input)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }

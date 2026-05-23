@@ -1,0 +1,1 @@
+ALTER TABLE ingredients ADD COLUMN ignore_density INTEGER NOT NULL DEFAULT 0;

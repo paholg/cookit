@@ -1,5 +1,5 @@
 serve *args:
-    cd packages/web && dx serve {{args}}
+    cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve {{args}}
 
 build *args:
     cd packages/web && dx build {{args}}
