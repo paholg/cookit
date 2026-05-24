@@ -35,9 +35,13 @@ enum Route {
 }
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
+const ERROR_BANNER_JS: Asset = asset!("/assets/error-banner.js");
 
 #[cfg(not(feature = "server"))]
 fn main() {
+    // Route wasm Rust panics to `console.error` with a real stack trace.
+    // Without this the browser swallows them silently.
+    console_error_panic_hook::set_once();
     dioxus::launch(App);
 }
 
@@ -66,6 +70,8 @@ fn App() -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
+        // Loaded first so the listener is installed before any other JS runs.
+        document::Script { src: ERROR_BANNER_JS }
         Router::<Route> {}
     }
 }

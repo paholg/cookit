@@ -1,12 +1,18 @@
 [workspace]
 resolver = "2"
-members  = ["packages/ui", "packages/web", "packages/api", "packages/server", "packages/types"]
+members = [
+  "packages/api",
+  "packages/server",
+  "packages/types",
+  "packages/ui",
+  "packages/web"
+]
 
 [workspace.dependencies]
 dioxus = { version = "0.7.9" }
 
-# workspace
-ui     = { path = "packages/ui" }
-api    = { path = "packages/api" }
+api = { path = "packages/api" }
 server = { path = "packages/server" }
-types  = { path = "packages/types" }
+types = { path = "packages/types" }
+# workspace
+ui = { path = "packages/ui" }

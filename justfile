@@ -18,11 +18,13 @@ up:
 fix:
     cargo clippy --fix --allow-staged
     cargo fmt --all
+    tombi format
 
 lint: fmt-check clippy
 
 fmt-check:
     cargo fmt --all -- --check
+    tombi format --check
 
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings

@@ -1,17 +1,20 @@
 [package]
-name    = "web"
+name = "web"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-dioxus         = { workspace = true, features = ["router", "fullstack"] }
-ui             = { workspace = true }
-api            = { workspace = true }
-types          = { workspace = true }
-strum          = { version = "0.28", features = ["derive"] }
-pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+api = { workspace = true }
+console_error_panic_hook = "0.1"
+dioxus = { workspace = true, features = ["fullstack", "router"] }
+pulldown-cmark = { version = "0.13", default-features = false, features = [
+  "html"
+] }
+strum = { version = "0.28", features = ["derive"] }
+types = { workspace = true }
+ui = { workspace = true }
 
 [features]
 default = []
-web     = ["dioxus/web"]
-server  = ["dioxus/server", "api/server"]
+server = ["api/server", "dioxus/server"]
+web = ["dioxus/web"]

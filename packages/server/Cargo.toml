@@ -1,22 +1,29 @@
 [package]
-name    = "server"
+name = "server"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-types         = { workspace = true }
-sqlx          = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
-tokio         = { version = "1", features = ["sync", "rt", "macros"] }
-anyhow        = "1"
-axum          = "0.8"
-http          = "1"
-cookie        = { version = "0.18", features = ["signed", "percent-encode"] }
-serde         = { version = "1", features = ["derive"] }
-serde_json    = "1"
-time          = "0.3"
+anyhow = "1"
+axum = "0.8"
+base64 = "0.22"
+cookie = { version = "0.18", features = ["percent-encode", "signed"] }
+dioxus = { workspace = true, features = ["fullstack", "server"] }
+http = "1"
 openidconnect = "4"
-reqwest       = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-url           = "2"
-base64        = "0.22"
-dioxus        = { workspace = true, features = ["server", "fullstack"] }
-tracing       = "0.1"
+reqwest = { version = "0.12", default-features = false, features = [
+  "rustls-tls"
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", features = [
+  "macros",
+  "migrate",
+  "runtime-tokio",
+  "sqlite"
+] }
+time = "0.3"
+tokio = { version = "1", features = ["macros", "rt", "sync"] }
+tracing = "0.1"
+types = { workspace = true }
+url = "2"

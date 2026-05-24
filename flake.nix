@@ -69,6 +69,7 @@
               pkg-config
               openssl
               sqlx-cli
+              tombi
             ]
             ++ [ rustDev ];
 
@@ -104,7 +105,7 @@
           devShells.default = pkgs.mkShell {
             env = {
               # TODO: Remove all this.
-              DATABASE_URL = "sqlite:///home/paho/cookit/dev/cookit.db";
+              DATABASE_URL = "sqlite:///home/paho/src/cookit/dev/cookit.db";
               OIDC_ISSUER_URL = "http://localhost:8090/admin";
               OIDC_CLIENT_ID = "cookit";
               OIDC_CLIENT_SECRET = "anything";
