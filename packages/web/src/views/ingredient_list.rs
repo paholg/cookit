@@ -1,12 +1,14 @@
 use api::{list_ingredients, update_ingredient};
 use dioxus::prelude::*;
-use types::{Ingredient, IngredientUpdate};
+use std::str::FromStr;
+use strum::IntoEnumIterator;
+use types::{GrocerySection, Ingredient, IngredientUpdate};
 #[derive(Clone, PartialEq)]
 struct RowDraft {
     id: i64,
     name: String,
     density: String,
-    section: String,
+    section: Option<GrocerySection>,
     ignore_density: bool,
     saving: bool,
     error: Option<String>,
@@ -21,7 +23,7 @@ impl RowDraft {
                 .density_g_per_ml
                 .map(|d| format!("{d}"))
                 .unwrap_or_default(),
-            section: i.grocery_section.clone().unwrap_or_default(),
+            section: i.grocery_section,
             ignore_density: i.ignore_density,
             saving: false,
             error: None,
@@ -33,7 +35,7 @@ impl RowDraft {
             id: self.id,
             name: self.name.clone(),
             density_g_per_ml: parse_optional_density(&self.density),
-            grocery_section: trimmed_to_option(&self.section),
+            grocery_section: self.section,
             ignore_density: self.ignore_density,
         }
     }
@@ -54,7 +56,7 @@ impl RowDraft {
         Ok(IngredientUpdate {
             name: self.name.clone(),
             density_g_per_ml: density,
-            grocery_section: trimmed_to_option(&self.section),
+            grocery_section: self.section,
             ignore_density: self.ignore_density,
         })
     }
@@ -62,14 +64,6 @@ impl RowDraft {
 fn parse_optional_density(s: &str) -> Option<f64> {
     let t = s.trim();
     if t.is_empty() { None } else { t.parse().ok() }
-}
-fn trimmed_to_option(s: &str) -> Option<String> {
-    let t = s.trim();
-    if t.is_empty() {
-        None
-    } else {
-        Some(t.to_string())
-    }
 }
 #[component]
 pub fn IngredientList() -> Element {
@@ -190,16 +184,24 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label {
                     span { class: "field-label",
                         "Grocery section"
-                        if row.snapshot().grocery_section.is_none() {
+                        if row.section.is_none() {
                             span { class: "warn-tag", " ⚠" }
                         }
                     }
-                    input {
-                        r#type: "text",
-                        value: "{row.section}",
-                        oninput: move |e| {
-                            rows.write()[idx].section = e.value();
-                        },
+                    {
+                        let current = row.section.map(|s| s.to_string()).unwrap_or_default();
+                        rsx! {
+                            select {
+                                value: "{current}",
+                                onchange: move |e| {
+                                    rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
+                                },
+                                option { value: "", "—" }
+                                for section in GrocerySection::iter() {
+                                    option { value: "{section}", "{section}" }
+                                }
+                            }
+                        }
                     }
                 }
                 label { class: "checkbox-label",

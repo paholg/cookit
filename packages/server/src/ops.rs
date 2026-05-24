@@ -2,8 +2,8 @@ use anyhow::{Context, Result, anyhow};
 use sqlx::SqliteConnection;
 use std::str::FromStr;
 use types::{
-    Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe, NewStep,
-    Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
+    GrocerySection, Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
+    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
 const DEFAULT_USER_ID: i64 = 1;
 pub async fn list_recipes() -> Result<Vec<Recipe>> {
@@ -82,8 +82,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
 }
 pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
     let pool = crate::db::pool().await;
-    sqlx::query_as!(
-        Ingredient,
+    let rows = sqlx::query!(
         r#"SELECT id as "id!: i64", name as "name!",
                   density_g_per_ml, grocery_section,
                   ignore_density as "ignore_density!: bool"
@@ -91,7 +90,31 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
     )
     .fetch_all(pool)
     .await
-    .context("list_ingredients select")
+    .context("list_ingredients select")?;
+
+    rows.into_iter()
+        .map(|r| {
+            let grocery_section = r
+                .grocery_section
+                .as_deref()
+                .map(GrocerySection::from_str)
+                .transpose()
+                .with_context(|| {
+                    format!(
+                        "ingredient {} has unknown grocery_section `{}`",
+                        r.id,
+                        r.grocery_section.as_deref().unwrap_or(""),
+                    )
+                })?;
+            Ok(Ingredient {
+                id: r.id,
+                name: r.name,
+                density_g_per_ml: r.density_g_per_ml,
+                grocery_section,
+                ignore_density: r.ignore_density,
+            })
+        })
+        .collect()
 }
 pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     let name = input.name.trim();
@@ -103,11 +126,7 @@ pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     {
         return Err(anyhow!("density must be a positive number, got {d}"));
     }
-    let section = input
-        .grocery_section
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
+    let section = input.grocery_section.map(|s| s.to_string());
     let pool = crate::db::pool().await;
     let affected = sqlx::query!(
         r#"UPDATE ingredients
@@ -423,8 +442,8 @@ async fn insert_meal_recipes_into(
 mod tests {
     use super::*;
     use types::{
-        IngredientUpdate, MassUnit, NewMeal, NewMealRecipe, NewRecipe, NewStep, NewStepIngredient,
-        UnitKind, VolumeUnit,
+        GrocerySection, IngredientUpdate, Mass, NewMeal, NewMealRecipe, NewRecipe, NewStep,
+        NewStepIngredient, UnitKind, Volume,
     };
     fn ing(name: &str, qty: f64, unit_kind: UnitKind, unit: &str) -> NewStepIngredient {
         NewStepIngredient {
@@ -488,7 +507,7 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "ground beef");
-        assert_eq!(ings[0].unit, Unit::Mass(MassUnit::Lb));
+        assert_eq!(ings[0].unit, Unit::Mass(Mass::Lb));
         assert_eq!(ings[0].quantity, 1.0);
         assert_eq!(ings[1].ingredient_name, "onion");
         assert_eq!(ings[1].unit, Unit::Custom("medium".into()));
@@ -510,9 +529,9 @@ mod tests {
         let id = create_recipe(input).await.unwrap();
         let detail = get_recipe(id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
-        assert_eq!(ings[0].unit, Unit::Volume(VolumeUnit::Cup));
+        assert_eq!(ings[0].unit, Unit::Volume(Volume::Cup));
         assert_eq!(ings[0].quantity, 1.0);
-        assert_eq!(ings[1].unit, Unit::Volume(VolumeUnit::Tsp));
+        assert_eq!(ings[1].unit, Unit::Volume(Volume::Tsp));
         assert_eq!(ings[1].quantity, 2.0);
     }
     #[tokio::test]
@@ -671,7 +690,7 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "beef");
-        assert_eq!(ings[0].unit, Unit::Mass(MassUnit::Lb));
+        assert_eq!(ings[0].unit, Unit::Mass(Mass::Lb));
         assert_eq!(ings[0].quantity, 2.0);
         assert_eq!(ings[1].ingredient_name, "tomato");
         assert_eq!(ings[1].quantity, 3.0);
@@ -919,7 +938,7 @@ mod tests {
             IngredientUpdate {
                 name: "olive oil".into(),
                 density_g_per_ml: Some(0.91),
-                grocery_section: Some("Pantry".into()),
+                grocery_section: Some(GrocerySection::Pantry),
                 ignore_density: false,
             },
         )
@@ -928,7 +947,7 @@ mod tests {
         let list = list_ingredients().await.unwrap();
         let i = list.iter().find(|i| i.id == id).unwrap();
         assert_eq!(i.density_g_per_ml, Some(0.91));
-        assert_eq!(i.grocery_section.as_deref(), Some("Pantry"));
+        assert_eq!(i.grocery_section, Some(GrocerySection::Pantry));
         assert!(!i.ignore_density);
         assert!(!i.is_incomplete());
     }
@@ -940,7 +959,7 @@ mod tests {
             IngredientUpdate {
                 name: "egg".into(),
                 density_g_per_ml: None,
-                grocery_section: Some("Dairy".into()),
+                grocery_section: Some(GrocerySection::Dairy),
                 ignore_density: true,
             },
         )
@@ -1010,28 +1029,6 @@ mod tests {
         }
     }
     #[tokio::test]
-    async fn update_ingredient_blank_section_stores_null() {
-        let id = create_named_ingredient("x").await;
-        update_ingredient(
-            id,
-            IngredientUpdate {
-                name: "x".into(),
-                density_g_per_ml: Some(1.0),
-                grocery_section: Some("   ".into()),
-                ignore_density: false,
-            },
-        )
-        .await
-        .unwrap();
-        let i = list_ingredients()
-            .await
-            .unwrap()
-            .into_iter()
-            .find(|i| i.id == id)
-            .unwrap();
-        assert_eq!(i.grocery_section, None);
-    }
-    #[tokio::test]
     async fn update_ingredient_unknown_id_errors() {
         let err = update_ingredient(
             42,
@@ -1052,7 +1049,7 @@ mod tests {
             IngredientUpdate {
                 name: "Diamond Crystal kosher salt".into(),
                 density_g_per_ml: Some(0.6),
-                grocery_section: Some("Pantry".into()),
+                grocery_section: Some(GrocerySection::Pantry),
                 ignore_density: false,
             },
         )

@@ -2,6 +2,7 @@ use crate::Route;
 use api::{create_meal, list_recipes, update_meal};
 use dioxus::prelude::*;
 use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
+use ui::TrashIcon;
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
     pub recipe_id: Option<i64>,
@@ -236,14 +237,16 @@ fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> 
             }
             button {
                 r#type: "button",
-                class: "danger small",
+                class: "icon-button",
+                "aria-label": "Remove recipe",
+                title: "Remove recipe",
                 onclick: move |_| {
                     let mut d = draft.write();
                     if idx < d.recipes.len() {
                         d.recipes.remove(idx);
                     }
                 },
-                "×"
+                TrashIcon {}
             }
         }
     }

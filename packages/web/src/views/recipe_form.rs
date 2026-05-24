@@ -3,7 +3,8 @@ use api::{create_recipe, list_ingredients, update_recipe};
 use dioxus::prelude::*;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
-use types::{MassUnit, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, VolumeUnit};
+use types::{Mass, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, Volume};
+use ui::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct IngDraft {
@@ -117,9 +118,9 @@ fn derive_unit_kind(text: &str) -> UnitKind {
     let t = text.trim();
     if t.is_empty() {
         UnitKind::Count
-    } else if MassUnit::from_str(t).is_ok() {
+    } else if Mass::from_str(t).is_ok() {
         UnitKind::Mass
-    } else if VolumeUnit::from_str(t).is_ok() {
+    } else if Volume::from_str(t).is_ok() {
         UnitKind::Volume
     } else {
         UnitKind::Count
@@ -178,9 +179,9 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         _ => Vec::new(),
     };
 
-    let unit_options: Vec<String> = MassUnit::iter()
+    let unit_options: Vec<String> = Mass::iter()
         .map(|u| u.to_string())
-        .chain(VolumeUnit::iter().map(|u| u.to_string()))
+        .chain(Volume::iter().map(|u| u.to_string()))
         .collect();
 
     let submit = move |e: FormEvent| {
@@ -423,10 +424,12 @@ fn StepEditor(
             if multi_step {
                 button {
                     r#type: "button",
-                    class: "danger",
+                    class: "icon-button",
                     tabindex: "-1",
+                    "aria-label": "Remove step",
+                    title: "Remove step",
                     onclick: move |_| on_remove.call(()),
-                    "Remove step"
+                    TrashIcon {}
                 }
             }
         }
@@ -514,10 +517,12 @@ fn IngredientEditor(
             }
             button {
                 r#type: "button",
-                class: "danger small",
+                class: "icon-button",
                 tabindex: "-1",
+                "aria-label": "Remove ingredient",
+                title: "Remove ingredient",
                 onclick: move |_| on_remove.call(()),
-                "×"
+                TrashIcon {}
             }
         }
     }

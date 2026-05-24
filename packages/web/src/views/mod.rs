@@ -1,5 +1,3 @@
-mod home;
-pub use home::Home;
 mod recipe_list;
 pub use recipe_list::RecipeList;
 mod recipe_detail;

@@ -1,16 +1,15 @@
 use dioxus::prelude::*;
 use ui::Navbar;
 use views::{
-    Home, IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-    RecipeList, RecipeNew,
+    IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
+    RecipeNew,
 };
 mod views;
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
 enum Route {
     #[layout(AppNavbar)]
-    #[route("/")]
-    Home {},
+    #[redirect("/", || Route::RecipeList {})]
     #[route("/recipes")]
     RecipeList {},
     #[route("/recipes/new")]
@@ -46,7 +45,7 @@ fn App() -> Element {
 fn AppNavbar() -> Element {
     rsx! {
         Navbar {
-            Link { to: Route::Home {}, "CookIt" }
+            Link { to: Route::RecipeList {}, "CookIt" }
             Link { to: Route::RecipeList {}, "Recipes" }
             Link { to: Route::MealList {}, "Meals" }
             Link { to: Route::IngredientList {}, "Ingredients" }
