@@ -102,6 +102,17 @@
         {
           packages.default = package;
           devShells.default = pkgs.mkShell {
+            env = {
+              # TODO: Remove all this.
+              DATABASE_URL = "sqlite:///home/paho/cookit/dev/cookit.db";
+              OIDC_ISSUER_URL = "http://localhost:8090/admin";
+              OIDC_CLIENT_ID = "cookit";
+              OIDC_CLIENT_SECRET = "anything";
+              OIDC_REDIRECT_URL = "http://localhost:8080/auth/callback";
+              OIDC_INSECURE_TLS = "true";
+              SESSION_SECRET = "ZGV2LXNlc3Npb24tc2VjcmV0LWRldi1zZXNzaW9uLXNlY3JldC1kZXYtc2Vzc2lvbi1zZWNyZXQtZGV2LXNlc3Npb24tc2VjcmV0LWQK";
+              SESSION_COOKIE_SECURE = "false";
+            };
             packages = devPackages;
           };
         }

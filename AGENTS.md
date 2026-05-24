@@ -6,6 +6,12 @@ Provide concise code examples with detailed descriptions
 
 Let code breathe. Use blank lines between function/method/component definitions, between `impl` blocks, and between logical groupings of statements within a function (e.g., setup vs. main logic vs. return). Do not pack everything into a single dense block.
 
+# Error Handling
+
+Default to just bubbling errors to the client. The only time we should swallow an error and return a 200 is if we KNOW it's an expected error that users have actually hit, and there's a reasonable rescue path.
+
+Error messages should include enough detail to act on: the env var that was missing, the URL that wouldn't parse, the id that wasn't found. "Internal error" with no context is a step down from a panic.
+
 # Dioxus Dependency
 
 You can add Dioxus to your `Cargo.toml` like this:

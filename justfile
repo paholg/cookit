@@ -1,3 +1,5 @@
+set dotenv-load := true
+
 serve *args:
     cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve {{args}}
 

@@ -68,7 +68,6 @@ impl Volume {
     strum(serialize_all = "lowercase", ascii_case_insensitive),
     serde(rename_all = "lowercase")
 )]
-
 pub enum Unit {
     Mass(Mass),
     Volume(Volume),
@@ -222,6 +221,7 @@ pub struct NewRecipe {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Meal {
     pub id: i64,
+    pub user_id: i64,
     pub name: String,
 }
 
@@ -248,4 +248,12 @@ pub struct NewMealRecipe {
 pub struct NewMeal {
     pub name: String,
     pub recipes: Vec<NewMealRecipe>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurrentUser {
+    pub id: i64,
+    pub name: String,
+    pub email: String,
+    pub is_admin: bool,
 }

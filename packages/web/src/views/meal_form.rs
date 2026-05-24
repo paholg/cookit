@@ -129,14 +129,6 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
         header { class: "page-header",
             h1 { "{title}" }
         }
-        if available.is_empty() {
-            p { class: "empty",
-                "You don't have any recipes yet. "
-                Link { to: Route::RecipeNew
-                                                                                                                                                    {}, "Create one" }
-                " before building a meal."
-            }
-        }
         form { class: "recipe-form", onsubmit: submit,
             label {
                 "Name"

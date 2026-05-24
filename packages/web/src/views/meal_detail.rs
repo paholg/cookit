@@ -1,20 +1,59 @@
-use crate::Route;
-use api::get_meal;
+use crate::{CurrentUserCtx, Route};
+use api::{delete_meal, get_meal};
 use dioxus::prelude::*;
-use types::{RecipeDetail, RecipeStepIngredient};
+use types::{CurrentUser, RecipeDetail, RecipeStepIngredient};
+
+fn can_modify(user: &Option<CurrentUser>, owner_id: i64) -> bool {
+    match user {
+        Some(u) => u.is_admin || u.id == owner_id,
+        None => false,
+    }
+}
+
 #[component]
 pub fn MealDetail(id: i64) -> Element {
     let meal = use_server_future(move || get_meal(id))?;
     let mut tab = use_signal(|| 0usize);
+    let user = use_context::<CurrentUserCtx>();
+    let nav = use_navigator();
+    let mut deleting = use_signal(|| false);
+    let mut delete_error: Signal<Option<String>> = use_signal(|| None);
+
     match meal.cloned() {
         Some(Ok(detail)) => {
             let recipe_count = detail.recipes.len();
             let current = tab().min(recipe_count.saturating_sub(1));
+            let modifiable = can_modify(&user.read(), detail.meal.user_id);
             rsx! {
                 article { class: "meal",
                     header { class: "page-header",
                         h1 { "{detail.meal.name}" }
-                        Link { to: Route::MealEdit { id }, class: "button-link", "Edit" }
+                        if modifiable {
+                            Link { to: Route::MealEdit { id }, class: "button-link", "Edit" }
+                            button {
+                                r#type: "button",
+                                class: "button-link danger",
+                                disabled: deleting(),
+                                onclick: move |_| {
+                                    if deleting() { return; }
+                                    deleting.set(true);
+                                    delete_error.set(None);
+                                    spawn(async move {
+                                        match delete_meal(id).await {
+                                            Ok(()) => { nav.push(Route::MealList {}); }
+                                            Err(e) => {
+                                                delete_error.set(Some(e.to_string()));
+                                                deleting.set(false);
+                                            }
+                                        }
+                                    });
+                                },
+                                if deleting() { "Deleting..." } else { "Delete" }
+                            }
+                        }
+                    }
+                    if let Some(err) = delete_error() {
+                        p { class: "error", "Delete failed: {err}" }
                     }
                     if recipe_count == 0 {
                         p { class: "empty", "This meal has no recipes yet." }

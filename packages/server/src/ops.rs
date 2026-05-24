@@ -5,7 +5,11 @@ use types::{
     GrocerySection, Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
     NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
-const DEFAULT_USER_ID: i64 = 1;
+
+pub fn forbidden() -> anyhow::Error {
+    anyhow!("forbidden")
+}
+
 pub async fn list_recipes() -> Result<Vec<Recipe>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
@@ -17,8 +21,10 @@ pub async fn list_recipes() -> Result<Vec<Recipe>> {
     .await
     .context("list_recipes select")
 }
+
 pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     let pool = crate::db::pool().await;
+
     let Some(recipe) = sqlx::query_as!(
         Recipe,
         r#"SELECT id as "id!: i64", name as "name!", source
@@ -31,6 +37,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     else {
         return Ok(None);
     };
+
     let step_rows = sqlx::query!(
         r#"SELECT id as "id!: i64", position as "position!: i64",
                   instruction as "instruction!"
@@ -40,6 +47,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     .fetch_all(pool)
     .await
     .context("get_recipe steps select")?;
+
     let mut steps = Vec::with_capacity(step_rows.len());
     for sr in step_rows {
         let ing_rows = sqlx::query!(
@@ -57,6 +65,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
         .fetch_all(pool)
         .await
         .context("get_recipe step ingredients select")?;
+
         let ingredients = ing_rows
             .into_iter()
             .map(|r| {
@@ -71,6 +80,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
                 }
             })
             .collect();
+
         steps.push(RecipeStep {
             id: sr.id,
             position: sr.position,
@@ -80,6 +90,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     }
     Ok(Some(RecipeDetail { recipe, steps }))
 }
+
 pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
     let pool = crate::db::pool().await;
     let rows = sqlx::query!(
@@ -116,6 +127,7 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
         })
         .collect()
 }
+
 pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -147,11 +159,13 @@ pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     }
     Ok(())
 }
+
 pub async fn create_recipe(input: NewRecipe) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("recipe name is required"));
     }
+
     let source = input
         .source
         .as_deref()
@@ -208,6 +222,7 @@ pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
+
 fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredient>)>> {
     let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(steps.len());
     for (step_idx, step) in steps.iter().enumerate() {
@@ -243,6 +258,7 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
     }
     Ok(out)
 }
+
 async fn insert_steps_into(
     conn: &mut SqliteConnection,
     recipe_id: i64,
@@ -315,18 +331,19 @@ pub async fn list_meals() -> Result<Vec<Meal>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
         Meal,
-        r#"SELECT id as "id!: i64", name as "name!"
+        r#"SELECT id as "id!: i64", user_id as "user_id!: i64", name as "name!"
            FROM meals ORDER BY name"#,
     )
     .fetch_all(pool)
     .await
     .context("list_meals select")
 }
+
 pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
     let pool = crate::db::pool().await;
     let Some(meal) = sqlx::query_as!(
         Meal,
-        r#"SELECT id as "id!: i64", name as "name!"
+        r#"SELECT id as "id!: i64", user_id as "user_id!: i64", name as "name!"
            FROM meals WHERE id = ?"#,
         id,
     )
@@ -359,7 +376,7 @@ pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
     }
     Ok(Some(MealDetail { meal, recipes }))
 }
-pub async fn create_meal(input: NewMeal) -> Result<i64> {
+pub async fn create_meal(input: NewMeal, owner_id: i64) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("meal name is required"));
@@ -370,7 +387,7 @@ pub async fn create_meal(input: NewMeal) -> Result<i64> {
     let meal_id = sqlx::query!(
         r#"INSERT INTO meals (user_id, name) VALUES (?, ?)
            RETURNING id as "id!: i64""#,
-        DEFAULT_USER_ID,
+        owner_id,
         name,
     )
     .fetch_one(&mut *tx)
@@ -381,13 +398,16 @@ pub async fn create_meal(input: NewMeal) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(meal_id)
 }
-pub async fn update_meal(id: i64, input: NewMeal) -> Result<()> {
+
+pub async fn update_meal(id: i64, input: NewMeal, actor_id: i64, is_admin: bool) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("meal name is required"));
     }
     validate_meal_recipes(&input.recipes)?;
     let pool = crate::db::pool().await;
+    ensure_meal_writable(pool, id, actor_id, is_admin).await?;
+
     let mut tx = pool.begin().await.context("begin tx")?;
     let affected = sqlx::query!("UPDATE meals SET name = ? WHERE id = ?", name, id)
         .execute(&mut *tx)
@@ -404,6 +424,43 @@ pub async fn update_meal(id: i64, input: NewMeal) -> Result<()> {
     insert_meal_recipes_into(&mut tx, id, &input.recipes).await?;
     tx.commit().await.context("commit tx")?;
     Ok(())
+}
+
+pub async fn delete_meal(id: i64, actor_id: i64, is_admin: bool) -> Result<()> {
+    let pool = crate::db::pool().await;
+    ensure_meal_writable(pool, id, actor_id, is_admin).await?;
+
+    let affected = sqlx::query!("DELETE FROM meals WHERE id = ?", id)
+        .execute(pool)
+        .await
+        .context("delete meal")?
+        .rows_affected();
+    if affected == 0 {
+        return Err(anyhow!("meal {id} not found"));
+    }
+    Ok(())
+}
+
+async fn ensure_meal_writable(
+    pool: &sqlx::SqlitePool,
+    meal_id: i64,
+    actor_id: i64,
+    is_admin: bool,
+) -> Result<()> {
+    let row = sqlx::query!(
+        r#"SELECT user_id as "user_id!: i64" FROM meals WHERE id = ?"#,
+        meal_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("ensure_meal_writable select")?
+    .ok_or_else(|| anyhow!("meal {meal_id} not found"))?;
+
+    if is_admin || row.user_id == actor_id {
+        Ok(())
+    } else {
+        Err(forbidden())
+    }
 }
 fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
@@ -470,6 +527,19 @@ mod tests {
         ))
         .await
         .unwrap()
+    }
+
+    async fn test_user() -> i64 {
+        let pool = crate::db::pool().await;
+        sqlx::query!(
+            r#"INSERT INTO users (oidc_sub, email, name, groups, is_admin)
+               VALUES ('test-sub', 'test@example.com', 'tester', '', 1)
+               RETURNING id as "id!: i64""#,
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap()
+        .id
     }
     async fn create_named_ingredient(name: &str) -> i64 {
         let id = create_recipe(single_step_recipe(
@@ -754,23 +824,28 @@ mod tests {
         assert_eq!(detail.recipe.name, "Empty now");
         assert!(detail.steps.is_empty());
     }
+
     #[tokio::test]
     async fn create_meal_then_get_roundtrip() {
+        let owner = test_user().await;
         let chili = make_recipe("Chili").await;
         let cornbread = make_recipe("Cornbread").await;
-        let meal_id = create_meal(NewMeal {
-            name: "Friday dinner".into(),
-            recipes: vec![
-                NewMealRecipe {
-                    recipe_id: chili,
-                    multiplier: 1.0,
-                },
-                NewMealRecipe {
-                    recipe_id: cornbread,
-                    multiplier: 2.0,
-                },
-            ],
-        })
+        let meal_id = create_meal(
+            NewMeal {
+                name: "Friday dinner".into(),
+                recipes: vec![
+                    NewMealRecipe {
+                        recipe_id: chili,
+                        multiplier: 1.0,
+                    },
+                    NewMealRecipe {
+                        recipe_id: cornbread,
+                        multiplier: 2.0,
+                    },
+                ],
+            },
+            owner,
+        )
         .await
         .unwrap();
         let detail = get_meal(meal_id).await.unwrap().unwrap();
@@ -787,25 +862,34 @@ mod tests {
     }
     #[tokio::test]
     async fn create_meal_rejects_blank_name() {
-        let err = create_meal(NewMeal {
-            name: "  ".into(),
-            recipes: vec![],
-        })
+        let owner = test_user().await;
+        let err = create_meal(
+            NewMeal {
+                name: "  ".into(),
+                recipes: vec![],
+            },
+            owner,
+        )
         .await
         .expect_err("blank name should err");
         assert!(format!("{err:#}").contains("name is required"));
     }
+
     #[tokio::test]
     async fn create_meal_rejects_non_positive_multiplier() {
+        let owner = test_user().await;
         let r = make_recipe("Salt block").await;
         for mult in [0.0_f64, -1.0, f64::NAN] {
-            let err = create_meal(NewMeal {
-                name: "bad".into(),
-                recipes: vec![NewMealRecipe {
-                    recipe_id: r,
-                    multiplier: mult,
-                }],
-            })
+            let err = create_meal(
+                NewMeal {
+                    name: "bad".into(),
+                    recipes: vec![NewMealRecipe {
+                        recipe_id: r,
+                        multiplier: mult,
+                    }],
+                },
+                owner,
+            )
             .await
             .expect_err(&format!("multiplier {mult} should err"));
             let msg = format!("{err:#}");
@@ -813,48 +897,63 @@ mod tests {
         }
         assert!(list_meals().await.unwrap().is_empty());
     }
+
     #[tokio::test]
     async fn create_meal_rejects_unknown_recipe_id() {
-        let err = create_meal(NewMeal {
-            name: "x".into(),
-            recipes: vec![NewMealRecipe {
-                recipe_id: 9999,
-                multiplier: 1.0,
-            }],
-        })
+        let owner = test_user().await;
+        let err = create_meal(
+            NewMeal {
+                name: "x".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: 9999,
+                    multiplier: 1.0,
+                }],
+            },
+            owner,
+        )
         .await
         .expect_err("missing fk should err");
         assert!(list_meals().await.unwrap().is_empty(), "got err: {err:#}");
     }
+
     #[tokio::test]
     async fn create_meal_allows_zero_recipes() {
-        let id = create_meal(NewMeal {
-            name: "Empty".into(),
-            recipes: vec![],
-        })
+        let owner = test_user().await;
+        let id = create_meal(
+            NewMeal {
+                name: "Empty".into(),
+                recipes: vec![],
+            },
+            owner,
+        )
         .await
         .unwrap();
         let detail = get_meal(id).await.unwrap().unwrap();
         assert!(detail.recipes.is_empty());
     }
+
     #[tokio::test]
     async fn update_meal_replaces_recipes_and_renames() {
+        let owner = test_user().await;
         let r1 = make_recipe("A").await;
         let r2 = make_recipe("B").await;
         let r3 = make_recipe("C").await;
-        let id = create_meal(NewMeal {
-            name: "v1".into(),
-            recipes: vec![
-                NewMealRecipe {
-                    recipe_id: r1,
-                    multiplier: 1.0,
-                },
-                NewMealRecipe {
-                    recipe_id: r2,
-                    multiplier: 1.0,
-                },
-            ],
-        })
+        let id = create_meal(
+            NewMeal {
+                name: "v1".into(),
+                recipes: vec![
+                    NewMealRecipe {
+                        recipe_id: r1,
+                        multiplier: 1.0,
+                    },
+                    NewMealRecipe {
+                        recipe_id: r2,
+                        multiplier: 1.0,
+                    },
+                ],
+            },
+            owner,
+        )
         .await
         .unwrap();
         update_meal(
@@ -866,6 +965,8 @@ mod tests {
                     multiplier: 0.5,
                 }],
             },
+            owner,
+            false,
         )
         .await
         .unwrap();
@@ -875,29 +976,38 @@ mod tests {
         assert_eq!(detail.recipes[0].recipe.recipe.id, r3);
         assert_eq!(detail.recipes[0].multiplier, 0.5);
     }
+
     #[tokio::test]
     async fn update_meal_unknown_id_errors() {
+        let owner = test_user().await;
         let err = update_meal(
             42,
             NewMeal {
                 name: "x".into(),
                 recipes: vec![],
             },
+            owner,
+            true,
         )
         .await
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
+
     #[tokio::test]
     async fn update_meal_rolls_back_on_unknown_recipe() {
+        let owner = test_user().await;
         let r1 = make_recipe("Keeper").await;
-        let id = create_meal(NewMeal {
-            name: "Original".into(),
-            recipes: vec![NewMealRecipe {
-                recipe_id: r1,
-                multiplier: 1.0,
-            }],
-        })
+        let id = create_meal(
+            NewMeal {
+                name: "Original".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: r1,
+                    multiplier: 1.0,
+                }],
+            },
+            owner,
+        )
         .await
         .unwrap();
         let err = update_meal(
@@ -909,6 +1019,8 @@ mod tests {
                     multiplier: 1.0,
                 }],
             },
+            owner,
+            false,
         )
         .await
         .expect_err("bad fk should err");
@@ -917,6 +1029,79 @@ mod tests {
         assert_eq!(detail.meal.name, "Original");
         assert_eq!(detail.recipes.len(), 1);
         assert_eq!(detail.recipes[0].recipe.recipe.id, r1);
+    }
+
+    #[tokio::test]
+    async fn update_meal_rejects_non_owner_non_admin() {
+        let owner = test_user().await;
+        let r = make_recipe("Tomato").await;
+        let id = create_meal(
+            NewMeal {
+                name: "owned".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: r,
+                    multiplier: 1.0,
+                }],
+            },
+            owner,
+        )
+        .await
+        .unwrap();
+        let err = update_meal(
+            id,
+            NewMeal {
+                name: "hijack".into(),
+                recipes: vec![],
+            },
+            owner + 999,
+            false,
+        )
+        .await
+        .expect_err("non-owner update should be rejected");
+        assert!(format!("{err:#}").contains("forbidden"));
+    }
+
+    #[tokio::test]
+    async fn delete_meal_admin_can_delete_any() {
+        let owner = test_user().await;
+        let r = make_recipe("Salt").await;
+        let id = create_meal(
+            NewMeal {
+                name: "Doomed".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: r,
+                    multiplier: 1.0,
+                }],
+            },
+            owner,
+        )
+        .await
+        .unwrap();
+        delete_meal(id, owner + 999, true).await.unwrap();
+        assert!(get_meal(id).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_meal_non_owner_forbidden() {
+        let owner = test_user().await;
+        let r = make_recipe("Salt").await;
+        let id = create_meal(
+            NewMeal {
+                name: "Mine".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: r,
+                    multiplier: 1.0,
+                }],
+            },
+            owner,
+        )
+        .await
+        .unwrap();
+        let err = delete_meal(id, owner + 999, false)
+            .await
+            .expect_err("non-owner delete should fail");
+        assert!(format!("{err:#}").contains("forbidden"));
+        assert!(get_meal(id).await.unwrap().is_some());
     }
     #[tokio::test]
     async fn get_meal_returns_none_for_missing_id() {

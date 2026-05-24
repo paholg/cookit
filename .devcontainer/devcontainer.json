@@ -17,12 +17,17 @@
           "app": {
             "ports": [
               {
-                "host": 80,
-                "container": 8080
-              },
-              {
                 "host": 443,
                 "container": 8080,
+                "tls": true
+              }
+            ]
+          },
+          "oidc": {
+            "ports": [
+              {
+                "host": 443,
+                "container": 8090,
                 "tls": true
               }
             ]

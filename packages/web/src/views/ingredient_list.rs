@@ -97,7 +97,7 @@ pub fn IngredientList() -> Element {
                 p { "Loading..." }
             },
             Some(Ok(list)) if list.is_empty() => rsx! {
-                p { class: "empty", "No ingredients yet — create a recipe to populate them." }
+                p { class: "empty", "No ingredients yet." }
             },
             Some(Ok(_)) => rsx! {
                 ul { class: "ingredient-rows",
