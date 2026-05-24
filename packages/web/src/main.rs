@@ -37,6 +37,7 @@ enum Route {
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const ERROR_BANNER_JS: Asset = asset!("/assets/error-banner.js");
+const FAVICON: Asset = asset!("/assets/favicon.svg");
 
 #[cfg(not(feature = "server"))]
 fn main() {
@@ -72,6 +73,7 @@ fn App() -> Element {
     use_context_provider(|| user);
 
     rsx! {
+        document::Link { rel: "icon", r#type: "image/svg+xml", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
         // Loaded first so the listener is installed before any other JS runs.

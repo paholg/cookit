@@ -6,7 +6,15 @@ use types::RecipeStepIngredient;
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {
     let recipe = use_server_future(move || get_recipe(id))?;
+
+    let title = recipe
+        .cloned()
+        .and_then(|r| r.ok())
+        .map(|d| d.recipe.name)
+        .unwrap_or_else(|| "CookIt!".to_string());
+
     rsx! {
+        document::Title { "{title}" }
         match recipe.cloned() {
             Some(Ok(detail)) => rsx! {
                 article { class: "recipe",

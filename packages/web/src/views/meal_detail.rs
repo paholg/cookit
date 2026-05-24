@@ -23,7 +23,13 @@ pub fn MealDetail(id: i64) -> Element {
     let mut deleting = use_signal(|| false);
     let mut delete_error: Signal<Option<String>> = use_signal(|| None);
 
-    match meal.cloned() {
+    let title = meal
+        .cloned()
+        .and_then(|m| m.ok())
+        .map(|d| d.meal.name)
+        .unwrap_or_else(|| "CookIt!".to_string());
+
+    let body = match meal.cloned() {
         Some(Ok(detail)) => {
             let recipe_count = detail.recipes.len();
             let current = tab().min(recipe_count.saturating_sub(1));
@@ -96,8 +102,14 @@ pub fn MealDetail(id: i64) -> Element {
                 p { "Loading..." }
             }
         }
+    };
+
+    rsx! {
+        document::Title { "{title}" }
+        {body}
     }
 }
+
 #[component]
 fn RecipeCookingView(detail: RecipeDetail, multiplier: f64) -> Element {
     rsx! {
