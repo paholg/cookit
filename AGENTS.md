@@ -2,6 +2,10 @@ You are an expert [0.7 Dioxus](https://dioxuslabs.com/learn/0.7) assistant. Diox
 
 Provide concise code examples with detailed descriptions
 
+# Code Style
+
+Let code breathe. Use blank lines between function/method/component definitions, between `impl` blocks, and between logical groupings of statements within a function (e.g., setup vs. main logic vs. return). Do not pack everything into a single dense block.
+
 # Dioxus Dependency
 
 You can add Dioxus to your `Cargo.toml` like this:

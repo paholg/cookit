@@ -1,14 +1,14 @@
-//! Pool-backed database operations. Each function takes a `&SqlitePool` so it
-//! can be exercised by integration tests against a throwaway in-memory database.
 use anyhow::{Context, Result, anyhow};
-use sqlx::{SqliteConnection, SqlitePool};
+use sqlx::SqliteConnection;
 use std::str::FromStr;
 use types::{
     Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe, NewStep,
     Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
 const DEFAULT_USER_ID: i64 = 1;
-pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
+
+pub async fn list_recipes() -> Result<Vec<Recipe>> {
+    let pool = crate::db::pool().await;
     sqlx::query_as!(
         Recipe,
         r#"SELECT id as "id!: i64", name as "name!", source
@@ -19,7 +19,8 @@ pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
     .context("list_recipes select")
 }
 
-pub async fn get_recipe(pool: &SqlitePool, id: i64) -> Result<Option<RecipeDetail>> {
+pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
+    let pool = crate::db::pool().await;
     let Some(recipe) = sqlx::query_as!(
         Recipe,
         r#"SELECT id as "id!: i64", name as "name!", source
@@ -81,7 +82,9 @@ pub async fn get_recipe(pool: &SqlitePool, id: i64) -> Result<Option<RecipeDetai
     }
     Ok(Some(RecipeDetail { recipe, steps }))
 }
-pub async fn list_ingredients(pool: &SqlitePool) -> Result<Vec<Ingredient>> {
+
+pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
+    let pool = crate::db::pool().await;
     sqlx::query_as!(
         Ingredient,
         r#"SELECT id as "id!: i64", name as "name!",
@@ -93,7 +96,8 @@ pub async fn list_ingredients(pool: &SqlitePool) -> Result<Vec<Ingredient>> {
     .await
     .context("list_ingredients select")
 }
-pub async fn update_ingredient(pool: &SqlitePool, id: i64, input: IngredientUpdate) -> Result<()> {
+
+pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("ingredient name is required"));
@@ -108,6 +112,7 @@ pub async fn update_ingredient(pool: &SqlitePool, id: i64, input: IngredientUpda
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
+    let pool = crate::db::pool().await;
     let affected = sqlx::query!(
         r#"UPDATE ingredients
            SET name = ?, density_g_per_ml = ?, grocery_section = ?, ignore_density = ?
@@ -127,7 +132,8 @@ pub async fn update_ingredient(pool: &SqlitePool, id: i64, input: IngredientUpda
     }
     Ok(())
 }
-pub async fn create_recipe(pool: &SqlitePool, input: NewRecipe) -> Result<i64> {
+
+pub async fn create_recipe(input: NewRecipe) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("recipe name is required"));
@@ -138,6 +144,7 @@ pub async fn create_recipe(pool: &SqlitePool, input: NewRecipe) -> Result<i64> {
         .map(str::trim)
         .filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
+    let pool = crate::db::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
     let recipe_id = sqlx::query!(
         r#"INSERT INTO recipes (name, source) VALUES (?, ?)
@@ -153,7 +160,8 @@ pub async fn create_recipe(pool: &SqlitePool, input: NewRecipe) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(recipe_id)
 }
-pub async fn update_recipe(pool: &SqlitePool, id: i64, input: NewRecipe) -> Result<()> {
+
+pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("recipe name is required"));
@@ -164,6 +172,7 @@ pub async fn update_recipe(pool: &SqlitePool, id: i64, input: NewRecipe) -> Resu
         .map(str::trim)
         .filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
+    let pool = crate::db::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
     let affected = sqlx::query!(
         "UPDATE recipes SET name = ?, source = ? WHERE id = ?",
@@ -186,6 +195,7 @@ pub async fn update_recipe(pool: &SqlitePool, id: i64, input: NewRecipe) -> Resu
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
+
 fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredient>)>> {
     let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(steps.len());
     for (step_idx, step) in steps.iter().enumerate() {
@@ -221,6 +231,7 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
     }
     Ok(out)
 }
+
 async fn insert_steps_into(
     conn: &mut SqliteConnection,
     recipe_id: i64,
@@ -284,12 +295,15 @@ async fn insert_steps_into(
     }
     Ok(())
 }
+
 struct ConvertedIngredient {
     name: String,
     quantity: f64,
     unit: Unit,
 }
-pub async fn list_meals(pool: &SqlitePool) -> Result<Vec<Meal>> {
+
+pub async fn list_meals() -> Result<Vec<Meal>> {
+    let pool = crate::db::pool().await;
     sqlx::query_as!(
         Meal,
         r#"SELECT id as "id!: i64", name as "name!"
@@ -299,7 +313,9 @@ pub async fn list_meals(pool: &SqlitePool) -> Result<Vec<Meal>> {
     .await
     .context("list_meals select")
 }
-pub async fn get_meal(pool: &SqlitePool, id: i64) -> Result<Option<MealDetail>> {
+
+pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
+    let pool = crate::db::pool().await;
     let Some(meal) = sqlx::query_as!(
         Meal,
         r#"SELECT id as "id!: i64", name as "name!"
@@ -324,7 +340,7 @@ pub async fn get_meal(pool: &SqlitePool, id: i64) -> Result<Option<MealDetail>> 
     .context("get_meal recipes select")?;
     let mut recipes = Vec::with_capacity(mr_rows.len());
     for row in mr_rows {
-        let detail = get_recipe(pool, row.recipe_id)
+        let detail = get_recipe(row.recipe_id)
             .await?
             .ok_or_else(|| anyhow!("meal {id} references missing recipe {}", row.recipe_id))?;
         recipes.push(MealRecipe {
@@ -335,12 +351,14 @@ pub async fn get_meal(pool: &SqlitePool, id: i64) -> Result<Option<MealDetail>> 
     }
     Ok(Some(MealDetail { meal, recipes }))
 }
-pub async fn create_meal(pool: &SqlitePool, input: NewMeal) -> Result<i64> {
+
+pub async fn create_meal(input: NewMeal) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("meal name is required"));
     }
     validate_meal_recipes(&input.recipes)?;
+    let pool = crate::db::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
     let meal_id = sqlx::query!(
         r#"INSERT INTO meals (user_id, name) VALUES (?, ?)
@@ -356,12 +374,14 @@ pub async fn create_meal(pool: &SqlitePool, input: NewMeal) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(meal_id)
 }
-pub async fn update_meal(pool: &SqlitePool, id: i64, input: NewMeal) -> Result<()> {
+
+pub async fn update_meal(id: i64, input: NewMeal) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
         return Err(anyhow!("meal name is required"));
     }
     validate_meal_recipes(&input.recipes)?;
+    let pool = crate::db::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
     let affected = sqlx::query!("UPDATE meals SET name = ? WHERE id = ?", name, id)
         .execute(&mut *tx)
@@ -379,6 +399,7 @@ pub async fn update_meal(pool: &SqlitePool, id: i64, input: NewMeal) -> Result<(
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
+
 fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
         if !mr.multiplier.is_finite() || mr.multiplier <= 0.0 {
@@ -391,6 +412,7 @@ fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     }
     Ok(())
 }
+
 async fn insert_meal_recipes_into(
     conn: &mut SqliteConnection,
     meal_id: i64,
@@ -412,27 +434,15 @@ async fn insert_meal_recipes_into(
     }
     Ok(())
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-    use std::str::FromStr;
-    use types::{MassUnit, NewRecipe, NewStep, NewStepIngredient, UnitKind, VolumeUnit};
-    async fn test_pool() -> SqlitePool {
-        let opts = SqliteConnectOptions::from_str("sqlite::memory:")
-            .unwrap()
-            .foreign_keys(true);
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(opts)
-            .await
-            .expect("connect in-memory");
-        sqlx::migrate!("../../migrations")
-            .run(&pool)
-            .await
-            .expect("migrate");
-        pool
-    }
+    use types::{
+        IngredientUpdate, MassUnit, NewMeal, NewMealRecipe, NewRecipe, NewStep, NewStepIngredient,
+        UnitKind, VolumeUnit,
+    };
+
     fn ing(name: &str, qty: f64, unit_kind: UnitKind, unit: &str) -> NewStepIngredient {
         NewStepIngredient {
             ingredient_name: name.into(),
@@ -441,6 +451,7 @@ mod tests {
             unit: unit.into(),
         }
     }
+
     fn single_step_recipe(name: &str, ingredients: Vec<NewStepIngredient>) -> NewRecipe {
         NewRecipe {
             name: name.into(),
@@ -451,9 +462,29 @@ mod tests {
             }],
         }
     }
+
+    async fn make_recipe(name: &str) -> i64 {
+        create_recipe(single_step_recipe(
+            name,
+            vec![ing("salt", 1.0, UnitKind::Mass, "g")],
+        ))
+        .await
+        .unwrap()
+    }
+
+    async fn create_named_ingredient(name: &str) -> i64 {
+        let id = create_recipe(single_step_recipe(
+            &format!("via-{name}"),
+            vec![ing(name, 1.0, UnitKind::Mass, "g")],
+        ))
+        .await
+        .unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
+        detail.steps[0].ingredients[0].ingredient_id
+    }
+
     #[tokio::test]
     async fn create_then_get_roundtrip() {
-        let pool = test_pool().await;
         let input = NewRecipe {
             name: "Chili".into(),
             source: Some("https://example.com/chili".into()),
@@ -465,8 +496,8 @@ mod tests {
                 ],
             }],
         };
-        let id = create_recipe(&pool, input).await.expect("create");
-        let detail = get_recipe(&pool, id).await.expect("get").expect("found");
+        let id = create_recipe(input).await.expect("create");
+        let detail = get_recipe(id).await.expect("get").expect("found");
         assert_eq!(detail.recipe.name, "Chili");
         assert_eq!(
             detail.recipe.source.as_deref(),
@@ -484,9 +515,9 @@ mod tests {
         assert_eq!(ings[1].unit, Unit::Custom("medium".into()));
         assert_eq!(ings[1].quantity, 1.0);
     }
+
     #[tokio::test]
     async fn volume_units_preserve_original() {
-        let pool = test_pool().await;
         let input = NewRecipe {
             name: "Salt water".into(),
             source: None,
@@ -498,30 +529,27 @@ mod tests {
                 ],
             }],
         };
-        let id = create_recipe(&pool, input).await.unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let id = create_recipe(input).await.unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings[0].unit, Unit::Volume(VolumeUnit::Cup));
         assert_eq!(ings[0].quantity, 1.0);
         assert_eq!(ings[1].unit, Unit::Volume(VolumeUnit::Tsp));
         assert_eq!(ings[1].quantity, 2.0);
     }
+
     #[tokio::test]
     async fn count_preserves_unit_text() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            single_step_recipe(
-                "Onion soup",
-                vec![
-                    ing("egg", 3.0, UnitKind::Count, ""),
-                    ing("onion", 3.0, UnitKind::Count, "medium"),
-                ],
-            ),
-        )
+        let id = create_recipe(single_step_recipe(
+            "Onion soup",
+            vec![
+                ing("egg", 3.0, UnitKind::Count, ""),
+                ing("onion", 3.0, UnitKind::Count, "medium"),
+            ],
+        ))
         .await
         .unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(
             detail.steps[0].ingredients[0].unit,
             Unit::Count(String::new())
@@ -533,93 +561,81 @@ mod tests {
         );
         assert_eq!(detail.steps[0].ingredients[1].quantity, 3.0);
     }
+
     #[tokio::test]
     async fn unknown_mass_unit_is_rejected() {
-        let pool = test_pool().await;
-        let err = create_recipe(
-            &pool,
-            single_step_recipe("Bad", vec![ing("flour", 1.0, UnitKind::Mass, "stones")]),
-        )
+        let err = create_recipe(single_step_recipe(
+            "Bad",
+            vec![ing("flour", 1.0, UnitKind::Mass, "stones")],
+        ))
         .await
         .expect_err("should reject");
         let msg = format!("{err:#}");
         assert!(msg.contains("unknown mass unit"), "got: {msg}");
         assert!(msg.contains("stones"), "got: {msg}");
-        let recipes = list_recipes(&pool).await.unwrap();
+        let recipes = list_recipes().await.unwrap();
         assert!(
             recipes.is_empty(),
             "transaction must roll back, got: {recipes:?}"
         );
     }
+
     #[tokio::test]
     async fn empty_name_is_rejected() {
-        let pool = test_pool().await;
-        let err = create_recipe(
-            &pool,
-            NewRecipe {
-                name: "   ".into(),
-                ..Default::default()
-            },
-        )
+        let err = create_recipe(NewRecipe {
+            name: "   ".into(),
+            ..Default::default()
+        })
         .await
         .expect_err("should reject");
         assert!(format!("{err:#}").contains("name is required"));
     }
+
     #[tokio::test]
     async fn blank_source_stores_null() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            NewRecipe {
-                name: "Plain".into(),
-                source: Some("   ".into()),
-                steps: vec![],
-            },
-        )
+        let id = create_recipe(NewRecipe {
+            name: "Plain".into(),
+            source: Some("   ".into()),
+            steps: vec![],
+        })
         .await
         .unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.source, None);
     }
+
     #[tokio::test]
     async fn ingredient_reused_across_recipes_case_insensitive() {
-        let pool = test_pool().await;
-        create_recipe(
-            &pool,
-            single_step_recipe("First", vec![ing("Onion", 1.0, UnitKind::Custom, "medium")]),
-        )
+        create_recipe(single_step_recipe(
+            "First",
+            vec![ing("Onion", 1.0, UnitKind::Custom, "medium")],
+        ))
         .await
         .unwrap();
-        create_recipe(
-            &pool,
-            single_step_recipe(
-                "Second",
-                vec![ing("onion", 2.0, UnitKind::Custom, "medium")],
-            ),
-        )
+        create_recipe(single_step_recipe(
+            "Second",
+            vec![ing("onion", 2.0, UnitKind::Custom, "medium")],
+        ))
         .await
         .unwrap();
-        let ingredients = list_ingredients(&pool).await.unwrap();
+        let ingredients = list_ingredients().await.unwrap();
         assert_eq!(ingredients.len(), 1, "got: {ingredients:?}");
     }
+
     #[tokio::test]
     async fn empty_ingredient_rows_are_skipped_and_positions_reindex() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            single_step_recipe(
-                "Sparse",
-                vec![
-                    ing("", 1.0, UnitKind::Count, ""),
-                    ing("salt", 1.0, UnitKind::Mass, "g"),
-                    ing("  ", 1.0, UnitKind::Count, ""),
-                    ing("pepper", 1.0, UnitKind::Mass, "g"),
-                ],
-            ),
-        )
+        let id = create_recipe(single_step_recipe(
+            "Sparse",
+            vec![
+                ing("", 1.0, UnitKind::Count, ""),
+                ing("salt", 1.0, UnitKind::Mass, "g"),
+                ing("  ", 1.0, UnitKind::Count, ""),
+                ing("pepper", 1.0, UnitKind::Mass, "g"),
+            ],
+        ))
         .await
         .unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "salt");
@@ -627,46 +643,42 @@ mod tests {
         assert_eq!(ings[1].ingredient_name, "pepper");
         assert_eq!(ings[1].position, 1);
     }
+
     #[tokio::test]
     async fn get_recipe_returns_none_for_missing_id() {
-        let pool = test_pool().await;
-        assert!(get_recipe(&pool, 999).await.unwrap().is_none());
+        assert!(get_recipe(999).await.unwrap().is_none());
     }
+
     #[tokio::test]
     async fn negative_quantity_is_rejected() {
-        let pool = test_pool().await;
-        let err = create_recipe(
-            &pool,
-            single_step_recipe("Bad", vec![ing("flour", -1.0, UnitKind::Mass, "g")]),
-        )
+        let err = create_recipe(single_step_recipe(
+            "Bad",
+            vec![ing("flour", -1.0, UnitKind::Mass, "g")],
+        ))
         .await
         .expect_err("should reject");
         assert!(format!("{err:#}").contains("non-negative"));
     }
+
     #[tokio::test]
     async fn update_replaces_steps_and_ingredients() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            NewRecipe {
-                name: "Chili v1".into(),
-                source: Some("old".into()),
-                steps: vec![
-                    NewStep {
-                        instruction: "old step 1".into(),
-                        ingredients: vec![ing("beef", 1.0, UnitKind::Mass, "lb")],
-                    },
-                    NewStep {
-                        instruction: "old step 2".into(),
-                        ingredients: vec![ing("water", 1.0, UnitKind::Volume, "cup")],
-                    },
-                ],
-            },
-        )
+        let id = create_recipe(NewRecipe {
+            name: "Chili v1".into(),
+            source: Some("old".into()),
+            steps: vec![
+                NewStep {
+                    instruction: "old step 1".into(),
+                    ingredients: vec![ing("beef", 1.0, UnitKind::Mass, "lb")],
+                },
+                NewStep {
+                    instruction: "old step 2".into(),
+                    ingredients: vec![ing("water", 1.0, UnitKind::Volume, "cup")],
+                },
+            ],
+        })
         .await
         .unwrap();
         update_recipe(
-            &pool,
             id,
             NewRecipe {
                 name: "Chili v2".into(),
@@ -682,7 +694,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.name, "Chili v2");
         assert_eq!(detail.recipe.source.as_deref(), Some("https://new"));
         assert_eq!(detail.steps.len(), 1);
@@ -694,17 +706,16 @@ mod tests {
         assert_eq!(ings[0].quantity, 2.0);
         assert_eq!(ings[1].ingredient_name, "tomato");
         assert_eq!(ings[1].quantity, 3.0);
-        let all = list_ingredients(&pool).await.unwrap();
+        let all = list_ingredients().await.unwrap();
         let names: Vec<&str> = all.iter().map(|i| i.name.as_str()).collect();
         assert!(names.contains(&"beef"));
         assert!(names.contains(&"tomato"));
         assert!(names.contains(&"water"));
     }
+
     #[tokio::test]
     async fn update_unknown_id_errors() {
-        let pool = test_pool().await;
         let err = update_recipe(
-            &pool,
             42,
             single_step_recipe("X", vec![ing("salt", 1.0, UnitKind::Mass, "g")]),
         )
@@ -712,17 +723,16 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
+
     #[tokio::test]
     async fn update_rolls_back_on_bad_unit() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            single_step_recipe("Keep me", vec![ing("salt", 5.0, UnitKind::Mass, "g")]),
-        )
+        let id = create_recipe(single_step_recipe(
+            "Keep me",
+            vec![ing("salt", 5.0, UnitKind::Mass, "g")],
+        ))
         .await
         .unwrap();
         let err = update_recipe(
-            &pool,
             id,
             single_step_recipe(
                 "Rename attempt",
@@ -732,21 +742,20 @@ mod tests {
         .await
         .expect_err("bad unit should reject");
         assert!(format!("{err:#}").contains("unknown mass unit"));
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.name, "Keep me");
         assert_eq!(detail.steps[0].ingredients[0].quantity, 5.0);
     }
+
     #[tokio::test]
     async fn update_can_shrink_steps_to_zero() {
-        let pool = test_pool().await;
-        let id = create_recipe(
-            &pool,
-            single_step_recipe("Has step", vec![ing("salt", 1.0, UnitKind::Mass, "g")]),
-        )
+        let id = create_recipe(single_step_recipe(
+            "Has step",
+            vec![ing("salt", 1.0, UnitKind::Mass, "g")],
+        ))
         .await
         .unwrap();
         update_recipe(
-            &pool,
             id,
             NewRecipe {
                 name: "Empty now".into(),
@@ -756,43 +765,31 @@ mod tests {
         )
         .await
         .unwrap();
-        let detail = get_recipe(&pool, id).await.unwrap().unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.name, "Empty now");
         assert!(detail.steps.is_empty());
     }
-    use types::{NewMeal, NewMealRecipe};
-    async fn make_recipe(pool: &SqlitePool, name: &str) -> i64 {
-        create_recipe(
-            pool,
-            single_step_recipe(name, vec![ing("salt", 1.0, UnitKind::Mass, "g")]),
-        )
-        .await
-        .unwrap()
-    }
+
     #[tokio::test]
     async fn create_meal_then_get_roundtrip() {
-        let pool = test_pool().await;
-        let chili = make_recipe(&pool, "Chili").await;
-        let cornbread = make_recipe(&pool, "Cornbread").await;
-        let meal_id = create_meal(
-            &pool,
-            NewMeal {
-                name: "Friday dinner".into(),
-                recipes: vec![
-                    NewMealRecipe {
-                        recipe_id: chili,
-                        multiplier: 1.0,
-                    },
-                    NewMealRecipe {
-                        recipe_id: cornbread,
-                        multiplier: 2.0,
-                    },
-                ],
-            },
-        )
+        let chili = make_recipe("Chili").await;
+        let cornbread = make_recipe("Cornbread").await;
+        let meal_id = create_meal(NewMeal {
+            name: "Friday dinner".into(),
+            recipes: vec![
+                NewMealRecipe {
+                    recipe_id: chili,
+                    multiplier: 1.0,
+                },
+                NewMealRecipe {
+                    recipe_id: cornbread,
+                    multiplier: 2.0,
+                },
+            ],
+        })
         .await
         .unwrap();
-        let detail = get_meal(&pool, meal_id).await.unwrap().unwrap();
+        let detail = get_meal(meal_id).await.unwrap().unwrap();
         assert_eq!(detail.meal.name, "Friday dinner");
         assert_eq!(detail.recipes.len(), 2);
         assert_eq!(detail.recipes[0].recipe.recipe.id, chili);
@@ -804,103 +801,84 @@ mod tests {
         assert_eq!(detail.recipes[0].recipe.steps.len(), 1);
         assert_eq!(detail.recipes[0].recipe.steps[0].ingredients.len(), 1);
     }
+
     #[tokio::test]
     async fn create_meal_rejects_blank_name() {
-        let pool = test_pool().await;
-        let err = create_meal(
-            &pool,
-            NewMeal {
-                name: "  ".into(),
-                recipes: vec![],
-            },
-        )
+        let err = create_meal(NewMeal {
+            name: "  ".into(),
+            recipes: vec![],
+        })
         .await
         .expect_err("blank name should err");
         assert!(format!("{err:#}").contains("name is required"));
     }
+
     #[tokio::test]
     async fn create_meal_rejects_non_positive_multiplier() {
-        let pool = test_pool().await;
-        let r = make_recipe(&pool, "Salt block").await;
+        let r = make_recipe("Salt block").await;
         for mult in [0.0_f64, -1.0, f64::NAN] {
-            let err = create_meal(
-                &pool,
-                NewMeal {
-                    name: "bad".into(),
-                    recipes: vec![NewMealRecipe {
-                        recipe_id: r,
-                        multiplier: mult,
-                    }],
-                },
-            )
+            let err = create_meal(NewMeal {
+                name: "bad".into(),
+                recipes: vec![NewMealRecipe {
+                    recipe_id: r,
+                    multiplier: mult,
+                }],
+            })
             .await
             .expect_err(&format!("multiplier {mult} should err"));
             let msg = format!("{err:#}");
             assert!(msg.contains("positive"), "got: {msg}");
         }
-        assert!(list_meals(&pool).await.unwrap().is_empty());
+        assert!(list_meals().await.unwrap().is_empty());
     }
+
     #[tokio::test]
     async fn create_meal_rejects_unknown_recipe_id() {
-        let pool = test_pool().await;
-        let err = create_meal(
-            &pool,
-            NewMeal {
-                name: "x".into(),
-                recipes: vec![NewMealRecipe {
-                    recipe_id: 9999,
-                    multiplier: 1.0,
-                }],
-            },
-        )
+        let err = create_meal(NewMeal {
+            name: "x".into(),
+            recipes: vec![NewMealRecipe {
+                recipe_id: 9999,
+                multiplier: 1.0,
+            }],
+        })
         .await
         .expect_err("missing fk should err");
-        assert!(
-            list_meals(&pool).await.unwrap().is_empty(),
-            "got err: {err:#}"
-        );
+        assert!(list_meals().await.unwrap().is_empty(), "got err: {err:#}");
     }
+
     #[tokio::test]
     async fn create_meal_allows_zero_recipes() {
-        let pool = test_pool().await;
-        let id = create_meal(
-            &pool,
-            NewMeal {
-                name: "Empty".into(),
-                recipes: vec![],
-            },
-        )
+        let id = create_meal(NewMeal {
+            name: "Empty".into(),
+            recipes: vec![],
+        })
         .await
         .unwrap();
-        let detail = get_meal(&pool, id).await.unwrap().unwrap();
+        let detail = get_meal(id).await.unwrap().unwrap();
         assert!(detail.recipes.is_empty());
     }
+
     #[tokio::test]
     async fn update_meal_replaces_recipes_and_renames() {
-        let pool = test_pool().await;
-        let r1 = make_recipe(&pool, "A").await;
-        let r2 = make_recipe(&pool, "B").await;
-        let r3 = make_recipe(&pool, "C").await;
-        let id = create_meal(
-            &pool,
-            NewMeal {
-                name: "v1".into(),
-                recipes: vec![
-                    NewMealRecipe {
-                        recipe_id: r1,
-                        multiplier: 1.0,
-                    },
-                    NewMealRecipe {
-                        recipe_id: r2,
-                        multiplier: 1.0,
-                    },
-                ],
-            },
-        )
+        let r1 = make_recipe("A").await;
+        let r2 = make_recipe("B").await;
+        let r3 = make_recipe("C").await;
+        let id = create_meal(NewMeal {
+            name: "v1".into(),
+            recipes: vec![
+                NewMealRecipe {
+                    recipe_id: r1,
+                    multiplier: 1.0,
+                },
+                NewMealRecipe {
+                    recipe_id: r2,
+                    multiplier: 1.0,
+                },
+            ],
+        })
         .await
         .unwrap();
         update_meal(
-            &pool,
             id,
             NewMeal {
                 name: "v2".into(),
@@ -912,17 +890,16 @@ mod tests {
         )
         .await
         .unwrap();
-        let detail = get_meal(&pool, id).await.unwrap().unwrap();
+        let detail = get_meal(id).await.unwrap().unwrap();
         assert_eq!(detail.meal.name, "v2");
         assert_eq!(detail.recipes.len(), 1);
         assert_eq!(detail.recipes[0].recipe.recipe.id, r3);
         assert_eq!(detail.recipes[0].multiplier, 0.5);
     }
+
     #[tokio::test]
     async fn update_meal_unknown_id_errors() {
-        let pool = test_pool().await;
         let err = update_meal(
-            &pool,
             42,
             NewMeal {
                 name: "x".into(),
@@ -933,24 +910,20 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
+
     #[tokio::test]
     async fn update_meal_rolls_back_on_unknown_recipe() {
-        let pool = test_pool().await;
-        let r1 = make_recipe(&pool, "Keeper").await;
-        let id = create_meal(
-            &pool,
-            NewMeal {
-                name: "Original".into(),
-                recipes: vec![NewMealRecipe {
-                    recipe_id: r1,
-                    multiplier: 1.0,
-                }],
-            },
-        )
+        let r1 = make_recipe("Keeper").await;
+        let id = create_meal(NewMeal {
+            name: "Original".into(),
+            recipes: vec![NewMealRecipe {
+                recipe_id: r1,
+                multiplier: 1.0,
+            }],
+        })
         .await
         .unwrap();
         let err = update_meal(
-            &pool,
             id,
             NewMeal {
                 name: "Mangle".into(),
@@ -963,45 +936,30 @@ mod tests {
         .await
         .expect_err("bad fk should err");
         let _ = err;
-        let detail = get_meal(&pool, id).await.unwrap().unwrap();
+        let detail = get_meal(id).await.unwrap().unwrap();
         assert_eq!(detail.meal.name, "Original");
         assert_eq!(detail.recipes.len(), 1);
         assert_eq!(detail.recipes[0].recipe.recipe.id, r1);
     }
+
     #[tokio::test]
     async fn get_meal_returns_none_for_missing_id() {
-        let pool = test_pool().await;
-        assert!(get_meal(&pool, 999).await.unwrap().is_none());
+        assert!(get_meal(999).await.unwrap().is_none());
     }
-    use types::IngredientUpdate;
-    async fn create_named_ingredient(pool: &SqlitePool, name: &str) -> i64 {
-        let id = create_recipe(
-            pool,
-            single_step_recipe(
-                &format!("via-{name}"),
-                vec![ing(name, 1.0, UnitKind::Mass, "g")],
-            ),
-        )
-        .await
-        .unwrap();
-        let detail = get_recipe(pool, id).await.unwrap().unwrap();
-        detail.steps[0].ingredients[0].ingredient_id
-    }
+
     #[tokio::test]
     async fn list_ingredients_defaults_ignore_density_false() {
-        let pool = test_pool().await;
-        create_named_ingredient(&pool, "flour").await;
-        let list = list_ingredients(&pool).await.unwrap();
+        create_named_ingredient("flour").await;
+        let list = list_ingredients().await.unwrap();
         assert_eq!(list.len(), 1);
         assert!(!list[0].ignore_density);
         assert!(list[0].is_incomplete());
     }
+
     #[tokio::test]
     async fn update_ingredient_sets_fields() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "olive oil").await;
+        let id = create_named_ingredient("olive oil").await;
         update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "olive oil".into(),
@@ -1012,19 +970,18 @@ mod tests {
         )
         .await
         .unwrap();
-        let list = list_ingredients(&pool).await.unwrap();
+        let list = list_ingredients().await.unwrap();
         let i = list.iter().find(|i| i.id == id).unwrap();
         assert_eq!(i.density_g_per_ml, Some(0.91));
         assert_eq!(i.grocery_section.as_deref(), Some("Pantry"));
         assert!(!i.ignore_density);
         assert!(!i.is_incomplete());
     }
+
     #[tokio::test]
     async fn ignore_density_clears_incomplete_flag_without_density() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "egg").await;
+        let id = create_named_ingredient("egg").await;
         update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "egg".into(),
@@ -1035,7 +992,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let i = list_ingredients(&pool)
+        let i = list_ingredients()
             .await
             .unwrap()
             .into_iter()
@@ -1045,12 +1002,11 @@ mod tests {
         assert!(i.ignore_density);
         assert!(!i.is_incomplete());
     }
+
     #[tokio::test]
     async fn missing_section_still_flagged_even_with_ignore_density() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "egg").await;
+        let id = create_named_ingredient("egg").await;
         update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "egg".into(),
@@ -1061,7 +1017,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let i = list_ingredients(&pool)
+        let i = list_ingredients()
             .await
             .unwrap()
             .into_iter()
@@ -1069,12 +1025,11 @@ mod tests {
             .unwrap();
         assert!(i.is_incomplete(), "section missing should still flag");
     }
+
     #[tokio::test]
     async fn update_ingredient_rejects_blank_name() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "x").await;
+        let id = create_named_ingredient("x").await;
         let err = update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "  ".into(),
@@ -1085,13 +1040,12 @@ mod tests {
         .expect_err("blank name should err");
         assert!(format!("{err:#}").contains("name is required"));
     }
+
     #[tokio::test]
     async fn update_ingredient_rejects_non_positive_density() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "x").await;
+        let id = create_named_ingredient("x").await;
         for d in [0.0_f64, -1.0, f64::NAN] {
             let err = update_ingredient(
-                &pool,
                 id,
                 IngredientUpdate {
                     name: "x".into(),
@@ -1104,12 +1058,11 @@ mod tests {
             assert!(format!("{err:#}").contains("positive"));
         }
     }
+
     #[tokio::test]
     async fn update_ingredient_blank_section_stores_null() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "x").await;
+        let id = create_named_ingredient("x").await;
         update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "x".into(),
@@ -1120,7 +1073,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let i = list_ingredients(&pool)
+        let i = list_ingredients()
             .await
             .unwrap()
             .into_iter()
@@ -1128,11 +1081,10 @@ mod tests {
             .unwrap();
         assert_eq!(i.grocery_section, None);
     }
+
     #[tokio::test]
     async fn update_ingredient_unknown_id_errors() {
-        let pool = test_pool().await;
         let err = update_ingredient(
-            &pool,
             42,
             IngredientUpdate {
                 name: "x".into(),
@@ -1143,12 +1095,11 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
+
     #[tokio::test]
     async fn update_ingredient_can_rename() {
-        let pool = test_pool().await;
-        let id = create_named_ingredient(&pool, "kosher salt").await;
+        let id = create_named_ingredient("kosher salt").await;
         update_ingredient(
-            &pool,
             id,
             IngredientUpdate {
                 name: "Diamond Crystal kosher salt".into(),
@@ -1159,7 +1110,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let i = list_ingredients(&pool)
+        let i = list_ingredients()
             .await
             .unwrap()
             .into_iter()
