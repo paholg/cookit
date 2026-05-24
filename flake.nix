@@ -52,7 +52,7 @@
               inherit pname version;
               hash = "sha256-vO4RSxi/sMWxmsEs3GuljdMfIRSu75A+Q+c5wgYToRU=";
             };
-            cargoHash = "sha256-ElDatyOwdKwHg3bNH/1pcxKI7LXkhsotlDPQjiLHBwA=";
+            cargoHash = "sha256-Inup6vvJSG5ghNyeDPyZbfZo4d0LsMG2OJfStoaeDBs=";
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [
               pkgs.openssl
