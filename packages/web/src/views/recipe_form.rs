@@ -454,6 +454,28 @@ fn StepEditor(
         fieldset { class: "step",
             legend { "Step {step_idx + 1}" }
 
+            div { class: "ingredients-editor",
+                h3 { "Ingredients" }
+                for (ing_id, ing_key) in ingredients_snapshot.into_iter() {
+                    IngredientEditor {
+                        key: "{ing_key}",
+                        draft,
+                        step_id,
+                        ing_id,
+                        focus_key_suffix: format!("{}-{}", step_key, ing_key),
+                        on_enter_add: add_ingredient,
+                        existing_names: existing_names.clone(),
+                        unit_options: unit_options.clone(),
+                    }
+                }
+                button {
+                    r#type: "button",
+                    class: "secondary",
+                    onclick: move |_| add_ingredient.call(()),
+                    "+ Add ingredient"
+                }
+            }
+
             label {
                 "Instruction"
                 // NOTE: do not add `initial_value:` here. There's a Dioxus 0.7
@@ -478,28 +500,6 @@ fn StepEditor(
                         }
                     },
                     "{step_snapshot.instruction}"
-                }
-            }
-
-            div { class: "ingredients-editor",
-                h3 { "Ingredients" }
-                for (ing_id, ing_key) in ingredients_snapshot.into_iter() {
-                    IngredientEditor {
-                        key: "{ing_key}",
-                        draft,
-                        step_id,
-                        ing_id,
-                        focus_key_suffix: format!("{}-{}", step_key, ing_key),
-                        on_enter_add: add_ingredient,
-                        existing_names: existing_names.clone(),
-                        unit_options: unit_options.clone(),
-                    }
-                }
-                button {
-                    r#type: "button",
-                    class: "secondary",
-                    onclick: move |_| add_ingredient.call(()),
-                    "+ Add ingredient"
                 }
             }
 
