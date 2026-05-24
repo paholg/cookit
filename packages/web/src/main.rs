@@ -48,10 +48,13 @@ fn main() {
 
 #[cfg(feature = "server")]
 fn main() {
+    use dioxus::server::axum::middleware;
     dioxus::serve(|| async {
         let auth_router = api::auth_router().await;
         let app_router = dioxus::server::router(App);
-        Ok(auth_router.merge(app_router))
+        Ok(auth_router
+            .merge(app_router)
+            .layer(middleware::from_fn(api::log_server_errors)))
     })
 }
 

@@ -372,15 +372,23 @@ pub async fn current_user() -> Option<CurrentUser> {
 pub async fn require_user() -> Result<CurrentUser, ServerFnError> {
     current_user()
         .await
-        .ok_or_else(|| ServerFnError::new("login required"))
+        .ok_or_else(|| status_err(StatusCode::UNAUTHORIZED, "login required"))
 }
 
 pub async fn require_admin() -> Result<CurrentUser, ServerFnError> {
     let user = require_user().await?;
     if !user.is_admin {
-        return Err(ServerFnError::new("admin only"));
+        return Err(status_err(StatusCode::FORBIDDEN, "admin only"));
     }
     Ok(user)
+}
+
+fn status_err(status: StatusCode, message: &str) -> ServerFnError {
+    ServerFnError::ServerError {
+        message: message.to_string(),
+        code: status.as_u16(),
+        details: None,
+    }
 }
 
 async fn load_user(id: i64) -> Result<Option<CurrentUser>> {

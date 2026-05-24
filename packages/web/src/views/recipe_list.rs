@@ -1,14 +1,18 @@
-use crate::Route;
+use crate::{CurrentUserCtx, Route};
 use api::list_recipes;
 use dioxus::prelude::*;
 
 #[component]
 pub fn RecipeList() -> Element {
     let recipes = use_server_future(list_recipes)?;
+    let user = use_context::<CurrentUserCtx>();
+    let is_admin = user.read().as_ref().is_some_and(|u| u.is_admin);
     rsx! {
         header { class: "page-header",
             h1 { "Recipes" }
-            Link { to: Route::RecipeNew {}, class: "button", "+ New recipe" }
+            if is_admin {
+                Link { to: Route::RecipeNew {}, class: "button", "+ New recipe" }
+            }
         }
         match recipes.cloned() {
             Some(Ok(list)) if list.is_empty() => rsx! {

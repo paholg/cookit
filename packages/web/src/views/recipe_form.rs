@@ -224,7 +224,12 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
     let ingredients = use_server_future(list_ingredients)?;
     let ingredient_names: Vec<String> = match ingredients.cloned() {
         Some(Ok(list)) => list.into_iter().map(|i| i.name).collect(),
-        _ => Vec::new(),
+        Some(Err(e)) => {
+            return rsx! {
+                p { class: "error", "Failed to load ingredients: {e}" }
+            };
+        }
+        None => Vec::new(),
     };
 
     let unit_options: Vec<String> = Mass::iter()

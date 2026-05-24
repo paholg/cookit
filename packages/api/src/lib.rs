@@ -11,6 +11,10 @@ pub async fn auth_router() -> dioxus::server::axum::Router {
     server::auth::router().await
 }
 
+/// Middleware that logs any 5xx response so server failures aren't silent.
+#[cfg(feature = "server")]
+pub use server::middleware::log_server_errors;
+
 #[get("/api/me")]
 pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {
     Ok(server::auth::current_user().await.map(|u| CurrentUser {
