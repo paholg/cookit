@@ -50,7 +50,7 @@
             version = wasmBindgenVersion;
             src = pkgs.fetchCrate {
               inherit pname version;
-              hash = "sha256-M6WuGl7EruNopHZbqBpucu4RWz44/MSdv6f0zkYw+44=";
+              hash = "sha256-vO4RSxi/sMWxmsEs3GuljdMfIRSu75A+Q+c5wgYToRU=";
             };
             cargoHash = "sha256-ElDatyOwdKwHg3bNH/1pcxKI7LXkhsotlDPQjiLHBwA=";
             nativeBuildInputs = [ pkgs.pkg-config ];
