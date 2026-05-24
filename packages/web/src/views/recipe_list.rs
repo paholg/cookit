@@ -1,6 +1,7 @@
 use crate::Route;
 use api::list_recipes;
 use dioxus::prelude::*;
+
 #[component]
 pub fn RecipeList() -> Element {
     let recipes = use_server_future(list_recipes)?;

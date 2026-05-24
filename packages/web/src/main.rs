@@ -7,6 +7,7 @@ use views::{
     RecipeNew,
 };
 
+mod draft_id;
 mod views;
 
 #[derive(Debug, Clone, Routable, PartialEq)]

@@ -1,4 +1,4 @@
-use crate::Route;
+use crate::{Route, draft_id::DraftId};
 use api::{create_recipe, list_ingredients, update_recipe};
 use dioxus::prelude::*;
 use std::str::FromStr;
@@ -8,66 +8,114 @@ use ui::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct IngDraft {
+    pub id: DraftId,
     pub name: String,
     pub quantity: String,
     pub unit: String,
 }
 
+impl IngDraft {
+    fn key(&self) -> String {
+        format!("ingredient-{}", self.id)
+    }
+}
+
 #[derive(Default, Clone, PartialEq)]
 pub struct StepDraft {
+    pub id: DraftId,
     pub instruction: String,
-    pub ingredients: Vec<Signal<IngDraft>>,
+    pub ingredients: Vec<IngDraft>,
+    /// Counter for allocating ids to ingredients added inside this step.
+    /// Per-step so server/client SSR produce matching ids on first render.
+    next_ing_id: i64,
+}
+
+impl StepDraft {
+    fn key(&self) -> String {
+        format!("step-{}", self.id)
+    }
+
+    fn alloc_ing_id(&mut self) -> DraftId {
+        let id = DraftId::New(self.next_ing_id);
+        self.next_ing_id += 1;
+        id
+    }
+
+    fn push_new_ingredient(&mut self) -> DraftId {
+        let id = self.alloc_ing_id();
+        self.ingredients.push(IngDraft {
+            id,
+            ..Default::default()
+        });
+        id
+    }
 }
 
 #[derive(Default, Clone, PartialEq)]
 pub struct RecipeDraft {
+    pub id: DraftId,
     pub name: String,
     pub source: String,
-    pub steps: Vec<Signal<StepDraft>>,
+    pub steps: Vec<StepDraft>,
+    /// Counter for allocating ids to steps added to this draft.
+    next_step_id: i64,
 }
 
 impl RecipeDraft {
+    fn alloc_step_id(&mut self) -> DraftId {
+        let id = DraftId::New(self.next_step_id);
+        self.next_step_id += 1;
+        id
+    }
+
+    fn push_new_step(&mut self) -> DraftId {
+        let id = self.alloc_step_id();
+        self.steps.push(StepDraft {
+            id,
+            ..Default::default()
+        });
+        id
+    }
+
     pub fn empty() -> Self {
-        Self {
-            steps: vec![Signal::new(StepDraft::default())],
-            ..Self::default()
-        }
+        let mut d = Self::default();
+        d.push_new_step();
+        d
     }
 
     pub fn from_detail(detail: RecipeDetail) -> Self {
         Self {
+            id: detail.recipe.id.into(),
             name: detail.recipe.name,
             source: detail.recipe.source.unwrap_or_default(),
             steps: detail
                 .steps
                 .into_iter()
-                .map(|s| {
-                    Signal::new(StepDraft {
-                        instruction: s.instruction,
-                        ingredients: s
-                            .ingredients
-                            .into_iter()
-                            .map(|i| {
-                                Signal::new(IngDraft {
-                                    name: i.ingredient_name,
-                                    quantity: format_qty(i.quantity),
-                                    unit: i.unit.label(),
-                                })
-                            })
-                            .collect(),
-                    })
+                .map(|s| StepDraft {
+                    id: s.id.into(),
+                    instruction: s.instruction,
+                    ingredients: s
+                        .ingredients
+                        .into_iter()
+                        .map(|i| IngDraft {
+                            id: i.id.into(),
+                            name: i.ingredient_name,
+                            quantity: format_qty(i.quantity),
+                            unit: i.unit.label(),
+                        })
+                        .collect(),
+                    next_ing_id: 0,
                 })
                 .collect(),
+            next_step_id: 0,
         }
     }
 
     fn to_payload(&self) -> Result<NewRecipe, String> {
         let mut steps = Vec::with_capacity(self.steps.len());
-        for (step_idx, step_sig) in self.steps.iter().enumerate() {
-            let step = step_sig.read();
+        for (step_idx, step) in self.steps.iter().enumerate() {
             let mut ings = Vec::with_capacity(step.ingredients.len());
-            for (ing_idx, ing_sig) in step.ingredients.iter().enumerate() {
-                let ing = ing_sig.read();
+            for (ing_idx, ing) in step.ingredients.iter().enumerate() {
                 if ing.name.trim().is_empty() {
                     continue;
                 }
@@ -227,18 +275,27 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         RecipeFormMode::Edit { .. } => "Save changes",
     };
 
+    let mut add_step_fn = move || {
+        let id = draft.write().push_new_step();
+        focus_field(format!("instr-step-{id}"));
+    };
+    let add_step = Callback::new(move |_| add_step_fn());
+
     let on_form_keydown = move |e: KeyboardEvent| {
         if e.key() == Key::Enter && has_command_modifier(&e.modifiers()) {
             e.prevent_default();
-            let new_step_idx = {
-                let mut d = draft.write();
-                let i = d.steps.len();
-                d.steps.push(Signal::new(StepDraft::default()));
-                i
-            };
-            focus_field(format!("instr-{new_step_idx}"));
+            add_step.call(());
         }
     };
+
+    let steps_snapshot: Vec<(DraftId, String, usize)> = draft
+        .read()
+        .steps
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.id, s.key(), i))
+        .collect();
+    let multi_step = steps_snapshot.len() > 1;
 
     rsx! {
         header { class: "page-header",
@@ -277,46 +334,30 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                     onkeydown: move |e| {
                         if e.key() == Key::Enter && e.modifiers().is_empty() {
                             e.prevent_default();
-                            focus_field("instr-0".to_string());
+                            if let Some(first) = draft.read().steps.first() {
+                                focus_field(format!("instr-{}", first.key()));
+                            }
                         }
                     },
                 }
             }
 
             h2 { "Steps" }
-            {
-                let steps = draft.read().steps.clone();
-                let multi_step = steps.len() > 1;
-                let names = ingredient_names.clone();
-                let units = unit_options.clone();
-                rsx! {
-                    for (step_idx, step) in steps.into_iter().enumerate() {
-                        StepEditor {
-                            key: "{step_idx}",
-                            step,
-                            step_idx,
-                            multi_step,
-                            on_remove: Callback::new(move |_| {
-                                draft.write().steps.remove(step_idx);
-                            }),
-                            existing_names: names.clone(),
-                            unit_options: units.clone(),
-                        }
-                    }
+            for (step_id, step_key, step_idx) in steps_snapshot.into_iter() {
+                StepEditor {
+                    key: "{step_key}",
+                    draft,
+                    step_id,
+                    step_idx,
+                    multi_step,
+                    existing_names: ingredient_names.clone(),
+                    unit_options: unit_options.clone(),
                 }
             }
             button {
                 r#type: "button",
                 class: "secondary",
-                onclick: move |_| {
-                    let new_step_idx = {
-                        let mut d = draft.write();
-                        let i = d.steps.len();
-                        d.steps.push(Signal::new(StepDraft::default()));
-                        i
-                    };
-                    focus_field(format!("instr-{new_step_idx}"));
-                },
+                onclick: move |_| add_step.call(()),
                 "+ Add step "
                 span { class: "kbd-hint", "(Ctrl+Enter)" }
             }
@@ -348,17 +389,61 @@ fn has_command_modifier(m: &Modifiers) -> bool {
     m.contains(Modifiers::CONTROL) || m.contains(Modifiers::META)
 }
 
+/// Find a step by id and run the closure with a mutable reference to it.
+/// No-op if the step has been removed.
+fn with_step(draft: &mut Signal<RecipeDraft>, step_id: DraftId, f: impl FnOnce(&mut StepDraft)) {
+    let mut d = draft.write();
+    if let Some(s) = d.steps.iter_mut().find(|s| s.id == step_id) {
+        f(s);
+    }
+}
+
+/// Find an ingredient by ids and run the closure with a mutable reference.
+/// No-op if either has been removed.
+fn with_ingredient(
+    draft: &mut Signal<RecipeDraft>,
+    step_id: DraftId,
+    ing_id: DraftId,
+    f: impl FnOnce(&mut IngDraft),
+) {
+    with_step(draft, step_id, |s| {
+        if let Some(i) = s.ingredients.iter_mut().find(|i| i.id == ing_id) {
+            f(i);
+        }
+    });
+}
+
 #[component]
 fn StepEditor(
-    mut step: Signal<StepDraft>,
+    draft: Signal<RecipeDraft>,
+    step_id: DraftId,
     step_idx: usize,
     multi_step: bool,
-    on_remove: Callback<()>,
     existing_names: Vec<String>,
     unit_options: Vec<String>,
 ) -> Element {
-    let instruction = step.read().instruction.clone();
-    let ingredients = step.read().ingredients.clone();
+    let mut draft = draft;
+    let Some(step_snapshot) = draft.read().steps.iter().find(|s| s.id == step_id).cloned() else {
+        return rsx! {};
+    };
+
+    let step_key = step_snapshot.key();
+    let ingredients_snapshot: Vec<(DraftId, String)> = step_snapshot
+        .ingredients
+        .iter()
+        .map(|i| (i.id, i.key()))
+        .collect();
+
+    let mut add_ingredient_fn = move || {
+        let mut new_id = None;
+        with_step(&mut draft, step_id, |s| {
+            new_id = Some(s.push_new_ingredient());
+        });
+        if let Some(id) = new_id {
+            focus_field(format!("qty-step-{step_id}-ingredient-{id}"));
+        }
+    };
+    let add_ingredient = Callback::new(move |_| add_ingredient_fn());
 
     rsx! {
         fieldset { class: "step",
@@ -366,41 +451,41 @@ fn StepEditor(
 
             label {
                 "Instruction"
+                // NOTE: do not add `initial_value:` here. There's a Dioxus 0.7
+                // hydration/diff bug where a textarea with `initial_value`
+                // breaks the parent's VDOM diff when a sibling list grows
+                // (e.g. clicking "+ Add step"), producing a null-DOM-node crash
+                // in the interpreter. The body text below is what the textarea
+                // shows on first render and after re-renders.
                 textarea {
                     rows: "1",
-                    "data-focus-key": "instr-{step_idx}",
-                    onmounted: move |_| autogrow_textarea(format!("instr-{step_idx}")),
-                    oninput: move |e| {
-                        step.write().instruction = e.value();
-                        autogrow_textarea(format!("instr-{step_idx}"));
+                    "data-focus-key": "instr-{step_key}",
+                    onmounted: {
+                        let step_key = step_key.clone();
+                        move |_| autogrow_textarea(format!("instr-{step_key}"))
                     },
-                    initial_value: "{instruction}",
-                    "{instruction}"
+                    oninput: {
+                        let step_key = step_key.clone();
+                        move |e: FormEvent| {
+                            let value = e.value();
+                            with_step(&mut draft, step_id, |s| s.instruction = value);
+                            autogrow_textarea(format!("instr-{step_key}"));
+                        }
+                    },
+                    "{step_snapshot.instruction}"
                 }
             }
 
             div { class: "ingredients-editor",
                 h3 { "Ingredients" }
-                for (ing_idx, ing) in ingredients.into_iter().enumerate() {
+                for (ing_id, ing_key) in ingredients_snapshot.into_iter() {
                     IngredientEditor {
-                        key: "{step_idx}-{ing_idx}",
-                        ing,
-                        focus_key_suffix: format!("{step_idx}-{ing_idx}"),
-                        on_remove: Callback::new(move |_| {
-                            let mut s = step.write();
-                            if ing_idx < s.ingredients.len() {
-                                s.ingredients.remove(ing_idx);
-                            }
-                        }),
-                        on_enter_add: Callback::new(move |_| {
-                            let new_idx = {
-                                let mut s = step.write();
-                                let i = s.ingredients.len();
-                                s.ingredients.push(Signal::new(IngDraft::default()));
-                                i
-                            };
-                            focus_field(format!("qty-{step_idx}-{new_idx}"));
-                        }),
+                        key: "{ing_key}",
+                        draft,
+                        step_id,
+                        ing_id,
+                        focus_key_suffix: format!("{}-{}", step_key, ing_key),
+                        on_enter_add: add_ingredient,
                         existing_names: existing_names.clone(),
                         unit_options: unit_options.clone(),
                     }
@@ -408,15 +493,7 @@ fn StepEditor(
                 button {
                     r#type: "button",
                     class: "secondary",
-                    onclick: move |_| {
-                        let new_idx = {
-                            let mut s = step.write();
-                            let i = s.ingredients.len();
-                            s.ingredients.push(Signal::new(IngDraft::default()));
-                            i
-                        };
-                        focus_field(format!("qty-{step_idx}-{new_idx}"));
-                    },
+                    onclick: move |_| add_ingredient.call(()),
                     "+ Add ingredient"
                 }
             }
@@ -428,7 +505,9 @@ fn StepEditor(
                     tabindex: "-1",
                     "aria-label": "Remove step",
                     title: "Remove step",
-                    onclick: move |_| on_remove.call(()),
+                    onclick: move |_| {
+                        draft.write().steps.retain(|s| s.id != step_id);
+                    },
                     TrashIcon {}
                 }
             }
@@ -438,14 +517,25 @@ fn StepEditor(
 
 #[component]
 fn IngredientEditor(
-    mut ing: Signal<IngDraft>,
+    draft: Signal<RecipeDraft>,
+    step_id: DraftId,
+    ing_id: DraftId,
     focus_key_suffix: String,
-    on_remove: Callback<()>,
     on_enter_add: Callback<()>,
     existing_names: Vec<String>,
     unit_options: Vec<String>,
 ) -> Element {
-    let row = ing.read().clone();
+    let mut draft = draft;
+    let Some(row) = draft
+        .read()
+        .steps
+        .iter()
+        .find(|s| s.id == step_id)
+        .and_then(|s| s.ingredients.iter().find(|i| i.id == ing_id))
+        .cloned()
+    else {
+        return rsx! {};
+    };
     let status = ingredient_status(&row.name, &existing_names);
 
     let qty_focus_key = format!("qty-{focus_key_suffix}");
@@ -465,8 +555,9 @@ fn IngredientEditor(
                 value: "{row.quantity}",
                 autocomplete: "off",
                 "data-focus-key": "{qty_focus_key}",
-                oninput: move |e| {
-                    ing.write().quantity = e.value();
+                oninput: move |e: FormEvent| {
+                    let v = e.value();
+                    with_ingredient(&mut draft, step_id, ing_id, |i| i.quantity = v);
                 },
                 onkeydown: move |e| {
                     if e.key() == Key::Enter && e.modifiers().is_empty() {
@@ -482,7 +573,7 @@ fn IngredientEditor(
                 focus_key: unit_focus_key.clone(),
                 wrapper_class: "unit-cell".to_string(),
                 oninput: move |v: String| {
-                    ing.write().unit = v;
+                    with_ingredient(&mut draft, step_id, ing_id, |i| i.unit = v);
                 },
                 onenter: move |_| {
                     focus_field(name_key_for_unit_enter.clone());
@@ -496,10 +587,18 @@ fn IngredientEditor(
                     focus_key: name_focus_key.clone(),
                     wrapper_class: String::new(),
                     oninput: move |v: String| {
-                        ing.write().name = v;
+                        with_ingredient(&mut draft, step_id, ing_id, |i| i.name = v);
                     },
                     onenter: move |_| {
-                        if ing.read().name.trim().is_empty() {
+                        let name_empty = draft
+                            .read()
+                            .steps
+                            .iter()
+                            .find(|s| s.id == step_id)
+                            .and_then(|s| s.ingredients.iter().find(|i| i.id == ing_id))
+                            .map(|i| i.name.trim().is_empty())
+                            .unwrap_or(true);
+                        if name_empty {
                             return;
                         }
                         on_enter_add.call(());
@@ -521,7 +620,11 @@ fn IngredientEditor(
                 tabindex: "-1",
                 "aria-label": "Remove ingredient",
                 title: "Remove ingredient",
-                onclick: move |_| on_remove.call(()),
+                onclick: move |_| {
+                    with_step(&mut draft, step_id, |s| {
+                        s.ingredients.retain(|i| i.id != ing_id);
+                    });
+                },
                 TrashIcon {}
             }
         }
@@ -644,7 +747,7 @@ fn Autocomplete(
                 ul { class: "autocomplete-popup",
                     for (i, name) in filtered.iter().enumerate() {
                         AutocompleteItem {
-                            key: "{i}",
+                            key: "{name}",
                             index: i,
                             text: name.clone(),
                             active: i == highlight_idx,

@@ -51,7 +51,8 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     let mut steps = Vec::with_capacity(step_rows.len());
     for sr in step_rows {
         let ing_rows = sqlx::query!(
-            r#"SELECT rsi.ingredient_id as "ingredient_id!: i64",
+            r#"SELECT rsi.id as "id!: i64",
+                      rsi.ingredient_id as "ingredient_id!: i64",
                       i.name as "ingredient_name!",
                       rsi.quantity as "quantity!: f64",
                       rsi.unit_kind as "unit_kind!",
@@ -72,6 +73,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
                 let kind = UnitKind::from_str(&r.unit_kind).unwrap_or(UnitKind::Custom);
                 let unit = Unit::new(kind, &r.unit).unwrap_or(Unit::Custom(r.unit));
                 RecipeStepIngredient {
+                    id: r.id,
                     ingredient_id: r.ingredient_id,
                     ingredient_name: r.ingredient_name,
                     quantity: r.quantity,

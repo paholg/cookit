@@ -68,6 +68,7 @@
               just
               pkg-config
               openssl
+              playwright-test
               sqlx-cli
               tombi
             ]
@@ -113,6 +114,8 @@
               OIDC_INSECURE_TLS = "true";
               SESSION_SECRET = "ZGV2LXNlc3Npb24tc2VjcmV0LWRldi1zZXNzaW9uLXNlY3JldC1kZXYtc2Vzc2lvbi1zZWNyZXQtZGV2LXNlc3Npb24tc2VjcmV0LWQK";
               SESSION_COOKIE_SECURE = "false";
+              PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+              PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
             };
             packages = devPackages;
           };

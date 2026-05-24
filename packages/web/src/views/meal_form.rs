@@ -1,28 +1,42 @@
-use crate::Route;
+use crate::{Route, draft_id::DraftId};
+
 use api::{create_meal, list_recipes, update_meal};
 use dioxus::prelude::*;
 use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
 use ui::TrashIcon;
+
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
+    pub id: DraftId,
     pub recipe_id: Option<i64>,
     pub multiplier: String,
 }
+
 #[derive(Default, Clone, PartialEq)]
 pub struct MealDraft {
     pub name: String,
     pub recipes: Vec<MealRecipeDraft>,
+    next_row_id: i64,
 }
+
 impl MealDraft {
-    pub fn empty() -> Self {
-        Self {
-            recipes: vec![MealRecipeDraft {
-                recipe_id: None,
-                multiplier: "1".into(),
-            }],
-            ..Self::default()
-        }
+    fn alloc_row_id(&mut self) -> DraftId {
+        let id = DraftId::New(self.next_row_id);
+        self.next_row_id += 1;
+        id
     }
+
+    pub fn empty() -> Self {
+        let mut d = Self::default();
+        let id = d.alloc_row_id();
+        d.recipes.push(MealRecipeDraft {
+            id,
+            recipe_id: None,
+            multiplier: "1".into(),
+        });
+        d
+    }
+
     pub fn from_detail(detail: MealDetail) -> Self {
         Self {
             name: detail.meal.name,
@@ -30,12 +44,15 @@ impl MealDraft {
                 .recipes
                 .into_iter()
                 .map(|mr| MealRecipeDraft {
+                    id: mr.recipe.recipe.id.into(),
                     recipe_id: Some(mr.recipe.recipe.id),
                     multiplier: format_mult(mr.multiplier),
                 })
                 .collect(),
+            next_row_id: 0,
         }
     }
+
     fn to_payload(&self) -> Result<NewMeal, String> {
         let mut recipes = Vec::with_capacity(self.recipes.len());
         for (idx, r) in self.recipes.iter().enumerate() {
@@ -61,6 +78,7 @@ impl MealDraft {
         })
     }
 }
+
 fn format_mult(m: f64) -> String {
     if (m.fract()).abs() < f64::EPSILON {
         format!("{}", m as i64)
@@ -68,6 +86,7 @@ fn format_mult(m: f64) -> String {
         format!("{m}")
     }
 }
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum MealFormMode {
     Create,
@@ -141,13 +160,19 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             }
             h2 { "Recipes" }
             {
-                let count = draft.read().recipes.len();
+                let rows: Vec<(DraftId, MealRecipeDraft)> = draft
+                    .read()
+                    .recipes
+                    .iter()
+                    .map(|r| (r.id, r.clone()))
+                    .collect();
                 let avail = available.clone();
                 rsx! {
-                    for idx in 0..count {
+                    for (row_id, row) in rows.into_iter() {
                         MealRecipeRow {
-                            key: "{idx}",
-                            idx,
+                            key: "{row_id}",
+                            row_id,
+                            row,
                             draft,
                             recipes: avail.clone(),
                         }
@@ -159,13 +184,13 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 class: "secondary",
                 disabled: available.is_empty(),
                 onclick: move |_| {
-                    draft
-                        .write()
-                        .recipes
-                        .push(MealRecipeDraft {
-                            recipe_id: None,
-                            multiplier: "1".into(),
-                        })
+                    let mut d = draft.write();
+                    let id = d.alloc_row_id();
+                    d.recipes.push(MealRecipeDraft {
+                        id,
+                        recipe_id: None,
+                        multiplier: "1".into(),
+                    });
                 },
                 "+ Add recipe"
             }
@@ -191,8 +216,12 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
     }
 }
 #[component]
-fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> Element {
-    let row = draft.read().recipes.get(idx).cloned().unwrap_or_default();
+fn MealRecipeRow(
+    row_id: DraftId,
+    row: MealRecipeDraft,
+    draft: Signal<MealDraft>,
+    recipes: Vec<Recipe>,
+) -> Element {
     let selected = row.recipe_id.map(|i| i.to_string()).unwrap_or_default();
     rsx! {
         div { class: "meal-row",
@@ -202,7 +231,7 @@ fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> 
                     let v = e.value();
                     let id: Option<i64> = v.parse().ok();
                     let mut d = draft.write();
-                    if let Some(r) = d.recipes.get_mut(idx) {
+                    if let Some(r) = d.recipes.iter_mut().find(|r| r.id == row_id) {
                         r.recipe_id = id;
                     }
                 },
@@ -222,7 +251,7 @@ fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> 
                 value: "{row.multiplier}",
                 oninput: move |e| {
                     let mut d = draft.write();
-                    if let Some(r) = d.recipes.get_mut(idx) {
+                    if let Some(r) = d.recipes.iter_mut().find(|r| r.id == row_id) {
                         r.multiplier = e.value();
                     }
                 },
@@ -233,10 +262,7 @@ fn MealRecipeRow(idx: usize, draft: Signal<MealDraft>, recipes: Vec<Recipe>) -> 
                 "aria-label": "Remove recipe",
                 title: "Remove recipe",
                 onclick: move |_| {
-                    let mut d = draft.write();
-                    if idx < d.recipes.len() {
-                        d.recipes.remove(idx);
-                    }
+                    draft.write().recipes.retain(|r| r.id != row_id);
                 },
                 TrashIcon {}
             }

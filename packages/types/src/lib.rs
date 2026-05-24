@@ -176,6 +176,7 @@ pub struct IngredientUpdate {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepIngredient {
+    pub id: i64,
     pub ingredient_id: i64,
     pub ingredient_name: String,
     pub quantity: f64,
