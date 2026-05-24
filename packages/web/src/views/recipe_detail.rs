@@ -1,5 +1,5 @@
-use crate::Route;
 use crate::views::RecipeView;
+use crate::{CurrentUserCtx, Route};
 use api::get_recipe;
 use dioxus::prelude::*;
 
@@ -13,13 +13,18 @@ pub fn RecipeDetail(id: i64) -> Element {
         .map(|d| d.recipe.name)
         .unwrap_or_else(|| "CookIt!".to_string());
 
+    let user = use_context::<CurrentUserCtx>();
+    let is_admin = user.read().clone().is_some_and(|u| u.is_admin);
+
     rsx! {
         document::Title { "{title}" }
         match recipe.cloned() {
             Some(Ok(detail)) => rsx! {
                 header { class: "page-header",
                     h1 { "{detail.recipe.name}" }
-                    Link { to: Route::RecipeEdit { id }, class: "button-link", "Edit" }
+                    if is_admin {
+                        Link { to: Route::RecipeEdit { id }, class: "button-link", "Edit" }
+                    }
                 }
                 RecipeView { detail, multiplier: 1.0 }
             },
