@@ -21,15 +21,15 @@ pub fn RecipeView(detail: RecipeDetail, multiplier: f64) -> Element {
                 tbody {
                     for step in detail.steps {
                         tr { key: "{step.id}",
-                            td { class: "instruction",
-                                div { dangerous_inner_html: render_markdown(&step.instruction) }
-                            }
                             td { class: "ingredients",
                                 for (i, ing) in step.ingredients.iter().enumerate() {
                                     div { key: "{ing.ingredient_id}-{ing.position}-{i}",
                                         "• {format_ingredient_line(ing, multiplier)}"
                                     }
                                 }
+                            }
+                            td { class: "instruction",
+                                div { dangerous_inner_html: render_markdown(&step.instruction) }
                             }
                         }
                     }
