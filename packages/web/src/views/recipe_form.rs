@@ -471,6 +471,7 @@ fn StepEditor(
                 button {
                     r#type: "button",
                     class: "secondary",
+                    "data-focus-key": "instr-{step_key}",
                     onclick: move |_| add_ingredient.call(()),
                     "+ Add ingredient"
                 }
@@ -486,7 +487,6 @@ fn StepEditor(
                 // shows on first render and after re-renders.
                 textarea {
                     rows: "1",
-                    "data-focus-key": "instr-{step_key}",
                     onmounted: {
                         let step_key = step_key.clone();
                         move |_| autogrow_textarea(format!("instr-{step_key}"))
