@@ -14,15 +14,16 @@ in
 
     package = lib.mkPackageOption pkgs "cookit" { };
 
-    databaseUrl = lib.mkOption {
+    dataDir = lib.mkOption {
       type = lib.types.str;
-      description = "Location of the sqlite db";
+      default = "/var/lib/cookit";
+      description = "Directory where the sqlite database and other state are stored.";
     };
 
     cookitUrl = lib.mkOption {
       type = lib.types.str;
       description = "Public URL";
-      example = "https://authit.example.com";
+      example = "https://cookit.example.com";
     };
 
     logLevel = lib.mkOption {
@@ -70,29 +71,29 @@ in
     users.users.${cfg.user} = {
       isSystemUser = true;
       group = cfg.group;
-      home = "/var/lib/cookit";
+      home = cfg.dataDir;
     };
 
     users.groups.${cfg.group} = { };
 
-    systemd.services.authit = {
+    systemd.services.cookit = {
       description = "CookIt recipes";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
 
       environment = {
-        DATABASE_URL = cfg.databaseUrl;
+        DATABASE_URL = "sqlite://${cfg.dataDir}/cookit.db?mode=rwc";
         IP = cfg.ipAddress;
         PORT = toString cfg.port;
-        URL = cfg.authitUrl;
+        URL = cfg.cookitUrl;
         LOG_LEVEL = cfg.logLevel;
       };
 
       serviceConfig = {
         ExecStart = "${cfg.package}/bin/web";
-        StateDirectory = "authit";
         User = cfg.user;
         Group = cfg.group;
+        WorkingDirectory = cfg.dataDir;
 
         # Hardening
         NoNewPrivileges = true;
@@ -106,9 +107,17 @@ in
         RestrictNamespaces = true;
         RestrictSUIDSGID = true;
         LockPersonality = true;
+
+        # Ensure dataDir exists and is writable by the service user.
+        ReadWritePaths = [ cfg.dataDir ];
+        StateDirectory = lib.mkIf (cfg.dataDir == "/var/lib/cookit") "cookit";
       };
     };
 
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
+
+    systemd.tmpfiles.rules = lib.mkIf (cfg.dataDir != "/var/lib/cookit") [
+      "d ${cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
+    ];
   };
 }
