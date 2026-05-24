@@ -222,7 +222,9 @@ pub struct NewRecipe {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Meal {
     pub id: i64,
-    pub user_id: i64,
+    /// `None` for meals stored in the browser's localStorage (unauthenticated
+    /// users); `Some(uid)` for meals owned by a user in the database.
+    pub user_id: Option<i64>,
     pub name: String,
 }
 

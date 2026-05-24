@@ -7,7 +7,11 @@ edition = "2024"
 dioxus = { workspace = true, features = ["fullstack"] }
 server = { workspace = true, optional = true }
 types = { workspace = true }
+web_client = { workspace = true, optional = true }
 
 [features]
 dev-auth = ["server?/dev-auth"]
 server = ["dep:server", "dioxus/server"]
+# Pulls in the browser-localStorage backend so the meals abstraction can
+# dispatch local reads/writes when running in the client.
+web = ["dep:web_client"]

@@ -39,6 +39,7 @@ dependencies = [
  "dioxus",
  "server",
  "types",
+ "web_client",
 ]
 
 [[package]]
@@ -1798,6 +1799,21 @@ dependencies = [
  "thiserror 1.0.69",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "gloo-storage"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbc8031e8c92758af912f9bc08fbbadd3c6f3cfcbf6b64cdf3d6a81f0139277a"
+dependencies = [
+ "gloo-utils",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "wasm-bindgen",
  "web-sys",
 ]
 
@@ -4769,6 +4785,16 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "web_client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gloo-storage",
+ "serde",
+ "types",
 ]
 
 [[package]]
