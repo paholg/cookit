@@ -54,7 +54,7 @@ body {
 #content {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1rem 0rem;
 }
 
 h1 {
@@ -476,7 +476,6 @@ fieldset.step legend {
   .recipe table.recipe-steps tbody,
   .recipe table.recipe-steps tr,
   .recipe table.recipe-steps td {
-    display: block;
     width: 100%;
   }
 
