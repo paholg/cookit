@@ -10,3 +10,4 @@ services:
       - ~/.claude.json:/home/vscode/.claude.json
     environment:
       COLORTERM: truecolor
+      DATABASE_URL: "sqlite:///workspace/dev/cookit.db"

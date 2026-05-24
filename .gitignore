@@ -12,3 +12,4 @@ result
 dev/*
 !dev/.keep
 .worktrees/
+.devcontainer/.env
