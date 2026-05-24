@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO users (oidc_sub, email, name, groups, is_admin)\n               VALUES ('test-sub', 'test@example.com', 'tester', '', 1)\n               RETURNING id as \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b46281ad2a48c74e0c16a35f434aca6bcf1af5de1d3402f6de708b0438ee059d"
+}

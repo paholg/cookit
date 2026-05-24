@@ -3,7 +3,10 @@ set dotenv-load := true
 serve *args:
     cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve --features dev-auth {{args}}
 
-check: lint test
+prepare:
+    cargo sqlx prepare --workspace -- --all-targets --all-features
+
+check: lint test check-sqlx
 
 build *args:
     cd packages/web && dx build {{args}}
@@ -16,11 +19,15 @@ up:
     cargo upgrade -i
 
 fix:
+    just prepare
     cargo clippy --fix --allow-staged
     cargo fmt --all
     tombi format
 
 lint: fmt-check clippy
+
+check-sqlx:
+    cargo sqlx prepare --check --workspace -- --all-targets --all-features
 
 fmt-check:
     cargo fmt --all -- --check
