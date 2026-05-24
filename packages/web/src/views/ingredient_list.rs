@@ -205,7 +205,8 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label { class: "checkbox-label",
                     input {
                         r#type: "checkbox",
-                        checked: row.ignore_density,
+                        checked: row
+                                                                                                                                                                                .ignore_density,
                         oninput: move |e| {
                             rows.write()[idx].ignore_density = e.checked();
                         },

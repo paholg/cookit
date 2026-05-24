@@ -2,7 +2,6 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use strum::{Display, EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
-
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString, EnumIter,
 )]
@@ -26,7 +25,6 @@ impl MassUnit {
         }
     }
 }
-
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString, EnumIter,
 )]
@@ -43,7 +41,6 @@ pub enum VolumeUnit {
     Qt,
     Gal,
 }
-
 impl VolumeUnit {
     /// Multiplier to canonical milliliters.
     pub fn ml(self) -> f64 {
@@ -60,7 +57,6 @@ impl VolumeUnit {
         }
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(
     name(UnitKind),
@@ -68,14 +64,12 @@ impl VolumeUnit {
     strum(serialize_all = "lowercase", ascii_case_insensitive),
     serde(rename_all = "lowercase")
 )]
-
 pub enum Unit {
     Mass(MassUnit),
     Volume(VolumeUnit),
     Count(String),
     Custom(String),
 }
-
 impl Unit {
     /// Build a `Unit` from a kind selector and the user-typed unit text.
     /// For Mass/Volume, the text must name a known unit (case-insensitive).
@@ -104,11 +98,9 @@ impl Unit {
             UnitKind::Custom => Ok(Unit::Custom(t.to_string())),
         }
     }
-
     pub fn kind(&self) -> UnitKind {
         self.into()
     }
-
     pub fn label(&self) -> String {
         match self {
             Unit::Mass(m) => m.to_string(),
@@ -117,20 +109,17 @@ impl Unit {
         }
     }
 }
-
 impl std::fmt::Display for Unit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.label())
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Recipe {
     pub id: i64,
     pub name: String,
     pub source: Option<String>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Ingredient {
     pub id: i64,
@@ -139,7 +128,6 @@ pub struct Ingredient {
     pub grocery_section: Option<String>,
     pub ignore_density: bool,
 }
-
 impl Ingredient {
     /// True if the ingredient needs the user's attention — missing a grocery
     /// section, or missing a density that hasn't been explicitly ignored.
@@ -147,7 +135,6 @@ impl Ingredient {
         self.grocery_section.is_none() || (self.density_g_per_ml.is_none() && !self.ignore_density)
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct IngredientUpdate {
     pub name: String,
@@ -155,7 +142,6 @@ pub struct IngredientUpdate {
     pub grocery_section: Option<String>,
     pub ignore_density: bool,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepIngredient {
     pub ingredient_id: i64,
@@ -164,7 +150,6 @@ pub struct RecipeStepIngredient {
     pub unit: Unit,
     pub position: i64,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStep {
     pub id: i64,
@@ -172,13 +157,11 @@ pub struct RecipeStep {
     pub instruction: String,
     pub ingredients: Vec<RecipeStepIngredient>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeDetail {
     pub recipe: Recipe,
     pub steps: Vec<RecipeStep>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewStepIngredient {
     pub ingredient_name: String,
@@ -186,45 +169,38 @@ pub struct NewStepIngredient {
     pub unit_kind: Option<UnitKind>,
     pub unit: String,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewStep {
     pub instruction: String,
     pub ingredients: Vec<NewStepIngredient>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewRecipe {
     pub name: String,
     pub source: Option<String>,
     pub steps: Vec<NewStep>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Meal {
     pub id: i64,
     pub name: String,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MealRecipe {
     pub multiplier: f64,
     pub position: i64,
     pub recipe: RecipeDetail,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MealDetail {
     pub meal: Meal,
     pub recipes: Vec<MealRecipe>,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewMealRecipe {
     pub recipe_id: i64,
     pub multiplier: f64,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewMeal {
     pub name: String,

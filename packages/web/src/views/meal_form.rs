@@ -132,7 +132,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             p { class: "empty",
                 "You don't have any recipes yet. "
                 Link { to: Route::RecipeNew
-                                                                                                            {}, "Create one" }
+                                                                                                                                                    {}, "Create one" }
                 " before building a meal."
             }
         }

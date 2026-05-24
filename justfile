@@ -1,6 +1,8 @@
 serve *args:
     cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve {{args}}
 
+check: lint test
+
 build *args:
     cd packages/web && dx build {{args}}
 
@@ -13,7 +15,7 @@ up:
 
 fix:
     cargo clippy --fix --allow-staged
-    cargo fmt
+    cargo fmt --all
 
 lint: fmt-check clippy
 

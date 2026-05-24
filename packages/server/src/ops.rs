@@ -6,7 +6,6 @@ use types::{
     Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
 };
 const DEFAULT_USER_ID: i64 = 1;
-
 pub async fn list_recipes() -> Result<Vec<Recipe>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
@@ -18,7 +17,6 @@ pub async fn list_recipes() -> Result<Vec<Recipe>> {
     .await
     .context("list_recipes select")
 }
-
 pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     let pool = crate::db::pool().await;
     let Some(recipe) = sqlx::query_as!(
@@ -82,7 +80,6 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     }
     Ok(Some(RecipeDetail { recipe, steps }))
 }
-
 pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
@@ -96,7 +93,6 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
     .await
     .context("list_ingredients select")
 }
-
 pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -132,7 +128,6 @@ pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
     }
     Ok(())
 }
-
 pub async fn create_recipe(input: NewRecipe) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -160,7 +155,6 @@ pub async fn create_recipe(input: NewRecipe) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(recipe_id)
 }
-
 pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -195,7 +189,6 @@ pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
-
 fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredient>)>> {
     let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(steps.len());
     for (step_idx, step) in steps.iter().enumerate() {
@@ -231,7 +224,6 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
     }
     Ok(out)
 }
-
 async fn insert_steps_into(
     conn: &mut SqliteConnection,
     recipe_id: i64,
@@ -295,13 +287,11 @@ async fn insert_steps_into(
     }
     Ok(())
 }
-
 struct ConvertedIngredient {
     name: String,
     quantity: f64,
     unit: Unit,
 }
-
 pub async fn list_meals() -> Result<Vec<Meal>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
@@ -313,7 +303,6 @@ pub async fn list_meals() -> Result<Vec<Meal>> {
     .await
     .context("list_meals select")
 }
-
 pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
     let pool = crate::db::pool().await;
     let Some(meal) = sqlx::query_as!(
@@ -351,7 +340,6 @@ pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
     }
     Ok(Some(MealDetail { meal, recipes }))
 }
-
 pub async fn create_meal(input: NewMeal) -> Result<i64> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -374,7 +362,6 @@ pub async fn create_meal(input: NewMeal) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(meal_id)
 }
-
 pub async fn update_meal(id: i64, input: NewMeal) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -399,7 +386,6 @@ pub async fn update_meal(id: i64, input: NewMeal) -> Result<()> {
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
-
 fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
         if !mr.multiplier.is_finite() || mr.multiplier <= 0.0 {
@@ -412,7 +398,6 @@ fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     }
     Ok(())
 }
-
 async fn insert_meal_recipes_into(
     conn: &mut SqliteConnection,
     meal_id: i64,
@@ -434,7 +419,6 @@ async fn insert_meal_recipes_into(
     }
     Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -442,7 +426,6 @@ mod tests {
         IngredientUpdate, MassUnit, NewMeal, NewMealRecipe, NewRecipe, NewStep, NewStepIngredient,
         UnitKind, VolumeUnit,
     };
-
     fn ing(name: &str, qty: f64, unit_kind: UnitKind, unit: &str) -> NewStepIngredient {
         NewStepIngredient {
             ingredient_name: name.into(),
@@ -451,7 +434,6 @@ mod tests {
             unit: unit.into(),
         }
     }
-
     fn single_step_recipe(name: &str, ingredients: Vec<NewStepIngredient>) -> NewRecipe {
         NewRecipe {
             name: name.into(),
@@ -462,7 +444,6 @@ mod tests {
             }],
         }
     }
-
     async fn make_recipe(name: &str) -> i64 {
         create_recipe(single_step_recipe(
             name,
@@ -471,7 +452,6 @@ mod tests {
         .await
         .unwrap()
     }
-
     async fn create_named_ingredient(name: &str) -> i64 {
         let id = create_recipe(single_step_recipe(
             &format!("via-{name}"),
@@ -482,7 +462,6 @@ mod tests {
         let detail = get_recipe(id).await.unwrap().unwrap();
         detail.steps[0].ingredients[0].ingredient_id
     }
-
     #[tokio::test]
     async fn create_then_get_roundtrip() {
         let input = NewRecipe {
@@ -515,7 +494,6 @@ mod tests {
         assert_eq!(ings[1].unit, Unit::Custom("medium".into()));
         assert_eq!(ings[1].quantity, 1.0);
     }
-
     #[tokio::test]
     async fn volume_units_preserve_original() {
         let input = NewRecipe {
@@ -537,7 +515,6 @@ mod tests {
         assert_eq!(ings[1].unit, Unit::Volume(VolumeUnit::Tsp));
         assert_eq!(ings[1].quantity, 2.0);
     }
-
     #[tokio::test]
     async fn count_preserves_unit_text() {
         let id = create_recipe(single_step_recipe(
@@ -561,7 +538,6 @@ mod tests {
         );
         assert_eq!(detail.steps[0].ingredients[1].quantity, 3.0);
     }
-
     #[tokio::test]
     async fn unknown_mass_unit_is_rejected() {
         let err = create_recipe(single_step_recipe(
@@ -579,7 +555,6 @@ mod tests {
             "transaction must roll back, got: {recipes:?}"
         );
     }
-
     #[tokio::test]
     async fn empty_name_is_rejected() {
         let err = create_recipe(NewRecipe {
@@ -590,7 +565,6 @@ mod tests {
         .expect_err("should reject");
         assert!(format!("{err:#}").contains("name is required"));
     }
-
     #[tokio::test]
     async fn blank_source_stores_null() {
         let id = create_recipe(NewRecipe {
@@ -603,7 +577,6 @@ mod tests {
         let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.source, None);
     }
-
     #[tokio::test]
     async fn ingredient_reused_across_recipes_case_insensitive() {
         create_recipe(single_step_recipe(
@@ -621,7 +594,6 @@ mod tests {
         let ingredients = list_ingredients().await.unwrap();
         assert_eq!(ingredients.len(), 1, "got: {ingredients:?}");
     }
-
     #[tokio::test]
     async fn empty_ingredient_rows_are_skipped_and_positions_reindex() {
         let id = create_recipe(single_step_recipe(
@@ -643,12 +615,10 @@ mod tests {
         assert_eq!(ings[1].ingredient_name, "pepper");
         assert_eq!(ings[1].position, 1);
     }
-
     #[tokio::test]
     async fn get_recipe_returns_none_for_missing_id() {
         assert!(get_recipe(999).await.unwrap().is_none());
     }
-
     #[tokio::test]
     async fn negative_quantity_is_rejected() {
         let err = create_recipe(single_step_recipe(
@@ -659,7 +629,6 @@ mod tests {
         .expect_err("should reject");
         assert!(format!("{err:#}").contains("non-negative"));
     }
-
     #[tokio::test]
     async fn update_replaces_steps_and_ingredients() {
         let id = create_recipe(NewRecipe {
@@ -712,7 +681,6 @@ mod tests {
         assert!(names.contains(&"tomato"));
         assert!(names.contains(&"water"));
     }
-
     #[tokio::test]
     async fn update_unknown_id_errors() {
         let err = update_recipe(
@@ -723,7 +691,6 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
-
     #[tokio::test]
     async fn update_rolls_back_on_bad_unit() {
         let id = create_recipe(single_step_recipe(
@@ -746,7 +713,6 @@ mod tests {
         assert_eq!(detail.recipe.name, "Keep me");
         assert_eq!(detail.steps[0].ingredients[0].quantity, 5.0);
     }
-
     #[tokio::test]
     async fn update_can_shrink_steps_to_zero() {
         let id = create_recipe(single_step_recipe(
@@ -769,7 +735,6 @@ mod tests {
         assert_eq!(detail.recipe.name, "Empty now");
         assert!(detail.steps.is_empty());
     }
-
     #[tokio::test]
     async fn create_meal_then_get_roundtrip() {
         let chili = make_recipe("Chili").await;
@@ -801,7 +766,6 @@ mod tests {
         assert_eq!(detail.recipes[0].recipe.steps.len(), 1);
         assert_eq!(detail.recipes[0].recipe.steps[0].ingredients.len(), 1);
     }
-
     #[tokio::test]
     async fn create_meal_rejects_blank_name() {
         let err = create_meal(NewMeal {
@@ -812,7 +776,6 @@ mod tests {
         .expect_err("blank name should err");
         assert!(format!("{err:#}").contains("name is required"));
     }
-
     #[tokio::test]
     async fn create_meal_rejects_non_positive_multiplier() {
         let r = make_recipe("Salt block").await;
@@ -831,7 +794,6 @@ mod tests {
         }
         assert!(list_meals().await.unwrap().is_empty());
     }
-
     #[tokio::test]
     async fn create_meal_rejects_unknown_recipe_id() {
         let err = create_meal(NewMeal {
@@ -845,7 +807,6 @@ mod tests {
         .expect_err("missing fk should err");
         assert!(list_meals().await.unwrap().is_empty(), "got err: {err:#}");
     }
-
     #[tokio::test]
     async fn create_meal_allows_zero_recipes() {
         let id = create_meal(NewMeal {
@@ -857,7 +818,6 @@ mod tests {
         let detail = get_meal(id).await.unwrap().unwrap();
         assert!(detail.recipes.is_empty());
     }
-
     #[tokio::test]
     async fn update_meal_replaces_recipes_and_renames() {
         let r1 = make_recipe("A").await;
@@ -896,7 +856,6 @@ mod tests {
         assert_eq!(detail.recipes[0].recipe.recipe.id, r3);
         assert_eq!(detail.recipes[0].multiplier, 0.5);
     }
-
     #[tokio::test]
     async fn update_meal_unknown_id_errors() {
         let err = update_meal(
@@ -910,7 +869,6 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
-
     #[tokio::test]
     async fn update_meal_rolls_back_on_unknown_recipe() {
         let r1 = make_recipe("Keeper").await;
@@ -941,12 +899,10 @@ mod tests {
         assert_eq!(detail.recipes.len(), 1);
         assert_eq!(detail.recipes[0].recipe.recipe.id, r1);
     }
-
     #[tokio::test]
     async fn get_meal_returns_none_for_missing_id() {
         assert!(get_meal(999).await.unwrap().is_none());
     }
-
     #[tokio::test]
     async fn list_ingredients_defaults_ignore_density_false() {
         create_named_ingredient("flour").await;
@@ -955,7 +911,6 @@ mod tests {
         assert!(!list[0].ignore_density);
         assert!(list[0].is_incomplete());
     }
-
     #[tokio::test]
     async fn update_ingredient_sets_fields() {
         let id = create_named_ingredient("olive oil").await;
@@ -977,7 +932,6 @@ mod tests {
         assert!(!i.ignore_density);
         assert!(!i.is_incomplete());
     }
-
     #[tokio::test]
     async fn ignore_density_clears_incomplete_flag_without_density() {
         let id = create_named_ingredient("egg").await;
@@ -1002,7 +956,6 @@ mod tests {
         assert!(i.ignore_density);
         assert!(!i.is_incomplete());
     }
-
     #[tokio::test]
     async fn missing_section_still_flagged_even_with_ignore_density() {
         let id = create_named_ingredient("egg").await;
@@ -1025,7 +978,6 @@ mod tests {
             .unwrap();
         assert!(i.is_incomplete(), "section missing should still flag");
     }
-
     #[tokio::test]
     async fn update_ingredient_rejects_blank_name() {
         let id = create_named_ingredient("x").await;
@@ -1040,7 +992,6 @@ mod tests {
         .expect_err("blank name should err");
         assert!(format!("{err:#}").contains("name is required"));
     }
-
     #[tokio::test]
     async fn update_ingredient_rejects_non_positive_density() {
         let id = create_named_ingredient("x").await;
@@ -1058,7 +1009,6 @@ mod tests {
             assert!(format!("{err:#}").contains("positive"));
         }
     }
-
     #[tokio::test]
     async fn update_ingredient_blank_section_stores_null() {
         let id = create_named_ingredient("x").await;
@@ -1081,7 +1031,6 @@ mod tests {
             .unwrap();
         assert_eq!(i.grocery_section, None);
     }
-
     #[tokio::test]
     async fn update_ingredient_unknown_id_errors() {
         let err = update_ingredient(
@@ -1095,7 +1044,6 @@ mod tests {
         .expect_err("missing id should err");
         assert!(format!("{err:#}").contains("not found"));
     }
-
     #[tokio::test]
     async fn update_ingredient_can_rename() {
         let id = create_named_ingredient("kosher salt").await;

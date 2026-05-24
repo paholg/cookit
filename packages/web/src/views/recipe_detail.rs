@@ -3,7 +3,6 @@ use api::get_recipe;
 use dioxus::prelude::*;
 use pulldown_cmark::{Options, Parser, html};
 use types::RecipeStepIngredient;
-
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {
     let recipe = use_server_future(move || get_recipe(id))?;
@@ -54,7 +53,6 @@ pub fn RecipeDetail(id: i64) -> Element {
         }
     }
 }
-
 fn render_markdown(src: &str) -> String {
     let mut opts = Options::empty();
     opts.insert(Options::ENABLE_STRIKETHROUGH);
@@ -65,7 +63,6 @@ fn render_markdown(src: &str) -> String {
     html::push_html(&mut out, parser);
     out
 }
-
 fn format_quantity(q: f64) -> String {
     if (q.fract()).abs() < f64::EPSILON {
         format!("{}", q as i64)
@@ -73,7 +70,6 @@ fn format_quantity(q: f64) -> String {
         format!("{q}")
     }
 }
-
 fn format_ingredient_line(ing: &RecipeStepIngredient) -> String {
     let qty = format_quantity(ing.quantity);
     let unit = ing.unit.label();
