@@ -9,4 +9,5 @@ server = { workspace = true, optional = true }
 types = { workspace = true }
 
 [features]
+dev-auth = ["server?/dev-auth"]
 server = ["dep:server", "dioxus/server"]

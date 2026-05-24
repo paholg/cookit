@@ -116,9 +116,32 @@ fn AuthControls() -> Element {
                 }
             }
         }
-        None => rsx! {
-            a { href: "/auth/login", class: "auth-login", "Log in" }
-        },
+        None => login_controls(),
+    }
+}
+
+#[cfg(not(feature = "dev-auth"))]
+fn login_controls() -> Element {
+    rsx! {
+        a { href: "/auth/login", class: "auth-login", "Log in" }
+    }
+}
+
+#[cfg(feature = "dev-auth")]
+fn login_controls() -> Element {
+    rsx! {
+        form {
+            method: "post",
+            action: "/auth/dev-login/user",
+            class: "auth-login",
+            button { r#type: "submit", class: "linkish", "Log in as user" }
+        }
+        form {
+            method: "post",
+            action: "/auth/dev-login/admin",
+            class: "auth-login",
+            button { r#type: "submit", class: "linkish", "Log in as admin" }
+        }
     }
 }
 

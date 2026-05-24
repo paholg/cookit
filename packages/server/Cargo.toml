@@ -27,3 +27,8 @@ tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
 types = { workspace = true }
 url = "2"
+
+[features]
+# Replace OIDC with simple "log in as user/admin" buttons for local
+# development. Never enable for production builds.
+dev-auth = []

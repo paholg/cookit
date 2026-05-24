@@ -16,5 +16,6 @@ ui = { workspace = true }
 
 [features]
 default = []
+dev-auth = ["api/dev-auth"]
 server = ["api/server", "dioxus/server"]
 web = ["dioxus/web"]

@@ -1,17 +1,14 @@
-//! OIDC authentication: configuration, login/callback/logout HTTP handlers,
-//! session cookie issuance, and helpers for server functions to look up the
-//! current user.
+//! OIDC login flow: env-driven configuration, login/callback/logout HTTP
+//! handlers, and session-cookie issuance on successful login.
 
 use anyhow::{Context, Result, anyhow};
 use axum::Router;
 use axum::extract::{Query, State};
-use axum::http::{HeaderValue, StatusCode, header};
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
-use cookie::time::{Duration as CookieDuration, OffsetDateTime};
-use cookie::{Cookie, CookieJar, Key, SameSite};
-use dioxus::fullstack::FullstackContext;
-use dioxus::prelude::ServerFnError;
+use cookie::time::Duration as CookieDuration;
+use cookie::{CookieJar, Key};
 use openidconnect::core::{CoreProviderMetadata, CoreResponseType};
 use openidconnect::{
     AdditionalClaims, AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
@@ -22,15 +19,18 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 
-const SESSION_COOKIE: &str = "cookit_session";
+use super::{
+    SESSION_COOKIE, SESSION_TTL_DAYS, Session, cookie_builder, jar_from_headers, now,
+    redirect_with_cookies, upsert_user,
+};
+
 const STATE_COOKIE: &str = "cookit_oidc_state";
 const ADMIN_GROUP: &str = "cookit_admin";
 const USER_GROUP: &str = "cookit_user";
-const SESSION_TTL_DAYS: i64 = 30;
 
 /// All OIDC + session configuration, loaded once from env.
 #[derive(Clone)]
-pub struct AuthConfig {
+pub(super) struct AuthConfig {
     pub issuer_url: String,
     pub client_id: String,
     pub client_secret: String,
@@ -76,21 +76,12 @@ impl AuthConfig {
 
 static CONFIG: OnceCell<AuthConfig> = OnceCell::const_new();
 
-pub async fn config() -> &'static AuthConfig {
+pub(super) async fn config() -> &'static AuthConfig {
     CONFIG
         .get_or_init(|| async {
             AuthConfig::from_env().expect("failed to load auth configuration")
         })
         .await
-}
-
-/// Snapshot of the authenticated user, loaded fresh from the DB per request.
-#[derive(Debug, Clone)]
-pub struct CurrentUser {
-    pub id: i64,
-    pub name: String,
-    pub email: String,
-    pub is_admin: bool,
 }
 
 /// `groups` claim on top of the standard OIDC claim set.
@@ -158,17 +149,11 @@ async fn build_oidc_client(state: &AuthState, issuer_url: &str) -> Result<OidcCl
 }
 
 /// Build the axum router for `/auth/*` endpoints.
-pub async fn router() -> Router {
+pub(super) async fn router() -> Router {
     let cfg = config().await.clone();
 
-    // `OIDC_INSECURE_TLS=true` is a dev escape hatch — the local proxy's CA
-    // isn't trusted inside the container. Don't enable in prod.
-    let insecure_tls = std::env::var("OIDC_INSECURE_TLS")
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false);
     let http = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
-        .danger_accept_invalid_certs(insecure_tls)
         .build()
         .expect("failed to build reqwest client for OIDC");
 
@@ -349,137 +334,7 @@ async fn logout(
     Ok(redirect_with_cookies("/", &jar))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Session {
-    user_id: i64,
-    exp: i64,
-}
-
-/// Look up the current user from the session cookie attached to the
-/// in-flight server function request.
-pub async fn current_user() -> Option<CurrentUser> {
-    let cfg = config().await;
-    let headers: axum::http::HeaderMap = FullstackContext::extract().await.ok()?;
-    let jar = jar_from_headers(&headers);
-    let cookie = jar.signed(&cfg.key).get(SESSION_COOKIE)?;
-    let session: Session = serde_json::from_str(cookie.value()).ok()?;
-    if session.exp <= now() {
-        return None;
-    }
-    load_user(session.user_id).await.ok().flatten()
-}
-
-pub async fn require_user() -> Result<CurrentUser, ServerFnError> {
-    current_user()
-        .await
-        .ok_or_else(|| status_err(StatusCode::UNAUTHORIZED, "login required"))
-}
-
-pub async fn require_admin() -> Result<CurrentUser, ServerFnError> {
-    let user = require_user().await?;
-    if !user.is_admin {
-        return Err(status_err(StatusCode::FORBIDDEN, "admin only"));
-    }
-    Ok(user)
-}
-
-fn status_err(status: StatusCode, message: &str) -> ServerFnError {
-    ServerFnError::ServerError {
-        message: message.to_string(),
-        code: status.as_u16(),
-        details: None,
-    }
-}
-
-async fn load_user(id: i64) -> Result<Option<CurrentUser>> {
-    let pool = crate::db::pool().await;
-    let row = sqlx::query!(
-        r#"SELECT id as "id!: i64", name as "name!", email as "email!",
-                  is_admin as "is_admin!: bool"
-           FROM users WHERE id = ?"#,
-        id,
-    )
-    .fetch_optional(pool)
-    .await
-    .context("load_user select")?;
-
-    Ok(row.map(|r| CurrentUser {
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        is_admin: r.is_admin,
-    }))
-}
-
-async fn upsert_user(
-    sub: &str,
-    email: &str,
-    name: &str,
-    groups: &[String],
-    is_admin: bool,
-) -> Result<i64> {
-    let pool = crate::db::pool().await;
-    let groups_csv = groups.join(",");
-    let is_admin_int: i64 = if is_admin { 1 } else { 0 };
-    let row = sqlx::query!(
-        r#"INSERT INTO users (oidc_sub, email, name, groups, is_admin)
-           VALUES (?1, ?2, ?3, ?4, ?5)
-           ON CONFLICT(oidc_sub) DO UPDATE SET
-               email = excluded.email,
-               name = excluded.name,
-               groups = excluded.groups,
-               is_admin = excluded.is_admin
-           RETURNING id as "id!: i64""#,
-        sub,
-        email,
-        name,
-        groups_csv,
-        is_admin_int,
-    )
-    .fetch_one(pool)
-    .await
-    .context("upsert_user")?;
-    Ok(row.id)
-}
-
 // -- helpers -----------------------------------------------------------------
-
-fn jar_from_headers(headers: &axum::http::HeaderMap) -> CookieJar {
-    let mut jar = CookieJar::new();
-    for cookie_header in headers.get_all(header::COOKIE) {
-        let Ok(s) = cookie_header.to_str() else {
-            continue;
-        };
-        for raw in s.split(';') {
-            if let Ok(c) = Cookie::parse(raw.trim().to_string()) {
-                jar.add_original(c);
-            }
-        }
-    }
-    jar
-}
-
-fn cookie_builder(
-    name: &'static str,
-    value: String,
-    secure: bool,
-) -> cookie::CookieBuilder<'static> {
-    Cookie::build((name, value))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .secure(secure)
-}
-
-fn redirect_with_cookies(location: &str, jar: &CookieJar) -> Response {
-    let mut response = Redirect::to(location).into_response();
-    for cookie in jar.delta() {
-        if let Ok(value) = HeaderValue::from_str(&cookie.to_string()) {
-            response.headers_mut().append(header::SET_COOKIE, value);
-        }
-    }
-    response
-}
 
 fn sanitize_return_to(value: Option<&str>) -> String {
     // Only allow same-origin relative paths to prevent open-redirects.
@@ -487,10 +342,6 @@ fn sanitize_return_to(value: Option<&str>) -> String {
         Some(v) if v.starts_with('/') && !v.starts_with("//") => v.to_string(),
         _ => "/".to_string(),
     }
-}
-
-fn now() -> i64 {
-    OffsetDateTime::now_utc().unix_timestamp()
 }
 
 fn validate_url(name: &str, value: &str) -> Result<()> {

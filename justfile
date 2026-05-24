@@ -1,7 +1,7 @@
 set dotenv-load := true
 
 serve *args:
-    cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve {{args}}
+    cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve --features dev-auth {{args}}
 
 check: lint test
 
@@ -30,3 +30,4 @@ clippy:
     cargo clippy --workspace --all-targets -- -D warnings
     cargo clippy --workspace --all-targets --features web -- -D warnings
     cargo clippy --workspace --all-targets --features server -- -D warnings
+    cargo clippy --workspace --all-targets --features "server dev-auth" -- -D warnings
