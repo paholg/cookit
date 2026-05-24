@@ -1,6 +1,18 @@
 use crate::{CurrentUserCtx, Route};
-use api::meals::list_meals;
+use api::meals::{delete_meal, list_meals};
 use dioxus::prelude::*;
+use types::{CurrentUser, Meal};
+
+fn can_modify(user: &Option<CurrentUser>, owner_id: Option<i64>) -> bool {
+    match owner_id {
+        // Local-storage meals have no owner — anyone viewing them owns them.
+        None => true,
+        Some(owner) => match user {
+            Some(u) => u.is_admin || u.id == owner,
+            None => false,
+        },
+    }
+}
 
 #[component]
 pub fn MealList() -> Element {
@@ -9,7 +21,7 @@ pub fn MealList() -> Element {
 
     // `use_resource` (not `use_server_future`) because the local-storage branch
     // runs in the browser; SSR can't see localStorage.
-    let meals = use_resource(move || list_meals(authenticated));
+    let mut meals = use_resource(move || list_meals(authenticated));
 
     rsx! {
         document::Title { "CookIt!" }
@@ -17,6 +29,7 @@ pub fn MealList() -> Element {
             h1 { "Meals" }
             Link { to: Route::MealNew {}, class: "button", "+ New meal" }
         }
+
         match meals.cloned() {
             Some(Ok(list)) if list.is_empty() => rsx! {
                 p { class: "empty", "No meals yet." }
@@ -24,8 +37,11 @@ pub fn MealList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for meal in list {
-                        li { key: "{meal.id}",
-                            Link { to: Route::MealDetail { id: meal.id }, "{meal.name}" }
+                        MealRow {
+                            key: "{meal.id}",
+                            modifiable: can_modify(&user.read(), meal.user_id),
+                            meal,
+                            on_deleted: move |_| meals.restart(),
                         }
                     }
                 }
@@ -36,6 +52,52 @@ pub fn MealList() -> Element {
             None => rsx! {
                 p { "Loading..." }
             },
+        }
+    }
+}
+
+#[component]
+fn MealRow(meal: Meal, modifiable: bool, on_deleted: EventHandler<()>) -> Element {
+    let mut deleting = use_signal(|| false);
+    let mut error: Signal<Option<String>> = use_signal(|| None);
+
+    let id = meal.id;
+
+    rsx! {
+        li {
+            div { class: "meal-row-main",
+                Link { to: Route::MealDetail { id }, "{meal.name}" }
+
+                if modifiable {
+                    div { class: "row-actions",
+                        Link { to: Route::MealEdit { id }, class: "button-link", "Edit" }
+                        button {
+                            r#type: "button",
+                            class: "button-link danger",
+                            disabled: deleting(),
+                            onclick: move |_| {
+                                if deleting() { return; }
+                                deleting.set(true);
+                                error.set(None);
+                                spawn(async move {
+                                    match delete_meal(id).await {
+                                        Ok(()) => on_deleted.call(()),
+                                        Err(e) => {
+                                            error.set(Some(e.to_string()));
+                                            deleting.set(false);
+                                        }
+                                    }
+                                });
+                            },
+                            if deleting() { "Deleting..." } else { "Delete" }
+                        }
+                    }
+                }
+            }
+
+            if let Some(err) = error() {
+                p { class: "error row-error", "Delete failed: {err}" }
+            }
         }
     }
 }

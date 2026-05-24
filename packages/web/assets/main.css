@@ -99,6 +99,30 @@ ul.recipe-list li a {
     font-weight: 500;
 }
 
+ul.recipe-list li .meal-row-main {
+    display: flex;
+    align-items: stretch;
+}
+ul.recipe-list li .meal-row-main > a {
+    flex: 1;
+}
+ul.recipe-list li .meal-row-main .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-right: 0.75rem;
+}
+ul.recipe-list li .meal-row-main .row-actions > a,
+ul.recipe-list li .meal-row-main .row-actions > button {
+    display: inline-flex;
+    padding: 0.4rem 0.8rem;
+    min-height: 36px;
+    font-weight: normal;
+}
+ul.recipe-list li > .row-error {
+    margin: 0 1rem 0.75rem;
+}
+
 .hero {
     text-align: center;
     padding: 3rem 1rem;
@@ -369,6 +393,7 @@ fieldset.step legend { padding: 0 0.5rem; color: var(--muted); }
     border-color: var(--accent);
 }
 .meal-tabs .tab-mult {
+    margin-left: 0.3em;
     opacity: 0.85;
     font-weight: 500;
 }

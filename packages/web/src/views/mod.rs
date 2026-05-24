@@ -1,5 +1,7 @@
 mod recipe_list;
 pub use recipe_list::RecipeList;
+mod recipe_view;
+pub use recipe_view::RecipeView;
 mod recipe_detail;
 pub use recipe_detail::RecipeDetail;
 mod recipe_form;
