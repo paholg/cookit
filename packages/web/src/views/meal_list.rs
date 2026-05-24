@@ -1,9 +1,16 @@
-use crate::Route;
-use api::list_meals;
+use crate::{CurrentUserCtx, Route};
+use api::meals::list_meals;
 use dioxus::prelude::*;
+
 #[component]
 pub fn MealList() -> Element {
-    let meals = use_server_future(list_meals)?;
+    let user = use_context::<CurrentUserCtx>();
+    let authenticated = user.read().is_some();
+
+    // `use_resource` (not `use_server_future`) because the local-storage branch
+    // runs in the browser; SSR can't see localStorage.
+    let meals = use_resource(move || list_meals(authenticated));
+
     rsx! {
         header { class: "page-header",
             h1 { "Meals" }

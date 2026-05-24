@@ -333,7 +333,7 @@ pub async fn list_meals() -> Result<Vec<Meal>> {
     let pool = crate::db::pool().await;
     sqlx::query_as!(
         Meal,
-        r#"SELECT id as "id!: i64", user_id as "user_id!: i64", name as "name!"
+        r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
            FROM meals ORDER BY name"#,
     )
     .fetch_all(pool)
@@ -345,7 +345,7 @@ pub async fn get_meal(id: i64) -> Result<Option<MealDetail>> {
     let pool = crate::db::pool().await;
     let Some(meal) = sqlx::query_as!(
         Meal,
-        r#"SELECT id as "id!: i64", user_id as "user_id!: i64", name as "name!"
+        r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
            FROM meals WHERE id = ?"#,
         id,
     )

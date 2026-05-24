@@ -1,9 +1,11 @@
 use crate::views::meal_form::{MealDraft, MealForm, MealFormMode};
-use api::get_meal;
+use api::meals::get_meal;
 use dioxus::prelude::*;
+
 #[component]
 pub fn MealEdit(id: i64) -> Element {
-    let meal = use_server_future(move || get_meal(id))?;
+    let meal = use_resource(move || get_meal(id));
+
     match meal.cloned() {
         Some(Ok(detail)) => {
             rsx! {

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: i64\", user_id as \"user_id!: i64\", name as \"name!\"\n           FROM meals ORDER BY name",
+  "query": "SELECT id as \"id!: i64\", user_id as \"user_id: i64\", name as \"name!\"\n           FROM meals WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "user_id!: i64",
+        "name": "user_id: i64",
         "ordinal": 1,
         "type_info": "Integer"
       },
@@ -20,7 +20,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -28,5 +28,5 @@
       false
     ]
   },
-  "hash": "4016b766d040eac0768eb11e4bf02b8365654477beadb1474d6ef27cfd17503b"
+  "hash": "88ddcb33d2d4a8eb45f7a41e7ae5dbd8cc523e407fc3a652953562fa60fa31c0"
 }

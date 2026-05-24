@@ -1,6 +1,9 @@
-use crate::{Route, draft_id::DraftId};
+use crate::{CurrentUserCtx, Route, draft_id::DraftId};
 
-use api::{create_meal, list_recipes, update_meal};
+use api::{
+    list_recipes,
+    meals::{create_meal, update_meal},
+};
 use dioxus::prelude::*;
 use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
 use ui::TrashIcon;
@@ -98,6 +101,8 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
     let nav = use_navigator();
+    let user = use_context::<CurrentUserCtx>();
+    let authenticated = user.read().is_some();
     let recipes = use_server_future(list_recipes)?;
     let available: Vec<Recipe> = match recipes.cloned() {
         Some(Ok(list)) => list,
@@ -119,11 +124,8 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
         error.set(None);
         spawn(async move {
             let result: Result<i64, String> = match mode {
-                MealFormMode::Create => create_meal(payload).await.map_err(|e| e.to_string()),
-                MealFormMode::Edit { id } => match update_meal(id, payload).await {
-                    Ok(()) => Ok(id),
-                    Err(e) => Err(e.to_string()),
-                },
+                MealFormMode::Create => create_meal(payload, authenticated).await,
+                MealFormMode::Edit { id } => update_meal(id, payload).await.map(|()| id),
             };
             match result {
                 Ok(id) => {

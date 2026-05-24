@@ -1,18 +1,22 @@
 use crate::{CurrentUserCtx, Route};
-use api::{delete_meal, get_meal};
+use api::meals::{delete_meal, get_meal};
 use dioxus::prelude::*;
 use types::{CurrentUser, RecipeDetail, RecipeStepIngredient};
 
-fn can_modify(user: &Option<CurrentUser>, owner_id: i64) -> bool {
-    match user {
-        Some(u) => u.is_admin || u.id == owner_id,
-        None => false,
+fn can_modify(user: &Option<CurrentUser>, owner_id: Option<i64>) -> bool {
+    match owner_id {
+        // Local-storage meals have no owner — anyone viewing them owns them.
+        None => true,
+        Some(owner) => match user {
+            Some(u) => u.is_admin || u.id == owner,
+            None => false,
+        },
     }
 }
 
 #[component]
 pub fn MealDetail(id: i64) -> Element {
-    let meal = use_server_future(move || get_meal(id))?;
+    let meal = use_resource(move || get_meal(id));
     let mut tab = use_signal(|| 0usize);
     let user = use_context::<CurrentUserCtx>();
     let nav = use_navigator();
