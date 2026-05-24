@@ -22,7 +22,8 @@
               },
               {
                 "host": 443,
-                "container": 8080
+                "container": 8080,
+                "tls": true
               }
             ]
           }

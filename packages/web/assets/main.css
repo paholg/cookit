@@ -178,28 +178,11 @@ form.recipe-form select:focus {
     outline: 2px solid var(--accent);
     outline-offset: -1px;
 }
-.textarea-grow {
-    display: grid;
-}
-.textarea-grow::after {
-    content: attr(data-value) " ";
-    white-space: pre-wrap;
-    word-break: break-word;
-    visibility: hidden;
-}
-.textarea-grow > textarea {
+form.recipe-form textarea {
     resize: none;
     overflow: hidden;
-}
-.textarea-grow > textarea,
-.textarea-grow::after {
-    grid-area: 1 / 1 / 2 / 2;
-    font: inherit;
-    line-height: 1.4;
-    padding: 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: transparent;
+    field-sizing: content;
+    width: 100%;
     box-sizing: border-box;
 }
 form.recipe-form input:disabled {

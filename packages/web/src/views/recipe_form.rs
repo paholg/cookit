@@ -146,6 +146,19 @@ fn focus_field(key: String) {
     });
 }
 
+// Firefox <152 doesn't support CSS `field-sizing: content`, so size the textarea
+// from JS. Once Firefox 152+ is widespread, the CSS rule alone is sufficient and
+// this can be removed.
+fn autogrow_textarea(key: String) {
+    spawn(async move {
+        let safe = key.replace('"', "");
+        let _ = document::eval(&format!(
+            "requestAnimationFrame(() => {{ const el = document.querySelector('[data-focus-key=\"{safe}\"]'); if (el) {{ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
+        ))
+        .await;
+    });
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum RecipeFormMode {
     Create,
@@ -352,15 +365,16 @@ fn StepEditor(
 
             label {
                 "Instruction"
-                div { class: "textarea-grow",
-                    textarea {
-                        rows: "2",
-                        "data-focus-key": "instr-{step_idx}",
-                        oninput: move |e| {
-                            step.write().instruction = e.value();
-                        },
-                        value: "{instruction}",
-                    }
+                textarea {
+                    rows: "1",
+                    "data-focus-key": "instr-{step_idx}",
+                    onmounted: move |_| autogrow_textarea(format!("instr-{step_idx}")),
+                    oninput: move |e| {
+                        step.write().instruction = e.value();
+                        autogrow_textarea(format!("instr-{step_idx}"));
+                    },
+                    initial_value: "{instruction}",
+                    "{instruction}"
                 }
             }
 
