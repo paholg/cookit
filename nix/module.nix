@@ -82,6 +82,26 @@ in
         type = lib.types.path;
         description = "Path to a file containing the OIDC client secret.";
       };
+
+      adminGroup = lib.mkOption {
+        type = lib.types.str;
+        default = "cookit_admin";
+        description = ''
+          Value to match against the `groups` claim to grant admin access.
+          Some providers (e.g. Kanidm) emit fully-qualified group names like
+          `cookit_admin@auth.example.com` — use the exact string the provider
+          sends.
+        '';
+      };
+
+      userGroup = lib.mkOption {
+        type = lib.types.str;
+        default = "cookit_user";
+        description = ''
+          Value to match against the `groups` claim to grant regular user
+          access. See `adminGroup` for the matching rules.
+        '';
+      };
     };
 
     sessionSecretFile = lib.mkOption {
@@ -118,6 +138,8 @@ in
         OIDC_ISSUER_URL = cfg.oidc.issuerUrl;
         OIDC_CLIENT_ID = cfg.oidc.clientId;
         OIDC_REDIRECT_URL = "${cfg.cookitUrl}/auth/callback";
+        OIDC_ADMIN_GROUP = cfg.oidc.adminGroup;
+        OIDC_USER_GROUP = cfg.oidc.userGroup;
         # `%d` expands to the systemd credentials directory at runtime; the
         # `_FILE` suffix tells the binary to read the value from that file
         # rather than from a literal env var.
