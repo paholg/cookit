@@ -1,11 +1,9 @@
 use crate::Route;
-use api::{
-    MassUnit, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, VolumeUnit,
-    create_recipe, list_ingredients, update_recipe,
-};
+use api::{create_recipe, list_ingredients, update_recipe};
 use dioxus::prelude::*;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
+use types::{MassUnit, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, VolumeUnit};
 
 #[derive(Default, Clone, PartialEq)]
 pub struct IngDraft {
@@ -361,7 +359,7 @@ fn StepEditor(
                         oninput: move |e| {
                             step.write().instruction = e.value();
                         },
-                        "{instruction}"
+                        value: "{instruction}",
                     }
                 }
             }
@@ -576,33 +574,33 @@ fn Autocomplete(
                             }
                             Key::ArrowUp
                                 if open() && n > 0 => {
-                                    e.prevent_default();
-                                    let cur = highlight_offset().min(n - 1);
-                                    if cur == 0 {
-                                        // moving up off the top dismisses
-                                        open.set(false);
-                                        highlight_offset.set(0);
-                                    } else {
-                                        highlight_offset.set(cur - 1);
-                                    }
-                                }
-                            Key::Escape
-                                if open() => {
-                                    e.prevent_default();
+                                e.prevent_default();
+                                let cur = highlight_offset().min(n - 1);
+                                if cur == 0 {
+                                    // moving up off the top dismisses
                                     open.set(false);
                                     highlight_offset.set(0);
+                                } else {
+                                    highlight_offset.set(cur - 1);
                                 }
+                            }
+                            Key::Escape
+                                if open() => {
+                                e.prevent_default();
+                                open.set(false);
+                                highlight_offset.set(0);
+                            }
                             Key::Tab
                                 // Accept selection if popup is open, then let
                                 // Tab keep its default focus-advance behavior.
                                 if open() && n > 0 => {
-                                    let i = highlight_offset().min(n - 1);
-                                    if let Some(s) = filtered.get(i) {
-                                        oninput.call(s.clone());
-                                    }
-                                    open.set(false);
-                                    highlight_offset.set(0);
+                                let i = highlight_offset().min(n - 1);
+                                if let Some(s) = filtered.get(i) {
+                                    oninput.call(s.clone());
                                 }
+                                open.set(false);
+                                highlight_offset.set(0);
+                            }
                             Key::Enter => {
                                 if has_command_modifier(&e.modifiers()) {
                                     return;

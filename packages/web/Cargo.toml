@@ -7,10 +7,11 @@ edition = "2024"
 dioxus         = { workspace = true, features = ["router", "fullstack"] }
 ui             = { workspace = true }
 api            = { workspace = true }
+types          = { workspace = true }
 strum          = { version = "0.28", features = ["derive"] }
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 
 [features]
 default = []
 web     = ["dioxus/web"]
-server  = ["dioxus/server", "ui/server", "api/server"]
+server  = ["dioxus/server", "api/server"]

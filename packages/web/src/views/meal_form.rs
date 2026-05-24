@@ -1,6 +1,7 @@
 use crate::Route;
-use api::{MealDetail, NewMeal, NewMealRecipe, Recipe, create_meal, list_recipes, update_meal};
+use api::{create_meal, list_recipes, update_meal};
 use dioxus::prelude::*;
+use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
     pub recipe_id: Option<i64>,
@@ -131,7 +132,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             p { class: "empty",
                 "You don't have any recipes yet. "
                 Link { to: Route::RecipeNew
-                                                                                        {}, "Create one" }
+                                                                                                            {}, "Create one" }
                 " before building a meal."
             }
         }

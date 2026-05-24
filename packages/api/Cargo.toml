@@ -5,12 +5,8 @@ edition = "2024"
 
 [dependencies]
 dioxus = { workspace = true, features = ["fullstack"] }
-serde  = { version = "1", features = ["derive"] }
-strum  = { version = "0.28", features = ["derive"] }
-
-sqlx    = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "migrate"], optional = true }
-tokio   = { version = "1", features = ["sync", "rt", "macros"], optional = true }
-anyhow  = { version = "1", optional = true }
+types  = { workspace = true }
+server = { workspace = true, optional = true }
 
 [features]
-server = ["dioxus/server", "dep:sqlx", "dep:tokio", "dep:anyhow"]
+server = ["dioxus/server", "dep:server"]

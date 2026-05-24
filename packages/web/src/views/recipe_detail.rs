@@ -1,7 +1,8 @@
 use crate::Route;
-use api::{RecipeStepIngredient, get_recipe};
+use api::get_recipe;
 use dioxus::prelude::*;
 use pulldown_cmark::{Options, Parser, html};
+use types::RecipeStepIngredient;
 
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {

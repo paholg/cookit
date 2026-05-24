@@ -3,7 +3,9 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use std::str::FromStr;
 use tokio::sync::OnceCell;
+
 static POOL: OnceCell<SqlitePool> = OnceCell::const_new();
+
 async fn build_pool() -> Result<SqlitePool> {
     let url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite://./dev/cookit.db?mode=rwc".to_string());
@@ -30,6 +32,7 @@ async fn build_pool() -> Result<SqlitePool> {
         .context("failed to run migrations")?;
     Ok(pool)
 }
+
 pub async fn pool() -> &'static SqlitePool {
     POOL.get_or_init(|| async {
         build_pool()

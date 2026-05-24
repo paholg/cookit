@@ -1,6 +1,7 @@
 use crate::Route;
-use api::{RecipeDetail, RecipeStepIngredient, get_meal};
+use api::get_meal;
 use dioxus::prelude::*;
+use types::{RecipeDetail, RecipeStepIngredient};
 #[component]
 pub fn MealDetail(id: i64) -> Element {
     let meal = use_server_future(move || get_meal(id))?;

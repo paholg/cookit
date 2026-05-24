@@ -5,7 +5,3 @@ edition = "2024"
 
 [dependencies]
 dioxus = { workspace = true }
-api    = { workspace = true }
-
-[features]
-server = ["api/server"]

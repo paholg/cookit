@@ -1,12 +1,12 @@
 //! Pool-backed database operations. Each function takes a `&SqlitePool` so it
 //! can be exercised by integration tests against a throwaway in-memory database.
-use crate::{
-    Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe, NewStep,
-    Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
-};
 use anyhow::{Context, Result, anyhow};
 use sqlx::{SqliteConnection, SqlitePool};
 use std::str::FromStr;
+use types::{
+    Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe, NewStep,
+    Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
+};
 const DEFAULT_USER_ID: i64 = 1;
 pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
     sqlx::query_as!(
@@ -18,6 +18,7 @@ pub async fn list_recipes(pool: &SqlitePool) -> Result<Vec<Recipe>> {
     .await
     .context("list_recipes select")
 }
+
 pub async fn get_recipe(pool: &SqlitePool, id: i64) -> Result<Option<RecipeDetail>> {
     let Some(recipe) = sqlx::query_as!(
         Recipe,
@@ -378,7 +379,7 @@ pub async fn update_meal(pool: &SqlitePool, id: i64, input: NewMeal) -> Result<(
     tx.commit().await.context("commit tx")?;
     Ok(())
 }
-fn validate_meal_recipes(recipes: &[crate::NewMealRecipe]) -> Result<()> {
+fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
         if !mr.multiplier.is_finite() || mr.multiplier <= 0.0 {
             return Err(anyhow!(
@@ -393,7 +394,7 @@ fn validate_meal_recipes(recipes: &[crate::NewMealRecipe]) -> Result<()> {
 async fn insert_meal_recipes_into(
     conn: &mut SqliteConnection,
     meal_id: i64,
-    recipes: &[crate::NewMealRecipe],
+    recipes: &[types::NewMealRecipe],
 ) -> Result<()> {
     for (idx, mr) in recipes.iter().enumerate() {
         let position = idx as i64;
@@ -414,9 +415,9 @@ async fn insert_meal_recipes_into(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MassUnit, NewRecipe, NewStep, NewStepIngredient, UnitKind, VolumeUnit};
     use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     use std::str::FromStr;
+    use types::{MassUnit, NewRecipe, NewStep, NewStepIngredient, UnitKind, VolumeUnit};
     async fn test_pool() -> SqlitePool {
         let opts = SqliteConnectOptions::from_str("sqlite::memory:")
             .unwrap()
@@ -759,7 +760,7 @@ mod tests {
         assert_eq!(detail.recipe.name, "Empty now");
         assert!(detail.steps.is_empty());
     }
-    use crate::{NewMeal, NewMealRecipe};
+    use types::{NewMeal, NewMealRecipe};
     async fn make_recipe(pool: &SqlitePool, name: &str) -> i64 {
         create_recipe(
             pool,
@@ -972,7 +973,7 @@ mod tests {
         let pool = test_pool().await;
         assert!(get_meal(&pool, 999).await.unwrap().is_none());
     }
-    use crate::IngredientUpdate;
+    use types::IngredientUpdate;
     async fn create_named_ingredient(pool: &SqlitePool, name: &str) -> i64 {
         let id = create_recipe(
             pool,
@@ -992,7 +993,7 @@ mod tests {
         create_named_ingredient(&pool, "flour").await;
         let list = list_ingredients(&pool).await.unwrap();
         assert_eq!(list.len(), 1);
-        assert_eq!(list[0].ignore_density, false);
+        assert!(!list[0].ignore_density);
         assert!(list[0].is_incomplete());
     }
     #[tokio::test]

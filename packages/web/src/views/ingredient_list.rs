@@ -1,5 +1,6 @@
-use api::{Ingredient, IngredientUpdate, list_ingredients, update_ingredient};
+use api::{list_ingredients, update_ingredient};
 use dioxus::prelude::*;
+use types::{Ingredient, IngredientUpdate};
 #[derive(Clone, PartialEq)]
 struct RowDraft {
     id: i64,
@@ -179,7 +180,6 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                     input {
                         r#type: "text",
                         inputmode: "decimal",
-                        placeholder: "e.g. 0.91",
                         value: "{row.density}",
                         disabled: row.ignore_density,
                         oninput: move |e| {
@@ -196,7 +196,6 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                     }
                     input {
                         r#type: "text",
-                        placeholder: "e.g. Produce",
                         value: "{row.section}",
                         oninput: move |e| {
                             rows.write()[idx].section = e.value();
