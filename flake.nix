@@ -1,5 +1,6 @@
 {
   inputs = {
+    crane.url = "github:ipetkov/crane";
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "nixpkgs/nixos-unstable";
     rust-overlay = {
@@ -11,6 +12,7 @@
   outputs =
     {
       self,
+      crane,
       flake-utils,
       nixpkgs,
       rust-overlay,
@@ -35,6 +37,24 @@
             ];
             targets = [ "wasm32-unknown-unknown" ];
           };
+
+          craneLib = (crane.mkLib pkgs).overrideToolchain rustMinimal;
+
+          # Keep migrations (sqlx::migrate!), .sqlx (offline data), and
+          # assets (asset! macro) alongside the cargo sources.
+          src =
+            let
+              extraFilter =
+                path: _type:
+                builtins.match ".*/(migrations|\\.sqlx|assets)(/.*)?" path != null
+                || builtins.match ".*\\.(sql|css|js|png|svg|ico)$" path != null;
+              cargoFilter = craneLib.filterCargoSources;
+            in
+            pkgs.lib.cleanSourceWith {
+              src = ./.;
+              filter = path: type: (extraFilter path type) || (cargoFilter path type);
+              name = "source";
+            };
 
           # Extract wasm-bindgen version from Cargo.lock so we don't need to
           # keep nipkgs and Cargo.lock exactly in sync, even for dependents.
@@ -74,35 +94,57 @@
             ]
             ++ [ rustDev ];
 
-          package = pkgs.rustPlatform.buildRustPackage {
+          commonArgs = {
+            inherit src;
             pname = "cookit";
             version = "0.1.0";
-            src = ./.;
             strictDeps = true;
-            nativeBuildInputs = [
-              pkgs.pkg-config
-              pkgs.dioxus-cli
-              wasmBindgenCli
-              pkgs.binaryen
-              rustMinimal
-            ];
+            nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl ];
             SQLX_OFFLINE = "true";
-            buildPhase = ''
-              export HOME=$(mktemp -d)
-              dx build --release --platform web --package web
-            '';
-            installPhase = ''
-              mkdir -p $out/bin
-              cp target/dx/web/release/web/web $out/bin/
-              cp -r target/dx/web/release/web/public $out/bin/
-            '';
-            cargoLock.lockFile = ./Cargo.lock;
           };
+
+          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+          cookit-tests = craneLib.cargoNextest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              partitions = 1;
+              partitionType = "count";
+            }
+          );
+
+          package = craneLib.buildPackage (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              nativeBuildInputs = commonArgs.nativeBuildInputs ++ [
+                pkgs.dioxus-cli
+                wasmBindgenCli
+                pkgs.binaryen
+                rustMinimal
+              ];
+              doCheck = false;
+              doNotPostBuildInstallCargoBinaries = true;
+              buildPhaseCargoCommand = ''
+                export HOME=$(mktemp -d)
+                dx build --release --platform web --package web
+              '';
+              installPhaseCommand = ''
+                mkdir -p $out/bin
+                cp target/dx/web/release/web/server $out/bin/web
+                cp -r target/dx/web/release/web/public $out/bin/
+              '';
+            }
+          );
 
         in
         {
           packages.default = package;
+          checks = {
+            inherit cookit-tests;
+          };
           devShells.default = pkgs.mkShell {
             env = {
               DATABASE_URL = "sqlite:///home/paho/src/cookit/dev/cookit.db";
