@@ -50,8 +50,8 @@ impl AuthConfig {
         let redirect_url =
             std::env::var("OIDC_REDIRECT_URL").context("OIDC_REDIRECT_URL not set")?;
         validate_url("OIDC_REDIRECT_URL", &redirect_url)?;
-        let admin_group = std::env::var("OIDC_ADMIN_GROUP")
-            .unwrap_or_else(|_| DEFAULT_ADMIN_GROUP.to_string());
+        let admin_group =
+            std::env::var("OIDC_ADMIN_GROUP").unwrap_or_else(|_| DEFAULT_ADMIN_GROUP.to_string());
         let user_group =
             std::env::var("OIDC_USER_GROUP").unwrap_or_else(|_| DEFAULT_USER_GROUP.to_string());
         let cookie_secure = std::env::var("SESSION_COOKIE_SECURE")
