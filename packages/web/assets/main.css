@@ -496,8 +496,8 @@ fieldset.step legend {
 
 .meal-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
-  overflow-x: auto;
   margin: 0.5rem 0 1rem;
   padding-bottom: 0.25rem;
 }
