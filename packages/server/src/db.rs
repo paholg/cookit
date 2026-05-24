@@ -14,8 +14,7 @@ pub(crate) async fn pool() -> &'static SqlitePool {
 #[cfg(not(test))]
 async fn build_pool() -> Result<SqlitePool> {
     use std::str::FromStr;
-    let url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://./dev/cookit.db?mode=rwc".to_string());
+    let url = std::env::var("DATABASE_URL")?;
     if let Some(path) = url.strip_prefix("sqlite://") {
         let path = path.split('?').next().unwrap_or(path);
         if let Some(parent) = std::path::Path::new(path).parent()

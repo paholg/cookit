@@ -6,3 +6,5 @@ echo "CLAUDE_CODE_CACHE_BUST=\"$CLAUDE_CODE_CACHE_BUST\"" >> .devcontainer/.env
 
 echo "WORKSPACE_DIR=$(basename "$(pwd)")" >> .devcontainer/.env
 
+docker volume create cookit-rust-target-cache 2>/dev/null || true
+
