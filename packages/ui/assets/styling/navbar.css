@@ -25,3 +25,10 @@
 #navbar a:hover {
     text-decoration: underline;
 }
+
+#navbar .auth-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}

@@ -103,7 +103,7 @@ fn AppNavbar() -> Element {
 fn AuthControls() -> Element {
     let user = use_context::<CurrentUserCtx>();
 
-    match user.read().as_ref() {
+    let inner = match user.read().as_ref() {
         Some(u) => {
             let name = u.name.clone();
             rsx! {
@@ -117,6 +117,10 @@ fn AuthControls() -> Element {
             }
         }
         None => login_controls(),
+    };
+
+    rsx! {
+        div { class: "auth-controls", {inner} }
     }
 }
 
