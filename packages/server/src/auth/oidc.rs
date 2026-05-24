@@ -25,8 +25,8 @@ use super::{
 };
 
 const STATE_COOKIE: &str = "cookit_oidc_state";
-const ADMIN_GROUP: &str = "cookit_admin";
-const USER_GROUP: &str = "cookit_user";
+const DEFAULT_ADMIN_GROUP: &str = "cookit_admin";
+const DEFAULT_USER_GROUP: &str = "cookit_user";
 
 /// All OIDC + session configuration, loaded once from env.
 #[derive(Clone)]
@@ -35,6 +35,8 @@ pub(super) struct AuthConfig {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_url: String,
+    pub admin_group: String,
+    pub user_group: String,
     pub cookie_secure: bool,
     pub key: Key,
 }
@@ -48,6 +50,10 @@ impl AuthConfig {
         let redirect_url =
             std::env::var("OIDC_REDIRECT_URL").context("OIDC_REDIRECT_URL not set")?;
         validate_url("OIDC_REDIRECT_URL", &redirect_url)?;
+        let admin_group = std::env::var("OIDC_ADMIN_GROUP")
+            .unwrap_or_else(|_| DEFAULT_ADMIN_GROUP.to_string());
+        let user_group =
+            std::env::var("OIDC_USER_GROUP").unwrap_or_else(|_| DEFAULT_USER_GROUP.to_string());
         let cookie_secure = std::env::var("SESSION_COOKIE_SECURE")
             .ok()
             .map(|v| v != "false" && v != "0")
@@ -68,6 +74,8 @@ impl AuthConfig {
             client_id,
             client_secret,
             redirect_url,
+            admin_group,
+            user_group,
             cookie_secure,
             key,
         })
@@ -292,8 +300,10 @@ async fn callback(
         .unwrap_or_else(|| email.clone());
     let groups: Vec<String> = claims.additional_claims().groups.clone();
 
-    let is_admin = groups.iter().any(|g| g == ADMIN_GROUP);
-    let is_member = is_admin || groups.iter().any(|g| g == USER_GROUP);
+    let admin_group = &state.cfg.admin_group;
+    let user_group = &state.cfg.user_group;
+    let is_admin = groups.iter().any(|g| g == admin_group);
+    let is_member = is_admin || groups.iter().any(|g| g == user_group);
 
     // Clear the state cookie regardless of outcome.
     jar.signed_mut(&state.cfg.key)
@@ -301,7 +311,7 @@ async fn callback(
 
     if !is_member {
         return Err(AuthError::Forbidden(format!(
-            "Login rejected: account `{sub}` is not in `{ADMIN_GROUP}` or `{USER_GROUP}`. \
+            "Login rejected: account `{sub}` is not in `{admin_group}` or `{user_group}`. \
              Groups: {groups:?}."
         )));
     }
