@@ -1,7 +1,7 @@
 {
   "name": "CookIt!",
   "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
+  "service": "cookit",
   "workspaceFolder": "/workspace",
   "initializeCommand": ".devcontainer/initialize.sh",
   "forwardPorts": [
@@ -14,20 +14,11 @@
       "proxy": {
         "enable": true,
         "services": {
-          "app": {
+          "cookit": {
             "ports": [
               {
                 "host": 443,
                 "container": 8080,
-                "tls": true
-              }
-            ]
-          },
-          "oidc": {
-            "ports": [
-              {
-                "host": 443,
-                "container": 8090,
                 "tls": true
               }
             ]
