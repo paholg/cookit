@@ -12,6 +12,7 @@ pub fn MealList() -> Element {
     let meals = use_resource(move || list_meals(authenticated));
 
     rsx! {
+        document::Title { "CookIt!" }
         header { class: "page-header",
             h1 { "Meals" }
             Link { to: Route::MealNew {}, class: "button", "+ New meal" }

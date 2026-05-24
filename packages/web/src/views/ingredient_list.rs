@@ -83,6 +83,7 @@ pub fn IngredientList() -> Element {
         .filter(|r| r.snapshot().is_incomplete())
         .count();
     rsx! {
+        document::Title { "CookIt!" }
         header { class: "page-header",
             h1 { "Ingredients" }
             if incomplete_count > 0 {
