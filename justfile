@@ -1,7 +1,7 @@
 set dotenv-load := true
 
 serve *args:
-    cd packages/web && DATABASE_URL="sqlite://{{justfile_directory()}}/dev/cookit.db?mode=rwc" dx serve --features dev-auth {{args}}
+    dx serve -p web --features dev-auth {{args}}
 
 prepare:
     cargo sqlx prepare --workspace -- --all-targets --all-features

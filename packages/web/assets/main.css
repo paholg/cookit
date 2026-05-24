@@ -319,6 +319,7 @@ fieldset.step legend {
   grid-template-columns: 4rem 7rem 1fr auto;
   gap: 0.4rem;
   align-items: start;
+  padding: 0.2rem 0;
 }
 
 .ingredient-row .qty {
@@ -328,7 +329,6 @@ fieldset.step legend {
 .ingredient-row .name-cell {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
 }
 
 .ingredient-status {
