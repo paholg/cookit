@@ -133,20 +133,20 @@ pub struct Recipe {
 )]
 #[strum(ascii_case_insensitive)]
 pub enum GrocerySection {
-    Alcohol,
-    Bakery,
-    Beverages,
-    Condiments,
-    Dairy,
-    Deli,
-    Frozen,
-    Household,
-    Meat,
-    Pantry,
     Produce,
+    Bakery,
+    Deli,
+    Meat,
     Seafood,
-    Snacks,
+    Dairy,
+    Frozen,
+    Pantry,
     Spices,
+    Condiments,
+    Beverages,
+    Snacks,
+    Alcohol,
+    Household,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -263,6 +263,98 @@ pub struct NewMeal {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShoppingList {
+    pub id: i64,
+    /// `None` for lists stored in the browser's localStorage; `Some(uid)` for
+    /// lists owned by a user in the database. Mirrors `Meal::user_id`.
+    pub user_id: Option<i64>,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShoppingListItem {
+    pub id: i64,
+    pub name: String,
+    pub grocery_section: Option<GrocerySection>,
+    pub quantity: Option<f64>,
+    pub unit: Option<Unit>,
+    pub checked: bool,
+    pub position: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShoppingListDetail {
+    pub list: ShoppingList,
+    pub items: Vec<ShoppingListItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct NewShoppingListItem {
+    pub name: String,
+    pub grocery_section: Option<GrocerySection>,
+    pub quantity: Option<f64>,
+    pub unit: Option<Unit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct NewShoppingList {
+    pub name: String,
+    pub items: Vec<NewShoppingListItem>,
+}
+
+/// Aggregate every ingredient across every recipe in a meal into a flat list
+/// of shopping-list rows. Quantities are scaled by each recipe's multiplier,
+/// then rows with the same `(name, unit)` are merged by summing quantities.
+/// Rows with the same name but different units stay separate — the UI joins
+/// them inline (e.g. `"3 lb, 2 cup flour"`).
+///
+/// `sections` maps `ingredient_id` to the ingredient's grocery section; pass
+/// an empty map if section data isn't available (everything renders under
+/// "Other").
+pub fn aggregate_from_meal(
+    detail: &MealDetail,
+    sections: &std::collections::HashMap<i64, Option<GrocerySection>>,
+) -> Vec<NewShoppingListItem> {
+    use std::collections::HashMap;
+
+    // Key on (lowercase name, unit-label-or-empty). Keying on the label
+    // string keeps Count("egg") and Custom("egg") in the same bucket — the
+    // display string is what the shopper sees, so that's what should merge.
+    let mut by_key: HashMap<(String, String), usize> = HashMap::new();
+    let mut out: Vec<NewShoppingListItem> = Vec::new();
+
+    for mr in &detail.recipes {
+        for step in &mr.recipe.steps {
+            for ing in &step.ingredients {
+                let scaled_qty = ing.quantity.map(|q| q * mr.multiplier);
+                let unit_label = ing.unit.as_ref().map(|u| u.label()).unwrap_or_default();
+                let key = (ing.ingredient_name.to_lowercase(), unit_label);
+
+                if let Some(&idx) = by_key.get(&key) {
+                    let existing = &mut out[idx];
+                    existing.quantity = match (existing.quantity, scaled_qty) {
+                        (Some(a), Some(b)) => Some(a + b),
+                        (Some(a), None) => Some(a),
+                        (None, b) => b,
+                    };
+                } else {
+                    let section = sections.get(&ing.ingredient_id).cloned().flatten();
+                    out.push(NewShoppingListItem {
+                        name: ing.ingredient_name.clone(),
+                        grocery_section: section,
+                        quantity: scaled_qty,
+                        unit: ing.unit.clone(),
+                    });
+                    by_key.insert(key, out.len() - 1);
+                }
+            }
+        }
+    }
+
+    out
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CurrentUser {
     pub id: i64,
     pub name: String,
@@ -277,4 +369,105 @@ pub struct DevUser {
     pub id: i64,
     pub name: String,
     pub is_admin: bool,
+}
+
+#[cfg(test)]
+mod aggregate_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn ing(id: i64, name: &str, qty: Option<f64>, unit: Option<Unit>) -> RecipeStepIngredient {
+        RecipeStepIngredient {
+            id: 0,
+            ingredient_id: id,
+            ingredient_name: name.into(),
+            quantity: qty,
+            unit,
+            position: 0,
+        }
+    }
+
+    fn meal(recipes: Vec<(f64, Vec<RecipeStepIngredient>)>) -> MealDetail {
+        let recipes = recipes
+            .into_iter()
+            .enumerate()
+            .map(|(i, (mult, ings))| MealRecipe {
+                multiplier: mult,
+                position: i as i64,
+                recipe: RecipeDetail {
+                    recipe: Recipe {
+                        id: i as i64,
+                        name: format!("r{i}"),
+                        source: None,
+                    },
+                    steps: vec![RecipeStep {
+                        id: 0,
+                        position: 0,
+                        instructions: vec![],
+                        ingredients: ings,
+                    }],
+                },
+            })
+            .collect();
+        MealDetail {
+            meal: Meal {
+                id: 1,
+                user_id: None,
+                name: "m".into(),
+            },
+            recipes,
+        }
+    }
+
+    #[test]
+    fn same_unit_sums_and_scales_by_multiplier() {
+        let d = meal(vec![
+            (
+                2.0,
+                vec![ing(1, "flour", Some(1.0), Some(Unit::Mass(Mass::Lb)))],
+            ),
+            (
+                1.0,
+                vec![ing(1, "Flour", Some(1.0), Some(Unit::Mass(Mass::Lb)))],
+            ),
+        ]);
+        let out = aggregate_from_meal(&d, &HashMap::new());
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].name, "flour");
+        assert_eq!(out[0].quantity, Some(3.0));
+    }
+
+    #[test]
+    fn different_units_stay_separate() {
+        let d = meal(vec![(
+            1.0,
+            vec![
+                ing(1, "flour", Some(3.0), Some(Unit::Mass(Mass::Lb))),
+                ing(1, "flour", Some(2.0), Some(Unit::Volume(Volume::Cup))),
+            ],
+        )]);
+        let out = aggregate_from_meal(&d, &HashMap::new());
+        assert_eq!(out.len(), 2);
+        assert!(out.iter().any(|i| i.quantity == Some(3.0)));
+        assert!(out.iter().any(|i| i.quantity == Some(2.0)));
+    }
+
+    #[test]
+    fn section_is_looked_up_from_map() {
+        let d = meal(vec![(
+            1.0,
+            vec![
+                ing(7, "apples", Some(2.0), None),
+                ing(9, "nutmeg", Some(1.0), None),
+            ],
+        )]);
+        let mut sections = HashMap::new();
+        sections.insert(7, Some(GrocerySection::Produce));
+        sections.insert(9, None);
+        let out = aggregate_from_meal(&d, &sections);
+        let apples = out.iter().find(|i| i.name == "apples").unwrap();
+        let nutmeg = out.iter().find(|i| i.name == "nutmeg").unwrap();
+        assert_eq!(apples.grocery_section, Some(GrocerySection::Produce));
+        assert_eq!(nutmeg.grocery_section, None);
+    }
 }

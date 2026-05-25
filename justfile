@@ -8,6 +8,7 @@ seed:
     sqlite3 dev/cookit.db < db/seed.sql
 
 prepare:
+    cargo sqlx migrate run
     cargo sqlx prepare --workspace -- --all-targets --all-features
 
 check: lint test check-sqlx

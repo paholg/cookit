@@ -1,10 +1,12 @@
 use anyhow::{Context, Result, anyhow};
 use sqlx::SqliteConnection;
+use std::collections::HashMap;
 use std::str::FromStr;
 use types::{
     GrocerySection, Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
-    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, StepInstruction, Unit,
-    UnitKind,
+    NewShoppingList, NewShoppingListItem, NewStep, Recipe, RecipeDetail, RecipeStep,
+    RecipeStepIngredient, ShoppingList, ShoppingListDetail, ShoppingListItem, StepInstruction,
+    Unit, UnitKind,
 };
 
 pub fn forbidden() -> anyhow::Error {
@@ -602,6 +604,324 @@ async fn insert_meal_recipes_into(
     }
     Ok(())
 }
+pub async fn list_ingredient_sections() -> Result<HashMap<i64, Option<GrocerySection>>> {
+    let pool = crate::db::pool().await;
+    let rows = sqlx::query!(r#"SELECT id as "id!: i64", grocery_section FROM ingredients"#,)
+        .fetch_all(pool)
+        .await
+        .context("list_ingredient_sections select")?;
+
+    let mut out = HashMap::with_capacity(rows.len());
+    for r in rows {
+        let section = r
+            .grocery_section
+            .as_deref()
+            .map(GrocerySection::from_str)
+            .transpose()
+            .with_context(|| {
+                format!(
+                    "ingredient {} has unknown grocery_section `{}`",
+                    r.id,
+                    r.grocery_section.as_deref().unwrap_or(""),
+                )
+            })?;
+        out.insert(r.id, section);
+    }
+    Ok(out)
+}
+
+pub async fn list_shopping_lists(owner_id: i64, is_admin: bool) -> Result<Vec<ShoppingList>> {
+    let pool = crate::db::pool().await;
+    let rows = if is_admin {
+        sqlx::query_as!(
+            ShoppingList,
+            r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
+               FROM shopping_lists ORDER BY name"#,
+        )
+        .fetch_all(pool)
+        .await
+    } else {
+        sqlx::query_as!(
+            ShoppingList,
+            r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
+               FROM shopping_lists WHERE user_id = ? ORDER BY name"#,
+            owner_id,
+        )
+        .fetch_all(pool)
+        .await
+    };
+    rows.context("list_shopping_lists select")
+}
+
+pub async fn get_shopping_list(id: i64) -> Result<Option<ShoppingListDetail>> {
+    let pool = crate::db::pool().await;
+    let Some(list) = sqlx::query_as!(
+        ShoppingList,
+        r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
+           FROM shopping_lists WHERE id = ?"#,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("get_shopping_list select")?
+    else {
+        return Ok(None);
+    };
+
+    let rows = sqlx::query!(
+        r#"SELECT id as "id!: i64",
+                  name as "name!",
+                  grocery_section as "grocery_section: String",
+                  quantity as "quantity: f64",
+                  unit_kind as "unit_kind: String",
+                  unit as "unit: String",
+                  checked as "checked!: bool",
+                  position as "position!: i64"
+           FROM shopping_list_items
+           WHERE shopping_list_id = ?
+           ORDER BY position, id"#,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+    .context("get_shopping_list items select")?;
+
+    let mut items = Vec::with_capacity(rows.len());
+    for r in rows {
+        let grocery_section = r
+            .grocery_section
+            .as_deref()
+            .map(GrocerySection::from_str)
+            .transpose()
+            .with_context(|| {
+                format!(
+                    "shopping_list_item {} has unknown grocery_section `{}`",
+                    r.id,
+                    r.grocery_section.as_deref().unwrap_or(""),
+                )
+            })?;
+        let unit = match (r.unit_kind.as_deref(), r.unit) {
+            (Some(kind_str), Some(text)) => {
+                let kind = UnitKind::from_str(kind_str).unwrap_or(UnitKind::Custom);
+                Some(Unit::new(kind, &text).unwrap_or(Unit::Custom(text)))
+            }
+            _ => None,
+        };
+        items.push(ShoppingListItem {
+            id: r.id,
+            name: r.name,
+            grocery_section,
+            quantity: r.quantity,
+            unit,
+            checked: r.checked,
+            position: r.position,
+        });
+    }
+
+    Ok(Some(ShoppingListDetail { list, items }))
+}
+
+pub async fn create_shopping_list(input: NewShoppingList, owner_id: i64) -> Result<i64> {
+    let name = input.name.trim();
+    if name.is_empty() {
+        return Err(anyhow!("shopping list name is required"));
+    }
+    validate_shopping_items(&input.items)?;
+
+    let pool = crate::db::pool().await;
+    let mut tx = pool.begin().await.context("begin tx")?;
+    let list_id = sqlx::query!(
+        r#"INSERT INTO shopping_lists (user_id, name) VALUES (?, ?)
+           RETURNING id as "id!: i64""#,
+        owner_id,
+        name,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .context("insert shopping_list")?
+    .id;
+
+    for (idx, item) in input.items.iter().enumerate() {
+        insert_shopping_item_into(&mut tx, list_id, item, idx as i64).await?;
+    }
+    tx.commit().await.context("commit tx")?;
+    Ok(list_id)
+}
+
+pub async fn delete_shopping_list(id: i64, actor_id: i64, is_admin: bool) -> Result<()> {
+    let pool = crate::db::pool().await;
+    ensure_shopping_list_writable(pool, id, actor_id, is_admin).await?;
+    let affected = sqlx::query!("DELETE FROM shopping_lists WHERE id = ?", id)
+        .execute(pool)
+        .await
+        .context("delete shopping_list")?
+        .rows_affected();
+    if affected == 0 {
+        return Err(anyhow!("shopping list {id} not found"));
+    }
+    Ok(())
+}
+
+pub async fn add_shopping_list_item(
+    list_id: i64,
+    item: NewShoppingListItem,
+    actor_id: i64,
+    is_admin: bool,
+) -> Result<i64> {
+    if item.name.trim().is_empty() {
+        return Err(anyhow!("item name is required"));
+    }
+    let pool = crate::db::pool().await;
+    ensure_shopping_list_writable(pool, list_id, actor_id, is_admin).await?;
+
+    let mut tx = pool.begin().await.context("begin tx")?;
+    let next_pos = sqlx::query!(
+        r#"SELECT COALESCE(MAX(position) + 1, 0) as "next!: i64"
+           FROM shopping_list_items WHERE shopping_list_id = ?"#,
+        list_id,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .context("next item position")?
+    .next;
+    let new_id = insert_shopping_item_into(&mut tx, list_id, &item, next_pos).await?;
+    tx.commit().await.context("commit tx")?;
+    Ok(new_id)
+}
+
+pub async fn set_shopping_list_item_checked(
+    item_id: i64,
+    checked: bool,
+    actor_id: i64,
+    is_admin: bool,
+) -> Result<()> {
+    let pool = crate::db::pool().await;
+    ensure_item_writable(pool, item_id, actor_id, is_admin).await?;
+    let affected = sqlx::query!(
+        "UPDATE shopping_list_items SET checked = ? WHERE id = ?",
+        checked,
+        item_id,
+    )
+    .execute(pool)
+    .await
+    .context("update shopping_list_item checked")?
+    .rows_affected();
+    if affected == 0 {
+        return Err(anyhow!("shopping list item {item_id} not found"));
+    }
+    Ok(())
+}
+
+pub async fn delete_shopping_list_item(item_id: i64, actor_id: i64, is_admin: bool) -> Result<()> {
+    let pool = crate::db::pool().await;
+    ensure_item_writable(pool, item_id, actor_id, is_admin).await?;
+    let affected = sqlx::query!("DELETE FROM shopping_list_items WHERE id = ?", item_id)
+        .execute(pool)
+        .await
+        .context("delete shopping_list_item")?
+        .rows_affected();
+    if affected == 0 {
+        return Err(anyhow!("shopping list item {item_id} not found"));
+    }
+    Ok(())
+}
+
+async fn insert_shopping_item_into(
+    conn: &mut SqliteConnection,
+    list_id: i64,
+    item: &NewShoppingListItem,
+    position: i64,
+) -> Result<i64> {
+    let name = item.name.trim();
+    let section = item.grocery_section.map(|s| s.to_string());
+    let unit_kind = item.unit.as_ref().map(|u| u.kind().to_string());
+    let unit_label = item.unit.as_ref().map(|u| u.label());
+    let id = sqlx::query!(
+        r#"INSERT INTO shopping_list_items
+           (shopping_list_id, name, grocery_section, quantity, unit_kind, unit, position)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           RETURNING id as "id!: i64""#,
+        list_id,
+        name,
+        section,
+        item.quantity,
+        unit_kind,
+        unit_label,
+        position,
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .context("insert shopping_list_item")?
+    .id;
+    Ok(id)
+}
+
+fn validate_shopping_items(items: &[NewShoppingListItem]) -> Result<()> {
+    for (idx, item) in items.iter().enumerate() {
+        if item.name.trim().is_empty() {
+            return Err(anyhow!("item {} name is required", idx + 1));
+        }
+        if let Some(q) = item.quantity
+            && (!q.is_finite() || q < 0.0)
+        {
+            return Err(anyhow!(
+                "item {} ({}): quantity must be a non-negative number, got {}",
+                idx + 1,
+                item.name,
+                q,
+            ));
+        }
+    }
+    Ok(())
+}
+
+async fn ensure_shopping_list_writable(
+    pool: &sqlx::SqlitePool,
+    list_id: i64,
+    actor_id: i64,
+    is_admin: bool,
+) -> Result<()> {
+    let row = sqlx::query!(
+        r#"SELECT user_id as "user_id!: i64" FROM shopping_lists WHERE id = ?"#,
+        list_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("ensure_shopping_list_writable select")?
+    .ok_or_else(|| anyhow!("shopping list {list_id} not found"))?;
+
+    if is_admin || row.user_id == actor_id {
+        Ok(())
+    } else {
+        Err(forbidden())
+    }
+}
+
+async fn ensure_item_writable(
+    pool: &sqlx::SqlitePool,
+    item_id: i64,
+    actor_id: i64,
+    is_admin: bool,
+) -> Result<()> {
+    let row = sqlx::query!(
+        r#"SELECT sl.user_id as "user_id!: i64"
+           FROM shopping_list_items sli
+           JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
+           WHERE sli.id = ?"#,
+        item_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .context("ensure_item_writable select")?
+    .ok_or_else(|| anyhow!("shopping list item {item_id} not found"))?;
+
+    if is_admin || row.user_id == actor_id {
+        Ok(())
+    } else {
+        Err(forbidden())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

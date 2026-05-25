@@ -1,13 +1,19 @@
 use api::meals::get_meal;
+use api::shopping_lists::create_from_meal;
 use dioxus::prelude::*;
-use ui::icons::EditIcon;
+use ui::icons::{EditIcon, ListIcon};
 
-use crate::{Route, views::RecipeView};
+use crate::{CurrentUserCtx, Route, views::RecipeView};
 
 #[component]
 pub fn MealDetail(id: i64) -> Element {
+    let user = use_context::<CurrentUserCtx>();
+    let authenticated = user.read().is_some();
     let meal = use_resource(move || get_meal(id));
     let mut tab = use_signal(|| 0usize);
+    let mut making = use_signal(|| false);
+    let mut make_error: Signal<Option<String>> = use_signal(|| None);
+    let nav = navigator();
 
     let title = meal
         .cloned()
@@ -25,16 +31,43 @@ pub fn MealDetail(id: i64) -> Element {
 
                     header { class: "page-header",
                         h1 { "{detail.meal.name}" }
-                        Link {
-                            to: Route::MealEdit { id },
+                        div { class: "page-header-actions",
                             button {
                                 r#type: "button",
                                 class: "icon-button",
-                                "aria-label": "Edit meal",
-                                title: "Edit meal",
-                                EditIcon {}
+                                "aria-label": "Make shopping list",
+                                title: "Make shopping list",
+                                disabled: making(),
+                                onclick: move |_| async move {
+                                    making.set(true);
+                                    make_error.set(None);
+                                    match create_from_meal(id, authenticated).await {
+                                        Ok(new_id) => {
+                                            nav.push(Route::ShoppingListDetail { id: new_id });
+                                        }
+                                        Err(e) => {
+                                            make_error.set(Some(e));
+                                            making.set(false);
+                                        }
+                                    }
+                                },
+                                ListIcon {}
+                            }
+                            Link {
+                                to: Route::MealEdit { id },
+                                button {
+                                    r#type: "button",
+                                    class: "icon-button",
+                                    "aria-label": "Edit meal",
+                                    title: "Edit meal",
+                                    EditIcon {}
+                                }
                             }
                         }
+                    }
+
+                    if let Some(e) = make_error() {
+                        p { class: "error", "{e}" }
                     }
 
                     if recipe_count == 0 {

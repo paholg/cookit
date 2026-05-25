@@ -4,7 +4,7 @@ use types::CurrentUser;
 use ui::navbar::Navbar;
 use views::{
     IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
-    RecipeNew,
+    RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
 };
 
 mod draft_id;
@@ -33,6 +33,12 @@ enum Route {
     MealEdit { id: i64 },
     #[route("/ingredients")]
     IngredientList {},
+    #[route("/shopping-lists")]
+    ShoppingListList {},
+    #[route("/shopping-lists/new")]
+    ShoppingListNew {},
+    #[route("/shopping-lists/:id")]
+    ShoppingListDetail { id: i64 },
 }
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -94,6 +100,7 @@ fn AppNavbar() -> Element {
             // Meals are available to everyone; unauthenticated users get a
             // localStorage-backed view via `api::meals`.
             Link { to: Route::MealList {}, "Meals" }
+            Link { to: Route::ShoppingListList {}, "Shopping" }
             if logged_in {
                 Link { to: Route::IngredientList {}, "Ingredients" }
             }

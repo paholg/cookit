@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT sl.user_id as \"user_id!: i64\"\n           FROM shopping_list_items sli\n           JOIN shopping_lists sl ON sl.id = sli.shopping_list_id\n           WHERE sli.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0c82f255b61ed5f8a44eeae14fc561ef1ebf7f04fea114388395304122524701"
+}

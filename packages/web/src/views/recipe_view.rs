@@ -2,6 +2,8 @@ use dioxus::prelude::*;
 use pulldown_cmark::{Options, Parser, html};
 use types::{RecipeDetail, RecipeStepIngredient};
 
+use super::format::format_quantity;
+
 #[component]
 pub fn RecipeView(detail: RecipeDetail, multiplier: f64) -> Element {
     rsx! {
@@ -57,19 +59,6 @@ fn render_markdown(src: &str) -> String {
     let mut out = String::new();
     html::push_html(&mut out, parser);
     out
-}
-
-fn format_quantity(q: f64) -> String {
-    if q.fract().abs() < f64::EPSILON {
-        return format!("{}", q as i64);
-    }
-
-    let rounded = (q * 100.0).round() / 100.0;
-    if rounded.fract().abs() < f64::EPSILON {
-        format!("{}", rounded as i64)
-    } else {
-        format!("{rounded}")
-    }
 }
 
 fn format_ingredient_line(ing: &RecipeStepIngredient, multiplier: f64) -> String {

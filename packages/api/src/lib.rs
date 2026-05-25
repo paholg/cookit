@@ -5,6 +5,8 @@ use types::{CurrentUser, Ingredient, IngredientUpdate, NewRecipe, Recipe, Recipe
 
 pub mod meals;
 mod remote;
+mod remote_shopping;
+pub mod shopping_lists;
 
 /// Build the axum router for `/auth/*` endpoints. Merge this into the dioxus
 /// router from the server entrypoint.

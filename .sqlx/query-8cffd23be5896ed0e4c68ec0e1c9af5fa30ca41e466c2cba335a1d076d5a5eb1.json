@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: i64\",\n                  name as \"name!\",\n                  grocery_section as \"grocery_section: String\",\n                  quantity as \"quantity: f64\",\n                  unit_kind as \"unit_kind: String\",\n                  unit as \"unit: String\",\n                  checked as \"checked!: bool\",\n                  position as \"position!: i64\"\n           FROM shopping_list_items\n           WHERE shopping_list_id = ?\n           ORDER BY position, id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "grocery_section: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "quantity: f64",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "unit_kind: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "unit: String",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "checked!: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "position!: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "8cffd23be5896ed0e4c68ec0e1c9af5fa30ca41e466c2cba335a1d076d5a5eb1"
+}

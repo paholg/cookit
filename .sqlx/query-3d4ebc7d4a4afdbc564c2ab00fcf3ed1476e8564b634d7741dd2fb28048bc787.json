@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO shopping_list_items\n           (shopping_list_id, name, grocery_section, quantity, unit_kind, unit, position)\n           VALUES (?, ?, ?, ?, ?, ?, ?)\n           RETURNING id as \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3d4ebc7d4a4afdbc564c2ab00fcf3ed1476e8564b634d7741dd2fb28048bc787"
+}

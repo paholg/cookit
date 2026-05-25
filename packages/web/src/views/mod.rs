@@ -1,3 +1,4 @@
+mod format;
 mod recipe_list;
 pub use recipe_list::RecipeList;
 mod recipe_view;
@@ -20,3 +21,9 @@ mod meal_edit;
 pub use meal_edit::MealEdit;
 mod ingredient_list;
 pub use ingredient_list::IngredientList;
+mod shopping_list_list;
+pub use shopping_list_list::ShoppingListList;
+mod shopping_list_new;
+pub use shopping_list_new::ShoppingListNew;
+mod shopping_list_detail;
+pub use shopping_list_detail::ShoppingListDetail;
