@@ -6,17 +6,9 @@ services:
     command: sleep infinity
     volumes:
       - ..:/workspace:cached
-      - cookit-rust-target-cache:/workspace/target
       - ~/.claude:/home/vscode/.claude
       - ~/.claude.json:/home/vscode/.claude.json
     environment:
       COLORTERM: truecolor
       DATABASE_URL: "sqlite:///workspace/dev/cookit.db"
       WORKSPACE_DIR: ${WORKSPACE_DIR}
-
-volumes:
-  # TODO: Fix this. We need to switch to sccache or something, or different
-  # workspaces can have conflicting assets.
-  cookit-rust-target-cache:
-    name: cookit-rust-target-cache
-    external: true

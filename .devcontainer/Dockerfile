@@ -11,9 +11,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && chsh -s /usr/bin/zsh vscode
 
-# Ensure the target directory is created with the correct permissions.
-RUN mkdir -p /workspace /workspace/target && chown -R vscode:vscode /workspace
-
 USER vscode
 ENV CARGO_HOME=/home/vscode/.cargo \
     RUSTUP_HOME=/home/vscode/.rustup \
