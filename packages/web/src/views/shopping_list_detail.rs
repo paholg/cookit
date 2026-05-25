@@ -7,6 +7,7 @@ use types::{GrocerySection, NewShoppingListItem, ShoppingListItem, Unit, UnitKin
 use ui::icons::TrashIcon;
 
 use super::format::format_quantity;
+use crate::views::WakeLockToggle;
 
 #[component]
 pub fn ShoppingListDetail(id: i64) -> Element {
@@ -31,6 +32,7 @@ pub fn ShoppingListDetail(id: i64) -> Element {
                         span { class: "shopping-count",
                             "{checked} / {total}"
                         }
+                        WakeLockToggle {}
                     }
 
                     if total == 0 {

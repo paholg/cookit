@@ -249,6 +249,36 @@ button.icon-button svg {
   display: block;
 }
 
+.page-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+button.icon-button.wake-toggle:hover {
+  color: #b8860b;
+}
+
+button.icon-button.wake-toggle.on,
+button.icon-button.wake-toggle.on:hover {
+  color: #b8860b;
+}
+
+button.icon-button.wake-toggle.on svg path {
+  fill: #fcefb4;
+}
+
+@media (prefers-color-scheme: dark) {
+  button.icon-button.wake-toggle.on svg path {
+    fill: #5a4a14;
+  }
+  button.icon-button.wake-toggle.on,
+  button.icon-button.wake-toggle.on:hover,
+  button.icon-button.wake-toggle:hover {
+    color: #e5b94a;
+  }
+}
+
 .button-link {
   color: var(--fg);
 }
