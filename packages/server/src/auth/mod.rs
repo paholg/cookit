@@ -21,8 +21,13 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "dev-auth")]
 mod dev;
-#[cfg(not(feature = "dev-auth"))]
+// `oidc` is always compiled so sqlx::query! macros in this module are picked
+// up by `cargo sqlx prepare`
+#[cfg_attr(feature = "dev-auth", allow(dead_code))]
 mod oidc;
+
+#[cfg(feature = "dev-auth")]
+pub use dev::list_dev_users;
 
 pub(crate) const SESSION_COOKIE: &str = "cookit_session";
 pub(crate) const SESSION_TTL_DAYS: i64 = 30;
@@ -113,37 +118,6 @@ pub(crate) async fn load_user(id: i64) -> Result<Option<CurrentUser>> {
         email: r.email,
         is_admin: r.is_admin,
     }))
-}
-
-pub(crate) async fn upsert_user(
-    sub: &str,
-    email: &str,
-    name: &str,
-    groups: &[String],
-    is_admin: bool,
-) -> Result<i64> {
-    let pool = crate::db::pool().await;
-    let groups_csv = groups.join(",");
-    let is_admin_int: i64 = if is_admin { 1 } else { 0 };
-    let row = sqlx::query!(
-        r#"INSERT INTO users (oidc_sub, email, name, groups, is_admin)
-           VALUES (?1, ?2, ?3, ?4, ?5)
-           ON CONFLICT(oidc_sub) DO UPDATE SET
-               email = excluded.email,
-               name = excluded.name,
-               groups = excluded.groups,
-               is_admin = excluded.is_admin
-           RETURNING id as "id!: i64""#,
-        sub,
-        email,
-        name,
-        groups_csv,
-        is_admin_int,
-    )
-    .fetch_one(pool)
-    .await
-    .context("upsert_user")?;
-    Ok(row.id)
 }
 
 pub(crate) fn jar_from_headers(headers: &axum::http::HeaderMap) -> CookieJar {

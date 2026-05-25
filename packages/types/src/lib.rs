@@ -133,20 +133,20 @@ pub struct Recipe {
 )]
 #[strum(ascii_case_insensitive)]
 pub enum GrocerySection {
-    Produce,
-    Bakery,
-    Deli,
-    Meat,
-    Seafood,
-    Dairy,
-    Frozen,
-    Pantry,
-    Spices,
-    Condiments,
-    Beverages,
-    Snacks,
     Alcohol,
+    Bakery,
+    Beverages,
+    Condiments,
+    Dairy,
+    Deli,
+    Frozen,
     Household,
+    Meat,
+    Pantry,
+    Produce,
+    Seafood,
+    Snacks,
+    Spices,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -258,5 +258,14 @@ pub struct CurrentUser {
     pub id: i64,
     pub name: String,
     pub email: String,
+    pub is_admin: bool,
+}
+
+/// Public identity of a user shown in the dev-only "log in as" selector.
+/// Only used in builds with the `dev-auth` feature.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DevUser {
+    pub id: i64,
+    pub name: String,
     pub is_admin: bool,
 }

@@ -6,6 +6,7 @@ RUN apt-get update \
         fzf \
         libssl-dev \
         pkg-config \
+        sqlite3 \
         zsh-autosuggestions \
         zsh-syntax-highlighting \
     && rm -rf /var/lib/apt/lists/* \

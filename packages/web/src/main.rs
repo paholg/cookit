@@ -137,18 +137,38 @@ fn login_controls() -> Element {
 
 #[cfg(feature = "dev-auth")]
 fn login_controls() -> Element {
+    rsx! { DevLoginSelect {} }
+}
+
+#[cfg(feature = "dev-auth")]
+#[component]
+fn DevLoginSelect() -> Element {
+    let users_future = use_server_future(api::list_dev_users)?;
+    let users = match users_future.cloned() {
+        Some(Ok(list)) => list,
+        _ => return rsx! { span { class: "auth-login", "…" } },
+    };
+
     rsx! {
         form {
             method: "post",
-            action: "/auth/dev-login/user",
+            action: "/auth/dev-login",
             class: "auth-login",
-            button { r#type: "submit", class: "linkish", "Log in as user" }
-        }
-        form {
-            method: "post",
-            action: "/auth/dev-login/admin",
-            class: "auth-login",
-            button { r#type: "submit", class: "linkish", "Log in as admin" }
+            id: "dev-login-form",
+            select {
+                name: "user_id",
+                required: true,
+                onchange: move |_| {
+                    let _ = document::eval("document.getElementById('dev-login-form').submit()");
+                },
+                option { value: "", disabled: true, selected: true, "Log in" }
+                for u in users {
+                    option {
+                        value: "{u.id}",
+                        if u.is_admin { "{u.name} (admin)" } else { "{u.name}" }
+                    }
+                }
+            }
         }
     }
 }

@@ -21,7 +21,7 @@ use tokio::sync::OnceCell;
 
 use super::{
     SESSION_COOKIE, SESSION_TTL_DAYS, Session, cookie_builder, jar_from_headers, now,
-    redirect_with_cookies, upsert_user,
+    redirect_with_cookies,
 };
 
 const STATE_COOKIE: &str = "cookit_oidc_state";
@@ -409,4 +409,35 @@ impl IntoResponse for AuthError {
         };
         (status, msg).into_response()
     }
+}
+
+async fn upsert_user(
+    sub: &str,
+    email: &str,
+    name: &str,
+    groups: &[String],
+    is_admin: bool,
+) -> Result<i64> {
+    let pool = crate::db::pool().await;
+    let groups_csv = groups.join(",");
+    let is_admin_int: i64 = if is_admin { 1 } else { 0 };
+    let row = sqlx::query!(
+        r#"INSERT INTO users (oidc_sub, email, name, groups, is_admin)
+           VALUES (?1, ?2, ?3, ?4, ?5)
+           ON CONFLICT(oidc_sub) DO UPDATE SET
+               email = excluded.email,
+               name = excluded.name,
+               groups = excluded.groups,
+               is_admin = excluded.is_admin
+           RETURNING id as "id!: i64""#,
+        sub,
+        email,
+        name,
+        groups_csv,
+        is_admin_int,
+    )
+    .fetch_one(pool)
+    .await
+    .context("upsert_user")?;
+    Ok(row.id)
 }

@@ -4,6 +4,7 @@
   "service": "cookit",
   "workspaceFolder": "/workspace",
   "initializeCommand": ".devcontainer/initialize.sh",
+  "postCreateCommand": "just seed",
   "forwardPorts": [
     8080
   ],

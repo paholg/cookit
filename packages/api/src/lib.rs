@@ -1,4 +1,6 @@
 use dioxus::prelude::*;
+#[cfg(feature = "dev-auth")]
+use types::DevUser;
 use types::{CurrentUser, Ingredient, IngredientUpdate, NewRecipe, Recipe, RecipeDetail};
 
 pub mod meals;
@@ -14,6 +16,16 @@ pub async fn auth_router() -> dioxus::server::axum::Router {
 /// Middleware that logs any 5xx response so server failures aren't silent.
 #[cfg(feature = "server")]
 pub use server::middleware::log_server_errors;
+
+/// Dev-only roster of users used by the in-navbar "log in as" `<select>`.
+/// The server function only exists in builds compiled with `dev-auth`.
+#[cfg(feature = "dev-auth")]
+#[get("/api/dev-users")]
+pub async fn list_dev_users() -> Result<Vec<DevUser>, ServerFnError> {
+    server::auth::list_dev_users()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
 
 #[get("/api/me")]
 pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {

@@ -3,6 +3,10 @@ set dotenv-load := true
 serve *args:
     dx serve -p web --features dev-auth {{args}}
 
+seed:
+    cargo sqlx database setup
+    sqlite3 dev/cookit.db < db/seed.sql
+
 prepare:
     cargo sqlx prepare --workspace -- --all-targets --all-features
 
