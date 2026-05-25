@@ -1,10 +1,10 @@
 use crate::{Route, draft_id::DraftId};
-use api::{create_recipe, list_ingredients, update_recipe};
+use api::{create_recipe, delete_recipe, list_ingredients, update_recipe};
 use dioxus::prelude::*;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
 use types::{Mass, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, Volume};
-use ui::TrashIcon;
+use ui::icons::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct IngDraft {
@@ -233,6 +233,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
     let mut draft = use_signal(|| initial.clone());
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
+    let mut deleting = use_signal(|| false);
     let nav = use_navigator();
 
     let ingredients = use_server_future(list_ingredients)?;
@@ -319,6 +320,40 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
     rsx! {
         header { class: "page-header",
             h1 { "{title}" }
+            if let RecipeFormMode::Edit { id } = mode {
+                button {
+                    r#type: "button",
+                    class: "icon-button",
+                    "aria-label": "Delete recipe",
+                    title: "Delete recipe",
+                    disabled: deleting() || submitting(),
+                    onclick: move |_| {
+                        if deleting() { return; }
+                        spawn(async move {
+                            let confirmed = document::eval(
+                                "return confirm('Delete this recipe? This cannot be undone.')",
+                            )
+                                .join::<bool>()
+                                .await
+                                .unwrap_or(false);
+                            if !confirmed { return; }
+
+                            deleting.set(true);
+                            error.set(None);
+                            match delete_recipe(id).await {
+                                Ok(()) => {
+                                    nav.push(Route::RecipeList {});
+                                }
+                                Err(e) => {
+                                    error.set(Some(e.to_string()));
+                                    deleting.set(false);
+                                }
+                            }
+                        });
+                    },
+                    TrashIcon {}
+                }
+            }
         }
 
         form {
@@ -386,6 +421,9 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
             }
 
             div { class: "form-actions",
+                if let RecipeFormMode::Edit { id } = mode {
+                    Link { to: Route::RecipeDetail { id }, class: "button-link", "Cancel" }
+                }
                 button {
                     r#type: "submit",
                     class: "primary",
@@ -395,9 +433,6 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                     } else {
                         "{submit_label_idle}"
                     }
-                }
-                if let RecipeFormMode::Edit { id } = mode {
-                    Link { to: Route::RecipeDetail { id }, class: "button-link", "Cancel" }
                 }
             }
         }

@@ -1,5 +1,5 @@
 use crate::{CurrentUserCtx, Route};
-use api::meals::{delete_meal, list_meals};
+use api::meals::list_meals;
 use dioxus::prelude::*;
 use types::{CurrentUser, Meal};
 
@@ -58,45 +58,12 @@ pub fn MealList() -> Element {
 
 #[component]
 fn MealRow(meal: Meal, modifiable: bool, on_deleted: EventHandler<()>) -> Element {
-    let mut deleting = use_signal(|| false);
-    let mut error: Signal<Option<String>> = use_signal(|| None);
-
     let id = meal.id;
 
     rsx! {
         li {
             div { class: "meal-row-main",
                 Link { to: Route::MealDetail { id }, "{meal.name}" }
-
-                if modifiable {
-                    div { class: "row-actions",
-                        Link { to: Route::MealEdit { id }, class: "button-link", "Edit" }
-                        button {
-                            r#type: "button",
-                            class: "button-link danger",
-                            disabled: deleting(),
-                            onclick: move |_| {
-                                if deleting() { return; }
-                                deleting.set(true);
-                                error.set(None);
-                                spawn(async move {
-                                    match delete_meal(id).await {
-                                        Ok(()) => on_deleted.call(()),
-                                        Err(e) => {
-                                            error.set(Some(e.to_string()));
-                                            deleting.set(false);
-                                        }
-                                    }
-                                });
-                            },
-                            if deleting() { "Deleting..." } else { "Delete" }
-                        }
-                    }
-                }
-            }
-
-            if let Some(err) = error() {
-                p { class: "error row-error", "Delete failed: {err}" }
             }
         }
     }

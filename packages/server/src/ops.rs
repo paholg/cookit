@@ -211,6 +211,41 @@ pub async fn create_recipe(input: NewRecipe) -> Result<i64> {
     tx.commit().await.context("commit tx")?;
     Ok(recipe_id)
 }
+pub async fn delete_recipe(id: i64) -> Result<()> {
+    let pool = crate::db::pool().await;
+
+    let blocking_meals = sqlx::query!(
+        r#"SELECT m.name as "name!"
+           FROM meal_recipes mr
+           JOIN meals m ON m.id = mr.meal_id
+           WHERE mr.recipe_id = ?
+           ORDER BY m.name"#,
+        id,
+    )
+    .fetch_all(pool)
+    .await
+    .context("check meal references")?;
+
+    if !blocking_meals.is_empty() {
+        let names: Vec<String> = blocking_meals.into_iter().map(|r| r.name).collect();
+        return Err(anyhow!(
+            "recipe is used by {} meal(s): {}. Remove it from those meals first.",
+            names.len(),
+            names.join(", "),
+        ));
+    }
+
+    let affected = sqlx::query!("DELETE FROM recipes WHERE id = ?", id)
+        .execute(pool)
+        .await
+        .context("delete recipe")?
+        .rows_affected();
+    if affected == 0 {
+        return Err(anyhow!("recipe {id} not found"));
+    }
+    Ok(())
+}
+
 pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     let name = input.name.trim();
     if name.is_empty() {
@@ -518,12 +553,20 @@ async fn ensure_meal_writable(
     }
 }
 fn validate_meal_recipes(recipes: &[types::NewMealRecipe]) -> Result<()> {
+    let mut seen = std::collections::HashSet::with_capacity(recipes.len());
     for (idx, mr) in recipes.iter().enumerate() {
         if !mr.multiplier.is_finite() || mr.multiplier <= 0.0 {
             return Err(anyhow!(
                 "recipe {} multiplier must be a positive number, got {}",
                 idx + 1,
                 mr.multiplier
+            ));
+        }
+        if !seen.insert(mr.recipe_id) {
+            return Err(anyhow!(
+                "recipe {} (id {}) appears more than once; each recipe can only be added to a meal once",
+                idx + 1,
+                mr.recipe_id,
             ));
         }
     }

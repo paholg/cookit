@@ -2,11 +2,11 @@ use crate::{CurrentUserCtx, Route, draft_id::DraftId};
 
 use api::{
     list_recipes,
-    meals::{create_meal, update_meal},
+    meals::{create_meal, delete_meal, update_meal},
 };
 use dioxus::prelude::*;
 use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
-use ui::TrashIcon;
+use ui::icons::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
@@ -82,6 +82,15 @@ impl MealDraft {
     }
 }
 
+fn all_recipes_used(draft: &MealDraft, available: &[Recipe]) -> bool {
+    let picked: std::collections::HashSet<i64> = draft
+        .recipes
+        .iter()
+        .filter_map(|r| r.recipe_id)
+        .collect();
+    !available.is_empty() && available.iter().all(|r| picked.contains(&r.id))
+}
+
 fn format_mult(m: f64) -> String {
     if (m.fract()).abs() < f64::EPSILON {
         format!("{}", m as i64)
@@ -100,6 +109,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
     let mut draft = use_signal(|| initial.clone());
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
+    let mut deleting = use_signal(|| false);
     let nav = use_navigator();
     let user = use_context::<CurrentUserCtx>();
     let authenticated = user.read().is_some();
@@ -149,6 +159,40 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
     rsx! {
         header { class: "page-header",
             h1 { "{title}" }
+            if let MealFormMode::Edit { id } = mode {
+                button {
+                    r#type: "button",
+                    class: "icon-button",
+                    "aria-label": "Delete meal",
+                    title: "Delete meal",
+                    disabled: deleting() || submitting(),
+                    onclick: move |_| {
+                        if deleting() { return; }
+                        spawn(async move {
+                            let confirmed = document::eval(
+                                "return confirm('Delete this meal? This cannot be undone.')",
+                            )
+                                .join::<bool>()
+                                .await
+                                .unwrap_or(false);
+                            if !confirmed { return; }
+
+                            deleting.set(true);
+                            error.set(None);
+                            match delete_meal(id).await {
+                                Ok(()) => {
+                                    nav.push(Route::MealList {});
+                                }
+                                Err(msg) => {
+                                    error.set(Some(msg));
+                                    deleting.set(false);
+                                }
+                            }
+                        });
+                    },
+                    TrashIcon {}
+                }
+            }
         }
         form { class: "recipe-form", onsubmit: submit,
             label {
@@ -184,7 +228,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             button {
                 r#type: "button",
                 class: "secondary",
-                disabled: available.is_empty(),
+                disabled: available.is_empty() || all_recipes_used(&draft.read(), &available),
                 onclick: move |_| {
                     let mut d = draft.write();
                     let id = d.alloc_row_id();
@@ -200,6 +244,9 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 p { class: "error", "{err}" }
             }
             div { class: "form-actions",
+                if let MealFormMode::Edit { id } = mode {
+                    Link { to: Route::MealDetail { id }, class: "button-link", "Cancel" }
+                }
                 button {
                     r#type: "submit",
                     class: "primary",
@@ -209,9 +256,6 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                     } else {
                         "{submit_label_idle}"
                     }
-                }
-                if let MealFormMode::Edit { id } = mode {
-                    Link { to: Route::MealDetail { id }, class: "button-link", "Cancel" }
                 }
             }
         }
@@ -225,6 +269,15 @@ fn MealRecipeRow(
     recipes: Vec<Recipe>,
 ) -> Element {
     let selected = row.recipe_id.map(|i| i.to_string()).unwrap_or_default();
+
+    let used_by_others: std::collections::HashSet<i64> = draft
+        .read()
+        .recipes
+        .iter()
+        .filter(|r| r.id != row_id)
+        .filter_map(|r| r.recipe_id)
+        .collect();
+
     rsx! {
         div { class: "meal-row",
             select {
@@ -238,7 +291,7 @@ fn MealRecipeRow(
                     }
                 },
                 option { value: "", "— pick a recipe —" }
-                for r in recipes.iter() {
+                for r in recipes.iter().filter(|r| !used_by_others.contains(&r.id)) {
                     option {
                         value: "{r.id}",
                         selected: row.recipe_id == Some(r.id),

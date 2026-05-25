@@ -83,3 +83,11 @@ pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<(), ServerFnErro
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
+
+#[post("/api/recipes/:id/delete")]
+pub async fn delete_recipe(id: i64) -> Result<(), ServerFnError> {
+    server::auth::require_admin().await?;
+    server::ops::delete_recipe(id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}

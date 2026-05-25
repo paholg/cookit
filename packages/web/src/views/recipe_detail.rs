@@ -2,6 +2,7 @@ use crate::views::RecipeView;
 use crate::{CurrentUserCtx, Route};
 use api::get_recipe;
 use dioxus::prelude::*;
+use ui::icons::EditIcon;
 
 #[component]
 pub fn RecipeDetail(id: i64) -> Element {
@@ -23,7 +24,16 @@ pub fn RecipeDetail(id: i64) -> Element {
                 header { class: "page-header",
                     h1 { "{detail.recipe.name}" }
                     if is_admin {
-                        Link { to: Route::RecipeEdit { id }, class: "button-link", "Edit" }
+                        Link {
+                            to: Route::RecipeEdit { id },
+                            button {
+                                r#type: "button",
+                                class: "icon-button",
+                                "aria-label": "Edit recipe",
+                                title: "Edit recipe",
+                                EditIcon {}
+                            }
+                        }
                     }
                 }
                 RecipeView { detail, multiplier: 1.0 }

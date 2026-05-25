@@ -134,12 +134,20 @@ pub fn delete_meal(id: i64) -> Result<()> {
 }
 
 fn validate_recipes(recipes: &[NewMealRecipe]) -> Result<()> {
+    let mut seen = std::collections::HashSet::with_capacity(recipes.len());
     for (idx, mr) in recipes.iter().enumerate() {
         if !mr.multiplier.is_finite() || mr.multiplier <= 0.0 {
             return Err(anyhow!(
                 "recipe {} multiplier must be a positive number, got {}",
                 idx + 1,
                 mr.multiplier
+            ));
+        }
+        if !seen.insert(mr.recipe_id) {
+            return Err(anyhow!(
+                "recipe {} (id {}) appears more than once; each recipe can only be added to a meal once",
+                idx + 1,
+                mr.recipe_id,
             ));
         }
     }

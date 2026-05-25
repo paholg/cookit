@@ -262,6 +262,7 @@ button.icon-button svg {
   display: flex;
   gap: var(--gap);
   align-items: center;
+  margin-left: auto;
   margin-top: 0.5rem;
 }
 

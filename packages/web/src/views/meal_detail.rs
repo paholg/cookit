@@ -1,6 +1,8 @@
-use crate::views::RecipeView;
 use api::meals::get_meal;
 use dioxus::prelude::*;
+use ui::icons::EditIcon;
+
+use crate::{Route, views::RecipeView};
 
 #[component]
 pub fn MealDetail(id: i64) -> Element {
@@ -20,8 +22,19 @@ pub fn MealDetail(id: i64) -> Element {
 
             rsx! {
                 article { class: "meal",
+
                     header { class: "page-header",
                         h1 { "{detail.meal.name}" }
+                        Link {
+                            to: Route::MealEdit { id },
+                            button {
+                                r#type: "button",
+                                class: "icon-button",
+                                "aria-label": "Edit meal",
+                                title: "Edit meal",
+                                EditIcon {}
+                            }
+                        }
                     }
 
                     if recipe_count == 0 {
