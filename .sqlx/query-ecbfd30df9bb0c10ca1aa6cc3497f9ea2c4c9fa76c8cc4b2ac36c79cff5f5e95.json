@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: i64\", position as \"position!: i64\",\n                  instruction as \"instruction!\"\n           FROM recipe_steps WHERE recipe_id = ? ORDER BY position",
+  "query": "SELECT id as \"id!: i64\",\n                      position as \"position!: i64\",\n                      text as \"text!\"\n               FROM recipe_step_instructions\n               WHERE step_id = ? ORDER BY position",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "instruction!",
+        "name": "text!",
         "ordinal": 2,
         "type_info": "Text"
       }
@@ -28,5 +28,5 @@
       false
     ]
   },
-  "hash": "3287f457b17a3c2b8ceb455d0d9d67594465a8c3fc7b33b8429d3b73d4cfc31c"
+  "hash": "ecbfd30df9bb0c10ca1aa6cc3497f9ea2c4c9fa76c8cc4b2ac36c79cff5f5e95"
 }

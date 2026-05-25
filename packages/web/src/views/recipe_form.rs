@@ -93,7 +93,12 @@ impl RecipeDraft {
                 .into_iter()
                 .map(|s| StepDraft {
                     id: s.id.into(),
-                    instruction: s.instruction,
+                    instruction: s
+                        .instructions
+                        .into_iter()
+                        .map(|i| i.text)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                     ingredients: s
                         .ingredients
                         .into_iter()
@@ -142,8 +147,16 @@ impl RecipeDraft {
                     unit: ing.unit.clone(),
                 });
             }
+            let instructions = step
+                .instruction
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(str::to_string)
+                .collect();
+
             steps.push(NewStep {
-                instruction: step.instruction.clone(),
+                instructions,
                 ingredients: ings,
             });
         }
@@ -197,12 +210,13 @@ fn focus_field(key: String) {
 
 // Firefox <152 doesn't support CSS `field-sizing: content`, so size the textarea
 // from JS. Once Firefox 152+ is widespread, the CSS rule alone is sufficient and
-// this can be removed.
+// this can be removed. Queries `data-autogrow` (separate from `data-focus-key`)
+// so the focus target and the autogrow target can be different elements.
 fn autogrow_textarea(key: String) {
     spawn(async move {
         let safe = key.replace('"', "");
         let _ = document::eval(&format!(
-            "requestAnimationFrame(() => {{ const el = document.querySelector('[data-focus-key=\"{safe}\"]'); if (el) {{ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
+            "requestAnimationFrame(() => {{ const el = document.querySelector('[data-autogrow=\"{safe}\"]'); if (el) {{ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
         ))
         .await;
     });
@@ -487,6 +501,7 @@ fn StepEditor(
                 // shows on first render and after re-renders.
                 textarea {
                     rows: "1",
+                    "data-autogrow": "instr-{step_key}",
                     onmounted: {
                         let step_key = step_key.clone();
                         move |_| autogrow_textarea(format!("instr-{step_key}"))

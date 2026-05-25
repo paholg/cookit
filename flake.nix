@@ -86,6 +86,7 @@
               cargo-edit
               cargo-nextest
               just
+              litecli
               pkg-config
               openssl
               playwright-test

@@ -447,16 +447,20 @@ fieldset.step legend {
   font-size: 0.95rem;
 }
 
-.recipe table.recipe-steps td.ingredients div+div {
-  margin-top: 0.15rem;
+.recipe table.recipe-steps td.ingredients .ingredient-block+.ingredient-block {
+  margin-top: 0.5rem;
 }
 
-.recipe table.recipe-steps td.instruction>div> :first-child {
+.recipe table.recipe-steps td.instruction .instruction-block> :first-child {
   margin-top: 0;
 }
 
-.recipe table.recipe-steps td.instruction>div> :last-child {
+.recipe table.recipe-steps td.instruction .instruction-block> :last-child {
   margin-bottom: 0;
+}
+
+.recipe table.recipe-steps td.instruction .instruction-block+.instruction-block {
+  margin-top: 0.5rem;
 }
 
 .recipe table.recipe-steps td.instruction p {

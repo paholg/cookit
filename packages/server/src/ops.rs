@@ -3,7 +3,8 @@ use sqlx::SqliteConnection;
 use std::str::FromStr;
 use types::{
     GrocerySection, Ingredient, IngredientUpdate, Meal, MealDetail, MealRecipe, NewMeal, NewRecipe,
-    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, Unit, UnitKind,
+    NewStep, Recipe, RecipeDetail, RecipeStep, RecipeStepIngredient, StepInstruction, Unit,
+    UnitKind,
 };
 
 pub fn forbidden() -> anyhow::Error {
@@ -39,8 +40,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
     };
 
     let step_rows = sqlx::query!(
-        r#"SELECT id as "id!: i64", position as "position!: i64",
-                  instruction as "instruction!"
+        r#"SELECT id as "id!: i64", position as "position!: i64"
            FROM recipe_steps WHERE recipe_id = ? ORDER BY position"#,
         id,
     )
@@ -50,6 +50,27 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
 
     let mut steps = Vec::with_capacity(step_rows.len());
     for sr in step_rows {
+        let instr_rows = sqlx::query!(
+            r#"SELECT id as "id!: i64",
+                      position as "position!: i64",
+                      text as "text!"
+               FROM recipe_step_instructions
+               WHERE step_id = ? ORDER BY position"#,
+            sr.id,
+        )
+        .fetch_all(pool)
+        .await
+        .context("get_recipe step instructions select")?;
+
+        let instructions = instr_rows
+            .into_iter()
+            .map(|r| StepInstruction {
+                id: r.id,
+                position: r.position,
+                text: r.text,
+            })
+            .collect();
+
         let ing_rows = sqlx::query!(
             r#"SELECT rsi.id as "id!: i64",
                       rsi.ingredient_id as "ingredient_id!: i64",
@@ -86,7 +107,7 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
         steps.push(RecipeStep {
             id: sr.id,
             position: sr.position,
-            instruction: sr.instruction,
+            instructions,
             ingredients,
         });
     }
@@ -225,8 +246,13 @@ pub async fn update_recipe(id: i64, input: NewRecipe) -> Result<()> {
     Ok(())
 }
 
-fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredient>)>> {
-    let mut out: Vec<(String, Vec<ConvertedIngredient>)> = Vec::with_capacity(steps.len());
+struct ConvertedStep {
+    instructions: Vec<String>,
+    ingredients: Vec<ConvertedIngredient>,
+}
+
+fn convert_steps(steps: &[NewStep]) -> Result<Vec<ConvertedStep>> {
+    let mut out: Vec<ConvertedStep> = Vec::with_capacity(steps.len());
     for (step_idx, step) in steps.iter().enumerate() {
         let mut ings = Vec::with_capacity(step.ingredients.len());
         for (ing_idx, ing) in step.ingredients.iter().enumerate() {
@@ -256,7 +282,19 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
                 unit,
             });
         }
-        out.push((step.instruction.clone(), ings));
+
+        let instructions = step
+            .instructions
+            .iter()
+            .map(|t| t.trim())
+            .filter(|t| !t.is_empty())
+            .map(|t| t.to_string())
+            .collect();
+
+        out.push(ConvertedStep {
+            instructions,
+            ingredients: ings,
+        });
     }
     Ok(out)
 }
@@ -264,23 +302,38 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<(String, Vec<ConvertedIngredie
 async fn insert_steps_into(
     conn: &mut SqliteConnection,
     recipe_id: i64,
-    converted_steps: Vec<(String, Vec<ConvertedIngredient>)>,
+    converted_steps: Vec<ConvertedStep>,
 ) -> Result<()> {
-    for (step_idx, (instruction, ingredients)) in converted_steps.into_iter().enumerate() {
+    for (step_idx, step) in converted_steps.into_iter().enumerate() {
         let step_position = step_idx as i64;
         let step_id = sqlx::query!(
-            r#"INSERT INTO recipe_steps (recipe_id, position, instruction)
-               VALUES (?, ?, ?)
+            r#"INSERT INTO recipe_steps (recipe_id, position)
+               VALUES (?, ?)
                RETURNING id as "id!: i64""#,
             recipe_id,
             step_position,
-            instruction,
         )
         .fetch_one(&mut *conn)
         .await
         .context("insert step")?
         .id;
-        for (ing_idx, ing) in ingredients.iter().enumerate() {
+
+        for (instr_idx, text) in step.instructions.iter().enumerate() {
+            let instr_position = instr_idx as i64;
+            sqlx::query!(
+                r#"INSERT INTO recipe_step_instructions
+                   (step_id, position, text)
+                   VALUES (?, ?, ?)"#,
+                step_id,
+                instr_position,
+                text,
+            )
+            .execute(&mut *conn)
+            .await
+            .context("insert step instruction")?;
+        }
+
+        for (ing_idx, ing) in step.ingredients.iter().enumerate() {
             let ingredient_id = match sqlx::query!(
                 r#"SELECT id as "id!: i64" FROM ingredients
                    WHERE name = ? COLLATE NOCASE"#,
@@ -517,7 +570,7 @@ mod tests {
             name: name.into(),
             source: None,
             steps: vec![NewStep {
-                instruction: "do the thing".into(),
+                instructions: vec!["do the thing".into()],
                 ingredients,
             }],
         }
@@ -559,7 +612,7 @@ mod tests {
             name: "Chili".into(),
             source: Some("https://example.com/chili".into()),
             steps: vec![NewStep {
-                instruction: "Brown the beef.".into(),
+                instructions: vec!["Brown the beef.".into()],
                 ingredients: vec![
                     ing("ground beef", 1.0, UnitKind::Mass, "lb"),
                     ing("onion", 1.0, UnitKind::Custom, "medium"),
@@ -574,7 +627,9 @@ mod tests {
             Some("https://example.com/chili")
         );
         assert_eq!(detail.steps.len(), 1);
-        assert_eq!(detail.steps[0].instruction, "Brown the beef.");
+        assert_eq!(detail.steps[0].instructions.len(), 1);
+        assert_eq!(detail.steps[0].instructions[0].text, "Brown the beef.");
+        assert_eq!(detail.steps[0].instructions[0].position, 0);
         assert_eq!(detail.steps[0].position, 0);
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
@@ -591,7 +646,7 @@ mod tests {
             name: "Salt water".into(),
             source: None,
             steps: vec![NewStep {
-                instruction: "Mix.".into(),
+                instructions: vec!["Mix.".into()],
                 ingredients: vec![
                     ing("water", 1.0, UnitKind::Volume, "cup"),
                     ing("kosher salt", 2.0, UnitKind::Volume, "tsp"),
@@ -727,11 +782,11 @@ mod tests {
             source: Some("old".into()),
             steps: vec![
                 NewStep {
-                    instruction: "old step 1".into(),
+                    instructions: vec!["old step 1".into()],
                     ingredients: vec![ing("beef", 1.0, UnitKind::Mass, "lb")],
                 },
                 NewStep {
-                    instruction: "old step 2".into(),
+                    instructions: vec!["old step 2".into()],
                     ingredients: vec![ing("water", 1.0, UnitKind::Volume, "cup")],
                 },
             ],
@@ -744,7 +799,7 @@ mod tests {
                 name: "Chili v2".into(),
                 source: Some("https://new".into()),
                 steps: vec![NewStep {
-                    instruction: "new single step".into(),
+                    instructions: vec!["new single step".into()],
                     ingredients: vec![
                         ing("beef", 2.0, UnitKind::Mass, "lb"),
                         ing("tomato", 3.0, UnitKind::Count, ""),
@@ -758,7 +813,8 @@ mod tests {
         assert_eq!(detail.recipe.name, "Chili v2");
         assert_eq!(detail.recipe.source.as_deref(), Some("https://new"));
         assert_eq!(detail.steps.len(), 1);
-        assert_eq!(detail.steps[0].instruction, "new single step");
+        assert_eq!(detail.steps[0].instructions.len(), 1);
+        assert_eq!(detail.steps[0].instructions[0].text, "new single step");
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "beef");
@@ -825,6 +881,35 @@ mod tests {
         let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.name, "Empty now");
         assert!(detail.steps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn multi_instruction_step_roundtrips_in_order() {
+        let id = create_recipe(NewRecipe {
+            name: "Layered".into(),
+            source: None,
+            steps: vec![NewStep {
+                instructions: vec![
+                    "Preheat the oven.".into(),
+                    "  ".into(), // blank — should be skipped
+                    "Mix the dry ingredients.".into(),
+                    "Fold in the wet ingredients.".into(),
+                ],
+                ingredients: vec![ing("flour", 1.0, UnitKind::Mass, "g")],
+            }],
+        })
+        .await
+        .unwrap();
+
+        let detail = get_recipe(id).await.unwrap().unwrap();
+        let instructions = &detail.steps[0].instructions;
+        assert_eq!(instructions.len(), 3);
+        assert_eq!(instructions[0].text, "Preheat the oven.");
+        assert_eq!(instructions[0].position, 0);
+        assert_eq!(instructions[1].text, "Mix the dry ingredients.");
+        assert_eq!(instructions[1].position, 1);
+        assert_eq!(instructions[2].text, "Fold in the wet ingredients.");
+        assert_eq!(instructions[2].position, 2);
     }
 
     #[tokio::test]

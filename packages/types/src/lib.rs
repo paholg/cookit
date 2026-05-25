@@ -185,10 +185,17 @@ pub struct RecipeStepIngredient {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StepInstruction {
+    pub id: i64,
+    pub position: i64,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStep {
     pub id: i64,
     pub position: i64,
-    pub instruction: String,
+    pub instructions: Vec<StepInstruction>,
     pub ingredients: Vec<RecipeStepIngredient>,
 }
 
@@ -208,7 +215,7 @@ pub struct NewStepIngredient {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewStep {
-    pub instruction: String,
+    pub instructions: Vec<String>,
     pub ingredients: Vec<NewStepIngredient>,
 }
 
