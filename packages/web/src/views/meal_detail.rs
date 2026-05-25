@@ -3,7 +3,10 @@ use api::shopping_lists::create_from_meal;
 use dioxus::prelude::*;
 use ui::icons::{EditIcon, ListIcon};
 
-use crate::{CurrentUserCtx, Route, views::RecipeView};
+use crate::{
+    CurrentUserCtx, Route,
+    views::{RecipeView, WakeLockToggle},
+};
 
 #[component]
 pub fn MealDetail(id: i64) -> Element {
@@ -32,6 +35,7 @@ pub fn MealDetail(id: i64) -> Element {
                     header { class: "page-header",
                         h1 { "{detail.meal.name}" }
                         div { class: "page-header-actions",
+                            WakeLockToggle {}
                             button {
                                 r#type: "button",
                                 class: "icon-button",
