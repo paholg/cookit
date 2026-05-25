@@ -328,6 +328,20 @@ fieldset.step legend {
   color: var(--muted);
 }
 
+fieldset.step legend.step-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+fieldset.step .step-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .ingredient-row {
   display: grid;
   grid-template-columns: 4rem 7rem 1fr auto;

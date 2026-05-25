@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
 use types::{Mass, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, Volume};
-use ui::icons::TrashIcon;
+use ui::icons::{InsertAboveIcon, TrashIcon};
 
 #[derive(Default, Clone, PartialEq)]
 pub struct IngDraft {
@@ -74,6 +74,18 @@ impl RecipeDraft {
             id,
             ..Default::default()
         });
+        id
+    }
+
+    fn insert_new_step_at(&mut self, idx: usize) -> DraftId {
+        let id = self.alloc_step_id();
+        self.steps.insert(
+            idx,
+            StepDraft {
+                id,
+                ..Default::default()
+            },
+        );
         id
     }
 
@@ -497,7 +509,36 @@ fn StepEditor(
 
     rsx! {
         fieldset { class: "step",
-            legend { "Step {step_idx + 1}" }
+            legend { class: "step-legend",
+                span { class: "step-title", "Step {step_idx + 1}" }
+                span { class: "step-actions",
+                    button {
+                        r#type: "button",
+                        class: "icon-button",
+                        tabindex: "-1",
+                        "aria-label": "Insert step above",
+                        title: "Insert step above",
+                        onclick: move |_| {
+                            let id = draft.write().insert_new_step_at(step_idx);
+                            focus_field(format!("instr-step-{id}"));
+                        },
+                        InsertAboveIcon {}
+                    }
+                    if multi_step {
+                        button {
+                            r#type: "button",
+                            class: "icon-button",
+                            tabindex: "-1",
+                            "aria-label": "Remove step",
+                            title: "Remove step",
+                            onclick: move |_| {
+                                draft.write().steps.retain(|s| s.id != step_id);
+                            },
+                            TrashIcon {}
+                        }
+                    }
+                }
+            }
 
             div { class: "ingredients-editor",
                 h3 { "Ingredients" }
@@ -546,20 +587,6 @@ fn StepEditor(
                         }
                     },
                     "{step_snapshot.instruction}"
-                }
-            }
-
-            if multi_step {
-                button {
-                    r#type: "button",
-                    class: "icon-button",
-                    tabindex: "-1",
-                    "aria-label": "Remove step",
-                    title: "Remove step",
-                    onclick: move |_| {
-                        draft.write().steps.retain(|s| s.id != step_id);
-                    },
-                    TrashIcon {}
                 }
             }
         }
