@@ -105,8 +105,8 @@ impl RecipeDraft {
                         .map(|i| IngDraft {
                             id: i.id.into(),
                             name: i.ingredient_name,
-                            quantity: format_qty(i.quantity),
-                            unit: i.unit.label(),
+                            quantity: i.quantity.map(format_qty).unwrap_or_default(),
+                            unit: i.unit.map(|u| u.label()).unwrap_or_default(),
                         })
                         .collect(),
                     next_ing_id: 0,
@@ -125,20 +125,16 @@ impl RecipeDraft {
                     continue;
                 }
                 let qty_text = ing.quantity.trim();
-                let quantity: f64 = if qty_text.is_empty() {
-                    return Err(format!(
-                        "step {}: quantity is required for `{}`",
-                        step_idx + 1,
-                        ing.name.trim()
-                    ));
+                let quantity: Option<f64> = if qty_text.is_empty() {
+                    None
                 } else {
-                    qty_text.parse().map_err(|_| {
+                    Some(qty_text.parse().map_err(|_| {
                         format!(
                             "step {} ingredient {}: `{qty_text}` is not a valid number",
                             step_idx + 1,
                             ing_idx + 1
                         )
-                    })?
+                    })?)
                 };
                 ings.push(NewStepIngredient {
                     ingredient_name: ing.name.clone(),

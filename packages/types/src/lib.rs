@@ -179,8 +179,8 @@ pub struct RecipeStepIngredient {
     pub id: i64,
     pub ingredient_id: i64,
     pub ingredient_name: String,
-    pub quantity: f64,
-    pub unit: Unit,
+    pub quantity: Option<f64>,
+    pub unit: Option<Unit>,
     pub position: i64,
 }
 
@@ -208,7 +208,9 @@ pub struct RecipeDetail {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewStepIngredient {
     pub ingredient_name: String,
-    pub quantity: f64,
+    pub quantity: Option<f64>,
+    /// `None` means the ingredient has no unit at all (stored as null in the
+    /// DB); `Some(kind)` combines with `unit` to build a `Unit` value.
     pub unit_kind: Option<UnitKind>,
     pub unit: String,
 }

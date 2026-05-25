@@ -73,12 +73,17 @@ fn format_quantity(q: f64) -> String {
 }
 
 fn format_ingredient_line(ing: &RecipeStepIngredient, multiplier: f64) -> String {
-    let qty = format_quantity(ing.quantity * multiplier);
-    let unit = ing.unit.label();
+    let qty = ing.quantity.map(|q| format_quantity(q * multiplier));
+    let unit = ing
+        .unit
+        .as_ref()
+        .map(|u| u.label())
+        .filter(|l| !l.is_empty());
 
-    if unit.is_empty() {
-        format!("{qty} {}", ing.ingredient_name)
-    } else {
-        format!("{qty} {unit} {}", ing.ingredient_name)
+    match (qty, unit) {
+        (Some(q), Some(u)) => format!("{q} {u} {}", ing.ingredient_name),
+        (Some(q), None) => format!("{q} {}", ing.ingredient_name),
+        (None, Some(u)) => format!("{u} {}", ing.ingredient_name),
+        (None, None) => ing.ingredient_name.clone(),
     }
 }

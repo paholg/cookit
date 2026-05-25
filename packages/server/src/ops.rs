@@ -75,9 +75,9 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
             r#"SELECT rsi.id as "id!: i64",
                       rsi.ingredient_id as "ingredient_id!: i64",
                       i.name as "ingredient_name!",
-                      rsi.quantity as "quantity!: f64",
-                      rsi.unit_kind as "unit_kind!",
-                      rsi.unit as "unit!",
+                      rsi.quantity as "quantity: f64",
+                      rsi.unit_kind,
+                      rsi.unit,
                       rsi.position as "position!: i64"
                FROM recipe_step_ingredients rsi
                JOIN ingredients i ON i.id = rsi.ingredient_id
@@ -91,8 +91,13 @@ pub async fn get_recipe(id: i64) -> Result<Option<RecipeDetail>> {
         let ingredients = ing_rows
             .into_iter()
             .map(|r| {
-                let kind = UnitKind::from_str(&r.unit_kind).unwrap_or(UnitKind::Custom);
-                let unit = Unit::new(kind, &r.unit).unwrap_or(Unit::Custom(r.unit));
+                let unit = match (r.unit_kind.as_deref(), r.unit) {
+                    (Some(kind_str), Some(text)) => {
+                        let kind = UnitKind::from_str(kind_str).unwrap_or(UnitKind::Custom);
+                        Some(Unit::new(kind, &text).unwrap_or(Unit::Custom(text)))
+                    }
+                    _ => None,
+                };
                 RecipeStepIngredient {
                     id: r.id,
                     ingredient_id: r.ingredient_id,
@@ -295,22 +300,26 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<ConvertedStep>> {
             if ing_name.is_empty() {
                 continue;
             }
-            if !ing.quantity.is_finite() || ing.quantity < 0.0 {
+            if let Some(q) = ing.quantity
+                && (!q.is_finite() || q < 0.0)
+            {
                 return Err(anyhow!(
                     "step {} ingredient {} ({ing_name}): quantity must be a non-negative number, got {}",
                     step_idx + 1,
                     ing_idx + 1,
-                    ing.quantity,
+                    q,
                 ));
             }
-            let kind = ing.unit_kind.unwrap_or(UnitKind::Custom);
-            let unit = Unit::new(kind, &ing.unit).map_err(|e| {
-                anyhow!(
-                    "step {} ingredient {} ({ing_name}): {e}",
-                    step_idx + 1,
-                    ing_idx + 1
-                )
-            })?;
+            let unit = match ing.unit_kind {
+                Some(kind) => Some(Unit::new(kind, &ing.unit).map_err(|e| {
+                    anyhow!(
+                        "step {} ingredient {} ({ing_name}): {e}",
+                        step_idx + 1,
+                        ing_idx + 1
+                    )
+                })?),
+                None => None,
+            };
             ings.push(ConvertedIngredient {
                 name: ing_name.to_string(),
                 quantity: ing.quantity,
@@ -391,8 +400,8 @@ async fn insert_steps_into(
                     .id
                 }
             };
-            let unit_kind = ing.unit.kind().to_string();
-            let unit_label = ing.unit.label();
+            let unit_kind = ing.unit.as_ref().map(|u| u.kind().to_string());
+            let unit_label = ing.unit.as_ref().map(|u| u.label());
             let ing_position = ing_idx as i64;
             sqlx::query!(
                 r#"INSERT INTO recipe_step_ingredients
@@ -414,8 +423,8 @@ async fn insert_steps_into(
 }
 struct ConvertedIngredient {
     name: String,
-    quantity: f64,
-    unit: Unit,
+    quantity: Option<f64>,
+    unit: Option<Unit>,
 }
 pub async fn list_meals() -> Result<Vec<Meal>> {
     let pool = crate::db::pool().await;
@@ -603,7 +612,7 @@ mod tests {
     fn ing(name: &str, qty: f64, unit_kind: UnitKind, unit: &str) -> NewStepIngredient {
         NewStepIngredient {
             ingredient_name: name.into(),
-            quantity: qty,
+            quantity: Some(qty),
             unit_kind: Some(unit_kind),
             unit: unit.into(),
         }
@@ -677,11 +686,11 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "ground beef");
-        assert_eq!(ings[0].unit, Unit::Mass(Mass::Lb));
-        assert_eq!(ings[0].quantity, 1.0);
+        assert_eq!(ings[0].unit, Some(Unit::Mass(Mass::Lb)));
+        assert_eq!(ings[0].quantity, Some(1.0));
         assert_eq!(ings[1].ingredient_name, "onion");
-        assert_eq!(ings[1].unit, Unit::Custom("medium".into()));
-        assert_eq!(ings[1].quantity, 1.0);
+        assert_eq!(ings[1].unit, Some(Unit::Custom("medium".into())));
+        assert_eq!(ings[1].quantity, Some(1.0));
     }
     #[tokio::test]
     async fn volume_units_preserve_original() {
@@ -699,10 +708,10 @@ mod tests {
         let id = create_recipe(input).await.unwrap();
         let detail = get_recipe(id).await.unwrap().unwrap();
         let ings = &detail.steps[0].ingredients;
-        assert_eq!(ings[0].unit, Unit::Volume(Volume::Cup));
-        assert_eq!(ings[0].quantity, 1.0);
-        assert_eq!(ings[1].unit, Unit::Volume(Volume::Tsp));
-        assert_eq!(ings[1].quantity, 2.0);
+        assert_eq!(ings[0].unit, Some(Unit::Volume(Volume::Cup)));
+        assert_eq!(ings[0].quantity, Some(1.0));
+        assert_eq!(ings[1].unit, Some(Unit::Volume(Volume::Tsp)));
+        assert_eq!(ings[1].quantity, Some(2.0));
     }
     #[tokio::test]
     async fn count_preserves_unit_text() {
@@ -718,14 +727,14 @@ mod tests {
         let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(
             detail.steps[0].ingredients[0].unit,
-            Unit::Count(String::new())
+            Some(Unit::Count(String::new()))
         );
-        assert_eq!(detail.steps[0].ingredients[0].quantity, 3.0);
+        assert_eq!(detail.steps[0].ingredients[0].quantity, Some(3.0));
         assert_eq!(
             detail.steps[0].ingredients[1].unit,
-            Unit::Count("medium".into())
+            Some(Unit::Count("medium".into()))
         );
-        assert_eq!(detail.steps[0].ingredients[1].quantity, 3.0);
+        assert_eq!(detail.steps[0].ingredients[1].quantity, Some(3.0));
     }
     #[tokio::test]
     async fn unknown_mass_unit_is_rejected() {
@@ -809,6 +818,37 @@ mod tests {
         assert!(get_recipe(999).await.unwrap().is_none());
     }
     #[tokio::test]
+    async fn null_quantity_and_unit_roundtrip() {
+        let id = create_recipe(single_step_recipe(
+            "Taste",
+            vec![
+                NewStepIngredient {
+                    ingredient_name: "salt".into(),
+                    quantity: None,
+                    unit_kind: None,
+                    unit: String::new(),
+                },
+                NewStepIngredient {
+                    ingredient_name: "pepper".into(),
+                    quantity: Some(1.0),
+                    unit_kind: None,
+                    unit: String::new(),
+                },
+            ],
+        ))
+        .await
+        .unwrap();
+        let detail = get_recipe(id).await.unwrap().unwrap();
+        let ings = &detail.steps[0].ingredients;
+        assert_eq!(ings[0].ingredient_name, "salt");
+        assert_eq!(ings[0].quantity, None);
+        assert_eq!(ings[0].unit, None);
+        assert_eq!(ings[1].ingredient_name, "pepper");
+        assert_eq!(ings[1].quantity, Some(1.0));
+        assert_eq!(ings[1].unit, None);
+    }
+
+    #[tokio::test]
     async fn negative_quantity_is_rejected() {
         let err = create_recipe(single_step_recipe(
             "Bad",
@@ -861,10 +901,10 @@ mod tests {
         let ings = &detail.steps[0].ingredients;
         assert_eq!(ings.len(), 2);
         assert_eq!(ings[0].ingredient_name, "beef");
-        assert_eq!(ings[0].unit, Unit::Mass(Mass::Lb));
-        assert_eq!(ings[0].quantity, 2.0);
+        assert_eq!(ings[0].unit, Some(Unit::Mass(Mass::Lb)));
+        assert_eq!(ings[0].quantity, Some(2.0));
         assert_eq!(ings[1].ingredient_name, "tomato");
-        assert_eq!(ings[1].quantity, 3.0);
+        assert_eq!(ings[1].quantity, Some(3.0));
         let all = list_ingredients().await.unwrap();
         let names: Vec<&str> = all.iter().map(|i| i.name.as_str()).collect();
         assert!(names.contains(&"beef"));
@@ -901,7 +941,7 @@ mod tests {
         assert!(format!("{err:#}").contains("unknown mass unit"));
         let detail = get_recipe(id).await.unwrap().unwrap();
         assert_eq!(detail.recipe.name, "Keep me");
-        assert_eq!(detail.steps[0].ingredients[0].quantity, 5.0);
+        assert_eq!(detail.steps[0].ingredients[0].quantity, Some(5.0));
     }
     #[tokio::test]
     async fn update_can_shrink_steps_to_zero() {

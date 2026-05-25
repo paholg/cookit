@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT rsi.id as \"id!: i64\",\n                      rsi.ingredient_id as \"ingredient_id!: i64\",\n                      i.name as \"ingredient_name!\",\n                      rsi.quantity as \"quantity!: f64\",\n                      rsi.unit_kind as \"unit_kind!\",\n                      rsi.unit as \"unit!\",\n                      rsi.position as \"position!: i64\"\n               FROM recipe_step_ingredients rsi\n               JOIN ingredients i ON i.id = rsi.ingredient_id\n               WHERE rsi.step_id = ? ORDER BY rsi.position",
+  "query": "SELECT rsi.id as \"id!: i64\",\n                      rsi.ingredient_id as \"ingredient_id!: i64\",\n                      i.name as \"ingredient_name!\",\n                      rsi.quantity as \"quantity: f64\",\n                      rsi.unit_kind,\n                      rsi.unit,\n                      rsi.position as \"position!: i64\"\n               FROM recipe_step_ingredients rsi\n               JOIN ingredients i ON i.id = rsi.ingredient_id\n               WHERE rsi.step_id = ? ORDER BY rsi.position",
   "describe": {
     "columns": [
       {
@@ -19,17 +19,17 @@
         "type_info": "Text"
       },
       {
-        "name": "quantity!: f64",
+        "name": "quantity: f64",
         "ordinal": 3,
         "type_info": "Float"
       },
       {
-        "name": "unit_kind!",
+        "name": "unit_kind",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "unit!",
+        "name": "unit",
         "ordinal": 5,
         "type_info": "Text"
       },
@@ -46,11 +46,11 @@
       false,
       false,
       false,
-      false,
-      false,
-      false,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "779b906abecf12dfa6a38aa8a886a72f41b8a7f8a960f5be63a503dc5d69b15d"
+  "hash": "0e1b958da847607b5d3585d6164f49a120cc4c2a9de2f4e483c2ea415a209748"
 }
