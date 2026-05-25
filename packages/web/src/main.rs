@@ -1,7 +1,7 @@
 use api::me;
 use dioxus::prelude::*;
 use types::CurrentUser;
-use ui::Navbar;
+use ui::navbar::Navbar;
 use views::{
     IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
     RecipeNew,

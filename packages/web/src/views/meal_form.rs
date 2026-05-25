@@ -83,11 +83,8 @@ impl MealDraft {
 }
 
 fn all_recipes_used(draft: &MealDraft, available: &[Recipe]) -> bool {
-    let picked: std::collections::HashSet<i64> = draft
-        .recipes
-        .iter()
-        .filter_map(|r| r.recipe_id)
-        .collect();
+    let picked: std::collections::HashSet<i64> =
+        draft.recipes.iter().filter_map(|r| r.recipe_id).collect();
     !available.is_empty() && available.iter().all(|r| picked.contains(&r.id))
 }
 

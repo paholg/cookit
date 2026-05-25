@@ -704,6 +704,10 @@ fn Autocomplete(
     // first match. `None` means "first match" (the default). ArrowUp past the
     // top dismisses the popup, so there's no "no selection" state while open.
     let mut highlight_offset = use_signal(|| 0usize);
+    // True once the user has explicitly arrow-navigated the popup. Until then
+    // a highlight is only "real" if it's a prefix-extension of the typed text,
+    // so TAB on `oil` doesn't silently replace it with `olive oil`.
+    let mut navigated = use_signal(|| false);
 
     let filtered = filter_options(&options, &value);
     let popup_visible = open() && !filtered.is_empty();
@@ -712,6 +716,15 @@ fn Autocomplete(
     } else {
         0
     };
+
+    let typed_lower = value.trim().to_lowercase();
+    let highlighted_is_prefix = !typed_lower.is_empty()
+        && filtered
+            .get(highlight_idx)
+            .map(|s| s.to_lowercase().starts_with(&typed_lower))
+            .unwrap_or(false);
+    let should_accept = popup_visible && (navigated() || highlighted_is_prefix);
+
     let filtered_for_keys = filtered.clone();
 
     rsx! {
@@ -726,11 +739,13 @@ fn Autocomplete(
                     let v = e.value();
                     open.set(!v.trim().is_empty());
                     highlight_offset.set(0);
+                    navigated.set(false);
                     oninput.call(v);
                 },
                 onblur: move |_| {
                     open.set(false);
                     highlight_offset.set(0);
+                    navigated.set(false);
                 },
                 onkeydown: {
                     let filtered = filtered_for_keys.clone();
@@ -747,6 +762,7 @@ fn Autocomplete(
                                         let cur = highlight_offset().min(n - 1);
                                         highlight_offset.set((cur + 1) % n);
                                     }
+                                    navigated.set(true);
                                 }
                             }
                             Key::ArrowUp
@@ -757,8 +773,10 @@ fn Autocomplete(
                                     // moving up off the top dismisses
                                     open.set(false);
                                     highlight_offset.set(0);
+                                    navigated.set(false);
                                 } else {
                                     highlight_offset.set(cur - 1);
+                                    navigated.set(true);
                                 }
                             }
                             Key::Escape
@@ -766,30 +784,37 @@ fn Autocomplete(
                                 e.prevent_default();
                                 open.set(false);
                                 highlight_offset.set(0);
+                                navigated.set(false);
                             }
                             Key::Tab
-                                // Accept selection if popup is open, then let
-                                // Tab keep its default focus-advance behavior.
-                                if open() && n > 0 => {
+                                // Accept the highlighted suggestion only if
+                                // it's a prefix-extension of what the user
+                                // typed, or they explicitly arrow-navigated.
+                                // Otherwise let TAB advance focus without
+                                // clobbering the typed text. Either way TAB
+                                // keeps its default focus-advance behavior.
+                                if should_accept => {
                                 let i = highlight_offset().min(n - 1);
                                 if let Some(s) = filtered.get(i) {
                                     oninput.call(s.clone());
                                 }
                                 open.set(false);
                                 highlight_offset.set(0);
+                                navigated.set(false);
                             }
                             Key::Enter => {
                                 if has_command_modifier(&e.modifiers()) {
                                     return;
                                 }
                                 e.prevent_default();
-                                if open() && n > 0 {
+                                if should_accept {
                                     let i = highlight_offset().min(n - 1);
                                     if let Some(s) = filtered.get(i) {
                                         oninput.call(s.clone());
                                     }
                                     open.set(false);
                                     highlight_offset.set(0);
+                                    navigated.set(false);
                                 }
                                 onenter.call(());
                             }
@@ -805,10 +830,11 @@ fn Autocomplete(
                             key: "{name}",
                             index: i,
                             text: name.clone(),
-                            active: i == highlight_idx,
+                            active: i == highlight_idx && should_accept,
                             oninput,
                             open,
                             highlight_offset,
+                            navigated,
                         }
                     }
                 }
@@ -822,19 +848,23 @@ fn filter_options(options: &[String], value: &str) -> Vec<String> {
     if needle.is_empty() {
         return Vec::new();
     }
-    let mut scored: Vec<(usize, &String)> = options
+    let mut scored: Vec<(bool, bool, usize, &String)> = options
         .iter()
         .filter_map(|o| {
             let lo = o.to_lowercase();
-            if lo == needle {
-                None
-            } else {
-                lo.find(&needle).map(|p| (p, o))
-            }
+            lo.find(&needle).map(|p| {
+                let not_exact = lo != needle;
+                let not_prefix = !lo.starts_with(&needle);
+                (not_exact, not_prefix, p, o)
+            })
         })
         .collect();
-    scored.sort_by_key(|(p, _)| *p);
-    scored.into_iter().map(|(_, o)| o.clone()).take(8).collect()
+    scored.sort_by_key(|(e, pr, p, _)| (*e, *pr, *p));
+    scored
+        .into_iter()
+        .map(|(_, _, _, o)| o.clone())
+        .take(8)
+        .collect()
 }
 
 #[component]
@@ -845,11 +875,13 @@ fn AutocompleteItem(
     oninput: EventHandler<String>,
     open: Signal<bool>,
     highlight_offset: Signal<usize>,
+    navigated: Signal<bool>,
 ) -> Element {
     let class = if active { "active" } else { "" };
     let text_for_click = text.clone();
     let mut open = open;
     let mut highlight_offset = highlight_offset;
+    let mut navigated = navigated;
     rsx! {
         li {
             class: "{class}",
@@ -858,9 +890,13 @@ fn AutocompleteItem(
                 oninput.call(text_for_click.clone());
                 open.set(false);
                 highlight_offset.set(0);
+                navigated.set(false);
             },
-            onmouseenter: move |_| {
-                highlight_offset.set(index);
+            onmousemove: move |_| {
+                if highlight_offset() != index || !navigated() {
+                    highlight_offset.set(index);
+                    navigated.set(true);
+                }
             },
             "{text}"
         }
