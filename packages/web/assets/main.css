@@ -255,12 +255,13 @@ button.icon-button svg {
   gap: 0.25rem;
 }
 
-button.icon-button.wake-toggle:hover {
-  color: #b8860b;
+@media (hover: hover) {
+  button.icon-button.wake-toggle:hover {
+    color: #b8860b;
+  }
 }
 
-button.icon-button.wake-toggle.on,
-button.icon-button.wake-toggle.on:hover {
+button.icon-button.wake-toggle.on {
   color: #b8860b;
 }
 
@@ -269,13 +270,16 @@ button.icon-button.wake-toggle.on svg path {
 }
 
 @media (prefers-color-scheme: dark) {
+  button.icon-button.wake-toggle.on {
+    color: #e5b94a;
+  }
   button.icon-button.wake-toggle.on svg path {
     fill: #5a4a14;
   }
-  button.icon-button.wake-toggle.on,
-  button.icon-button.wake-toggle.on:hover,
-  button.icon-button.wake-toggle:hover {
-    color: #e5b94a;
+  @media (hover: hover) {
+    button.icon-button.wake-toggle:hover {
+      color: #e5b94a;
+    }
   }
 }
 
