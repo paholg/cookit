@@ -5,8 +5,11 @@ use dioxus::prelude::*;
 use ui::icons::EditIcon;
 
 #[component]
-pub fn RecipeDetail(id: i64) -> Element {
-    let recipe = use_server_future(move || get_recipe(id))?;
+pub fn RecipeDetail(recipe_key: String) -> Element {
+    let recipe = {
+        let key = recipe_key.clone();
+        use_server_future(move || get_recipe(key.clone()))?
+    };
 
     let title = recipe
         .cloned()
@@ -27,7 +30,7 @@ pub fn RecipeDetail(id: i64) -> Element {
                         WakeLockToggle {}
                         if is_admin {
                             Link {
-                                to: Route::RecipeEdit { id },
+                                to: Route::RecipeEdit { recipe_key: recipe_key.clone() },
                                 button {
                                     r#type: "button",
                                     class: "icon-button",

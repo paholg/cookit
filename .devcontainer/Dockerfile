@@ -6,6 +6,7 @@ RUN apt-get update \
         fzf \
         libssl-dev \
         pkg-config \
+        python3 \
         sqlite3 \
         zsh-autosuggestions \
         zsh-syntax-highlighting \

@@ -50,8 +50,8 @@ pub async fn create_shopping_list(
 /// Build a shopping list from an existing meal by aggregating its
 /// ingredients. The created list's storage backend is chosen the same way as
 /// for an empty list — authenticated → server, otherwise local.
-pub async fn create_from_meal(meal_id: i64, authenticated: bool) -> Result<i64, String> {
-    let meal = crate::meals::get_meal(meal_id).await?;
+pub async fn create_from_meal(meal_key: String, authenticated: bool) -> Result<i64, String> {
+    let meal = crate::meals::get_meal(meal_key).await?;
     let sections = remote_shopping::list_ingredient_sections()
         .await
         .map_err(err)
