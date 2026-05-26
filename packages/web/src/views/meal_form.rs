@@ -144,7 +144,10 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 };
                 match result {
                     Ok(meal_key) => {
-                        nav.push(Route::MealDetail { meal_key });
+                        nav.push(Route::MealDetail {
+                            meal_key,
+                            tab: None,
+                        });
                     }
                     Err(msg) => {
                         submitting.set(false);
@@ -252,7 +255,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             }
             div { class: "form-actions",
                 if let MealFormMode::Edit { meal_key } = mode.clone() {
-                    Link { to: Route::MealDetail { meal_key }, class: "button-link", "Cancel" }
+                    Link { to: Route::MealDetail { meal_key, tab: None }, class: "button-link", "Cancel" }
                 }
                 button {
                     r#type: "submit",

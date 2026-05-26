@@ -27,8 +27,8 @@ enum Route {
     MealList {},
     #[route("/meals/new")]
     MealNew {},
-    #[route("/meals/:meal_key")]
-    MealDetail { meal_key: String },
+    #[route("/meals/:meal_key?:tab")]
+    MealDetail { meal_key: String, tab: Option<String> },
     #[route("/meals/:meal_key/edit")]
     MealEdit { meal_key: String },
     #[route("/ingredients")]
