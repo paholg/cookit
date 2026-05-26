@@ -1,3 +1,4 @@
+mod duration;
 mod format;
 mod recipe_list;
 pub use recipe_list::RecipeList;
@@ -27,5 +28,7 @@ mod shopping_list_new;
 pub use shopping_list_new::ShoppingListNew;
 mod shopping_list_detail;
 pub use shopping_list_detail::ShoppingListDetail;
+mod timer_bar;
+pub use timer_bar::TimerBar;
 mod wake_toggle;
 pub use wake_toggle::WakeLockToggle;

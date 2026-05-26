@@ -237,6 +237,9 @@ pub struct RecipeStep {
     pub position: i64,
     pub instructions: Vec<StepInstruction>,
     pub ingredients: Vec<RecipeStepIngredient>,
+    /// Optional countdown timer length. Steps without a duration don't show
+    /// the start-timer button in `RecipeView`.
+    pub duration_seconds: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -259,6 +262,7 @@ pub struct NewStepIngredient {
 pub struct NewStep {
     pub instructions: Vec<String>,
     pub ingredients: Vec<NewStepIngredient>,
+    pub duration_seconds: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -447,6 +451,7 @@ mod aggregate_tests {
                         position: 0,
                         instructions: vec![],
                         ingredients: ings,
+                        duration_seconds: None,
                     }],
                 },
             })

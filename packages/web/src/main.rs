@@ -4,11 +4,14 @@ use types::CurrentUser;
 use ui::navbar::Navbar;
 use views::{
     IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
-    RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
+    RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
 };
 
 mod draft_id;
+pub mod timers;
 mod views;
+
+pub use timers::RunningTimersCtx;
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
@@ -78,6 +81,21 @@ fn App() -> Element {
     });
     use_context_provider(|| user);
 
+    let mut timers: RunningTimersCtx = use_signal(Vec::new);
+    use_context_provider(|| timers);
+
+    // Hydrate from localStorage once, after the first client render. SSR sees
+    // an empty bar (no DOM diff trouble) and the real list paints right after.
+    // Also attach the audio primer so the WebAudio context gets resumed inside
+    // every user gesture — required for the expired-timer beep to be audible.
+    use_effect(move || {
+        document::eval(timers::ATTACH_AUDIO_PRIMER_JS);
+        let loaded = timers::load_from_storage();
+        if !loaded.is_empty() {
+            timers.set(loaded);
+        }
+    });
+
     rsx! {
         document::Link { rel: "icon", r#type: "image/svg+xml", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
@@ -107,6 +125,7 @@ fn AppNavbar() -> Element {
             AuthControls {}
         }
         main { id: "content", Outlet::<Route> {} }
+        TimerBar {}
     }
 }
 
