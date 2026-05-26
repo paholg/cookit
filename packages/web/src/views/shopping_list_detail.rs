@@ -4,6 +4,7 @@ use api::shopping_lists::{add_item, delete_item, get_shopping_list, set_item_che
 use dioxus::prelude::*;
 use strum::IntoEnumIterator;
 use types::{GrocerySection, NewShoppingListItem, ShoppingListItem, Unit, UnitKind};
+use ui::ClientOnly;
 use ui::icons::TrashIcon;
 
 use super::format::format_quantity;
@@ -351,19 +352,21 @@ fn AddItemForm(list_id: i64, on_added: EventHandler<()>) -> Element {
                         value: qty(),
                         oninput: move |e| qty.set(e.value()),
                     }
-                    select {
-                        class: "shopping-add-kind",
-                        value: unit_kind().map(|k| k.to_string()).unwrap_or_default(),
-                        onchange: move |e| {
-                            use std::str::FromStr;
-                            let v = e.value();
-                            unit_kind.set(if v.is_empty() { None } else { UnitKind::from_str(&v).ok() });
-                        },
-                        option { value: "", "no unit" }
-                        option { value: "mass", "mass" }
-                        option { value: "volume", "volume" }
-                        option { value: "count", "count" }
-                        option { value: "custom", "custom" }
+                    ClientOnly {
+                        select {
+                            class: "shopping-add-kind",
+                            value: unit_kind().map(|k| k.to_string()).unwrap_or_default(),
+                            onchange: move |e| {
+                                use std::str::FromStr;
+                                let v = e.value();
+                                unit_kind.set(if v.is_empty() { None } else { UnitKind::from_str(&v).ok() });
+                            },
+                            option { value: "", "no unit" }
+                            option { value: "mass", "mass" }
+                            option { value: "volume", "volume" }
+                            option { value: "count", "count" }
+                            option { value: "custom", "custom" }
+                        }
                     }
                     input {
                         placeholder: "Unit",

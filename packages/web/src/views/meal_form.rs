@@ -6,6 +6,7 @@ use api::{
 };
 use dioxus::prelude::*;
 use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
+use ui::ClientOnly;
 use ui::icons::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
@@ -290,22 +291,24 @@ fn MealRecipeRow(
 
     rsx! {
         div { class: "meal-row",
-            select {
-                value: "{selected}",
-                oninput: move |e| {
-                    let v = e.value();
-                    let key = if v.is_empty() { None } else { Some(v) };
-                    let mut d = draft.write();
-                    if let Some(r) = d.recipes.iter_mut().find(|r| r.id == row_id) {
-                        r.recipe_key = key;
-                    }
-                },
-                option { value: "", "— pick a recipe —" }
-                for r in recipes.iter().filter(|r| !used_by_others.contains(&r.key)) {
-                    option {
-                        value: "{r.key}",
-                        selected: row.recipe_key.as_deref() == Some(r.key.as_str()),
-                        "{r.name}"
+            ClientOnly {
+                select {
+                    value: "{selected}",
+                    oninput: move |e| {
+                        let v = e.value();
+                        let key = if v.is_empty() { None } else { Some(v) };
+                        let mut d = draft.write();
+                        if let Some(r) = d.recipes.iter_mut().find(|r| r.id == row_id) {
+                            r.recipe_key = key;
+                        }
+                    },
+                    option { value: "", "— pick a recipe —" }
+                    for r in recipes.iter().filter(|r| !used_by_others.contains(&r.key)) {
+                        option {
+                            value: "{r.key}",
+                            selected: row.recipe_key.as_deref() == Some(r.key.as_str()),
+                            "{r.name}"
+                        }
                     }
                 }
             }

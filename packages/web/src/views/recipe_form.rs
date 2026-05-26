@@ -8,6 +8,7 @@ use dioxus::prelude::*;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
 use types::{Mass, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, Volume};
+use ui::ClientOnly;
 use ui::icons::{InsertAboveIcon, TrashIcon};
 
 #[derive(Default, Clone, PartialEq)]
@@ -595,28 +596,24 @@ fn StepEditor(
 
             label {
                 "Instruction"
-                // NOTE: do not add `initial_value:` here. There's a Dioxus 0.7
-                // hydration/diff bug where a textarea with `initial_value`
-                // breaks the parent's VDOM diff when a sibling list grows
-                // (e.g. clicking "+ Add step"), producing a null-DOM-node crash
-                // in the interpreter. The body text below is what the textarea
-                // shows on first render and after re-renders.
-                textarea {
-                    rows: "1",
-                    "data-autogrow": "instr-{step_key}",
-                    onmounted: {
-                        let step_key = step_key.clone();
-                        move |_| autogrow_textarea(format!("instr-{step_key}"))
-                    },
-                    oninput: {
-                        let step_key = step_key.clone();
-                        move |e: FormEvent| {
-                            let value = e.value();
-                            with_step(&mut draft, step_id, |s| s.instruction = value);
-                            autogrow_textarea(format!("instr-{step_key}"));
-                        }
-                    },
-                    "{step_snapshot.instruction}"
+                ClientOnly {
+                    textarea {
+                        rows: "1",
+                        value: "{step_snapshot.instruction}",
+                        "data-autogrow": "instr-{step_key}",
+                        onmounted: {
+                            let step_key = step_key.clone();
+                            move |_| autogrow_textarea(format!("instr-{step_key}"))
+                        },
+                        oninput: {
+                            let step_key = step_key.clone();
+                            move |e: FormEvent| {
+                                let value = e.value();
+                                with_step(&mut draft, step_id, |s| s.instruction = value);
+                                autogrow_textarea(format!("instr-{step_key}"));
+                            }
+                        },
+                    }
                 }
             }
 
