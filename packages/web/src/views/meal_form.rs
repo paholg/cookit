@@ -159,7 +159,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             if let MealFormMode::Edit { id } = mode {
                 button {
                     r#type: "button",
-                    class: "icon-button",
+                    class: "icon-button trash",
                     "aria-label": "Delete meal",
                     title: "Delete meal",
                     disabled: deleting() || submitting(),
@@ -310,7 +310,7 @@ fn MealRecipeRow(
             }
             button {
                 r#type: "button",
-                class: "icon-button",
+                class: "icon-button trash",
                 "aria-label": "Remove recipe",
                 title: "Remove recipe",
                 onclick: move |_| {

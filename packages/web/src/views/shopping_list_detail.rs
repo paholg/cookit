@@ -224,7 +224,7 @@ fn NameRow(items: Vec<ShoppingListItem>, on_change: EventHandler<()>) -> Element
             }
             button {
                 r#type: "button",
-                class: "icon-button shopping-row-delete",
+                class: "icon-button trash shopping-row-delete",
                 "aria-label": "Remove",
                 title: "Remove",
                 disabled: busy(),
