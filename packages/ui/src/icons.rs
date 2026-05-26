@@ -11,7 +11,7 @@ pub fn TrashIcon() -> Element {
             height: "16",
             view_box: "0 0 24 24",
             fill: "none",
-            stroke: "#9c6058",
+            stroke: "currentColor",
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",

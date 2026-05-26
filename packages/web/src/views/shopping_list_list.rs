@@ -55,7 +55,7 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
                 Link { to: Route::ShoppingListDetail { id }, "{list.name}" }
                 button {
                     r#type: "button",
-                    class: "icon-button",
+                    class: "icon-button trash",
                     "aria-label": "Delete shopping list",
                     title: "Delete shopping list",
                     disabled: deleting(),

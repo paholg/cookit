@@ -331,7 +331,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
             if let RecipeFormMode::Edit { id } = mode {
                 button {
                     r#type: "button",
-                    class: "icon-button",
+                    class: "icon-button trash",
                     "aria-label": "Delete recipe",
                     title: "Delete recipe",
                     disabled: deleting() || submitting(),
@@ -527,7 +527,7 @@ fn StepEditor(
                     if multi_step {
                         button {
                             r#type: "button",
-                            class: "icon-button",
+                            class: "icon-button trash",
                             tabindex: "-1",
                             "aria-label": "Remove step",
                             title: "Remove step",
@@ -694,7 +694,7 @@ fn IngredientEditor(
             }
             button {
                 r#type: "button",
-                class: "icon-button",
+                class: "icon-button trash",
                 tabindex: "-1",
                 "aria-label": "Remove ingredient",
                 title: "Remove ingredient",
