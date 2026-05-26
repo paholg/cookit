@@ -191,7 +191,9 @@ button.primary,
 }
 
 button.primary:hover,
-.button:hover {
+.button:hover,
+button.primary:active,
+.button:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   text-decoration: none;
@@ -247,6 +249,12 @@ button.icon-button {
   }
 }
 
+button.icon-button:active {
+  color: var(--accent);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
 button.icon-button svg {
   display: block;
 }
@@ -285,11 +293,16 @@ button.icon-button.trash {
   }
 }
 
+button.icon-button.trash:active {
+  color: var(--danger);
+}
+
 .button-link {
   color: var(--fg);
 }
 
-.button-link:hover {
+.button-link:hover,
+.button-link:active {
   background: var(--surface-2);
   text-decoration: none;
 }
@@ -832,7 +845,8 @@ ul.shopping-items {
   font-size: 1.1rem;
 }
 
-.shopping-row-delete:hover {
+.shopping-row-delete:hover,
+.shopping-row-delete:active {
   background: var(--surface-2);
   color: var(--danger);
 }
