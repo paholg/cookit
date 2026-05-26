@@ -37,8 +37,9 @@ VALUES ('flour', 0.53, 'bakery', 0),
 -- ---------------------------------------------------------------------------
  -- Recipe 1: Simple Pasta -----------------------------------------------------
 
-INSERT INTO recipes (name, SOURCE)
-SELECT 'Simple Pasta',
+INSERT INTO recipes (KEY, name, SOURCE)
+SELECT 'simple-pasta',
+       'Simple Pasta',
        'seed'
 WHERE NOT EXISTS
     (SELECT 1
@@ -151,8 +152,9 @@ WHERE r.name = 'Simple Pasta'
 
 -- Recipe 2: Pancakes ---------------------------------------------------------
 
-INSERT INTO recipes (name, SOURCE)
-SELECT 'Pancakes',
+INSERT INTO recipes (KEY, name, SOURCE)
+SELECT 'pancakes',
+       'Pancakes',
        'seed'
 WHERE NOT EXISTS
     (SELECT 1
