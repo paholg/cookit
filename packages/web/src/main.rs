@@ -1,6 +1,8 @@
 use api::me;
 use dioxus::prelude::*;
 use types::CurrentUser;
+#[cfg(feature = "dev-auth")]
+use ui::ClientOnly;
 use ui::navbar::Navbar;
 use views::{
     IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
@@ -181,17 +183,19 @@ fn DevLoginSelect() -> Element {
             action: "/auth/dev-login",
             class: "auth-login",
             id: "dev-login-form",
-            select {
-                name: "user_id",
-                required: true,
-                onchange: move |_| {
-                    let _ = document::eval("document.getElementById('dev-login-form').submit()");
-                },
-                option { value: "", disabled: true, selected: true, "Log in" }
-                for u in users {
-                    option {
-                        value: "{u.id}",
-                        if u.is_admin { "{u.name} (admin)" } else { "{u.name}" }
+            ClientOnly {
+                select {
+                    name: "user_id",
+                    required: true,
+                    onchange: move |_| {
+                        let _ = document::eval("document.getElementById('dev-login-form').submit()");
+                    },
+                    option { value: "", disabled: true, selected: true, "Log in" }
+                    for u in users {
+                        option {
+                            value: "{u.id}",
+                            if u.is_admin { "{u.name} (admin)" } else { "{u.name}" }
+                        }
                     }
                 }
             }

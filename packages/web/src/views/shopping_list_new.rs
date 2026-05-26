@@ -3,6 +3,7 @@ use api::meals::list_meals;
 use api::shopping_lists::{create_from_meal, create_shopping_list};
 use dioxus::prelude::*;
 use types::NewShoppingList;
+use ui::ClientOnly;
 
 #[component]
 pub fn ShoppingListNew() -> Element {
@@ -64,15 +65,17 @@ pub fn ShoppingListNew() -> Element {
                 legend { "Generate from a meal" }
                 match meals.cloned() {
                     Some(Ok(list)) if !list.is_empty() => rsx! {
-                        select {
-                            value: from_meal_key().unwrap_or_default(),
-                            onchange: move |e| {
-                                let v = e.value();
-                                from_meal_key.set(if v.is_empty() { None } else { Some(v) });
-                            },
-                            option { value: "", "— Empty list —" }
-                            for m in list {
-                                option { value: "{m.key}", "{m.name}" }
+                        ClientOnly {
+                            select {
+                                value: from_meal_key().unwrap_or_default(),
+                                onchange: move |e| {
+                                    let v = e.value();
+                                    from_meal_key.set(if v.is_empty() { None } else { Some(v) });
+                                },
+                                option { value: "", "— Empty list —" }
+                                for m in list {
+                                    option { value: "{m.key}", "{m.name}" }
+                                }
                             }
                         }
                     },

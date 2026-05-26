@@ -2,6 +2,7 @@ use api::{list_ingredients, update_ingredient};
 use dioxus::prelude::*;
 use std::str::FromStr;
 use types::{GrocerySection, Ingredient, IngredientUpdate};
+use ui::ClientOnly;
 
 #[derive(Clone, PartialEq)]
 struct RowDraft {
@@ -233,15 +234,17 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                     {
                         let current = row.section.map(|s| s.to_string()).unwrap_or_default();
                         rsx! {
-                            select {
-                                value: "{current}",
-                                onchange: move |e| {
-                                    rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
-                                    trigger_autosave(idx, rows);
-                                },
-                                option { value: "", "—" }
-                                for section in GrocerySection::alphabetical_names() {
-                                    option { value: "{section}", "{section}" }
+                            ClientOnly {
+                                select {
+                                    value: "{current}",
+                                    onchange: move |e| {
+                                        rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
+                                        trigger_autosave(idx, rows);
+                                    },
+                                    option { value: "", "—" }
+                                    for section in GrocerySection::alphabetical_names() {
+                                        option { value: "{section}", "{section}" }
+                                    }
                                 }
                             }
                         }
