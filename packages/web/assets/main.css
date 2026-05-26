@@ -217,7 +217,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.auth-controls .auth-login select {
+select {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
@@ -380,7 +380,7 @@ fieldset.step .step-actions {
 
 .ingredient-row {
   display: grid;
-  grid-template-columns: 4rem 7rem 1fr auto;
+  grid-template-columns: 3.5rem 6rem 1fr auto;
   gap: 0.4rem;
   align-items: start;
   padding: 0.2rem 0;
@@ -407,16 +407,6 @@ fieldset.step .step-actions {
 .ingredient-status.new {
   color: var(--accent);
   font-weight: 500;
-}
-
-@media (max-width: 600px) {
-  .ingredient-row {
-    grid-template-columns: 4rem 1fr auto;
-  }
-
-  .ingredient-row .name-cell {
-    grid-column: 1 / -1;
-  }
 }
 
 .autocomplete {
@@ -488,11 +478,11 @@ fieldset.step .step-actions {
 }
 
 .recipe table.recipe-steps td.instruction {
-  width: 65%;
+  width: 60%;
 }
 
 .recipe table.recipe-steps td.ingredients {
-  width: 35%;
+  width: 40%;
   color: var(--muted);
   border-left: 1px solid var(--border);
   font-size: 0.95rem;
