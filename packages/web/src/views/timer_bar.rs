@@ -20,7 +20,7 @@ try {
         if (ctx.state === 'suspended') { ctx.resume(); }
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.frequency.value = 880;
+        osc.frequency.value = 400;
         gain.gain.value = 0.0;
         osc.connect(gain).connect(ctx.destination);
         osc.start();
