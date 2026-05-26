@@ -172,6 +172,7 @@ pub enum GrocerySection {
     Bakery,
     Meat,
     Alcohol,
+    Other,
 }
 
 impl GrocerySection {
