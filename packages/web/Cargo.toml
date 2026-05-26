@@ -7,6 +7,7 @@ edition = "2024"
 api = { workspace = true }
 console_error_panic_hook = "0.1"
 dioxus = { workspace = true, features = ["fullstack", "router"] }
+gloo-timers = { version = "0.3", features = ["futures"], optional = true }
 pulldown-cmark = { version = "0.13", default-features = false, features = [
   "html"
 ] }
@@ -18,4 +19,4 @@ ui = { workspace = true }
 default = []
 dev-auth = ["api/dev-auth"]
 server = ["api/server", "dioxus/server"]
-web = ["api/web", "dioxus/web"]
+web = ["api/web", "dep:gloo-timers", "dioxus/web"]
