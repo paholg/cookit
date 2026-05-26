@@ -4761,6 +4761,7 @@ dependencies = [
  "api",
  "console_error_panic_hook",
  "dioxus",
+ "gloo-timers",
  "pulldown-cmark",
  "strum",
  "types",

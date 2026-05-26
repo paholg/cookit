@@ -12,8 +12,10 @@ struct RowDraft {
     ignore_density: bool,
     saving: bool,
     error: Option<String>,
-    saved_tick: u32,
+    pending_gen: u64,
+    last_saved_gen: u64,
 }
+
 impl RowDraft {
     fn from(i: &Ingredient) -> Self {
         Self {
@@ -27,7 +29,8 @@ impl RowDraft {
             ignore_density: i.ignore_density,
             saving: false,
             error: None,
-            saved_tick: 0,
+            pending_gen: 0,
+            last_saved_gen: 0,
         }
     }
     fn snapshot(&self) -> Ingredient {
@@ -64,6 +67,67 @@ impl RowDraft {
 fn parse_optional_density(s: &str) -> Option<f64> {
     let t = s.trim();
     if t.is_empty() { None } else { t.parse().ok() }
+}
+
+async fn autosave_delay() {
+    #[cfg(feature = "web")]
+    gloo_timers::future::TimeoutFuture::new(500).await;
+}
+
+fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
+    let (id, this_gen) = {
+        let mut w = rows.write();
+        let Some(row) = w.get_mut(idx) else {
+            return;
+        };
+        row.pending_gen = row.pending_gen.wrapping_add(1);
+        (row.id, row.pending_gen)
+    };
+
+    spawn(async move {
+        autosave_delay().await;
+
+        let payload = {
+            let r = rows.read();
+            let Some(row) = r.get(idx) else { return };
+            if row.pending_gen != this_gen {
+                return;
+            }
+            row.to_payload()
+        };
+
+        let payload = match payload {
+            Ok(p) => p,
+            Err(msg) => {
+                if let Some(row) = rows.write().get_mut(idx) {
+                    row.error = Some(msg);
+                    row.saving = false;
+                }
+                return;
+            }
+        };
+
+        {
+            let mut w = rows.write();
+            let Some(row) = w.get_mut(idx) else { return };
+            row.saving = true;
+            row.error = None;
+        }
+
+        let result = update_ingredient(id, payload).await;
+
+        let mut w = rows.write();
+        let Some(row) = w.get_mut(idx) else { return };
+        row.saving = false;
+        match result {
+            Ok(()) => {
+                row.last_saved_gen = this_gen;
+            }
+            Err(e) => {
+                row.error = Some(e.to_string());
+            }
+        }
+    });
 }
 #[component]
 pub fn IngredientList() -> Element {
@@ -122,36 +186,11 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
         return rsx! {};
     };
     let incomplete = row.snapshot().is_incomplete();
-    let save = move |_| {
-        let snapshot = rows.read()[idx].clone();
-        let payload = match snapshot.to_payload() {
-            Ok(p) => p,
-            Err(msg) => {
-                rows.write()[idx].error = Some(msg);
-                return;
-            }
-        };
-        let id = snapshot.id;
-        {
-            let mut w = rows.write();
-            w[idx].saving = true;
-            w[idx].error = None;
-        }
-        spawn(async move {
-            match update_ingredient(id, payload).await {
-                Ok(()) => {
-                    let mut w = rows.write();
-                    w[idx].saving = false;
-                    w[idx].saved_tick = w[idx].saved_tick.wrapping_add(1);
-                }
-                Err(e) => {
-                    let mut w = rows.write();
-                    w[idx].saving = false;
-                    w[idx].error = Some(e.to_string());
-                }
-            }
-        });
-    };
+    let settled = row.last_saved_gen > 0
+        && row.last_saved_gen == row.pending_gen
+        && !row.saving
+        && row.error.is_none();
+
     rsx! {
         li { class: if incomplete { "ingredient-row-card incomplete" } else { "ingredient-row-card" },
             div { class: "ingredient-row-grid",
@@ -162,6 +201,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         value: "{row.name}",
                         oninput: move |e| {
                             rows.write()[idx].name = e.value();
+                            trigger_autosave(idx, rows);
                         },
                     }
                 }
@@ -179,6 +219,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         disabled: row.ignore_density,
                         oninput: move |e| {
                             rows.write()[idx].density = e.value();
+                            trigger_autosave(idx, rows);
                         },
                     }
                 }
@@ -196,6 +237,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                                 value: "{current}",
                                 onchange: move |e| {
                                     rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
+                                    trigger_autosave(idx, rows);
                                 },
                                 option { value: "", "—" }
                                 for section in GrocerySection::alphabetical_names() {
@@ -211,26 +253,18 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         checked: row.ignore_density,
                         oninput: move |e| {
                             rows.write()[idx].ignore_density = e.checked();
+                            trigger_autosave(idx, rows);
                         },
                     }
                     span { "Ignore density" }
                 }
             }
             div { class: "ingredient-row-actions",
-                button {
-                    r#type: "button",
-                    class: "primary",
-                    disabled: row.saving,
-                    onclick: save,
-                    if row.saving {
-                        "Saving..."
-                    } else {
-                        "Save"
-                    }
-                }
                 if let Some(err) = row.error.as_ref() {
                     span { class: "error inline", "{err}" }
-                } else if row.saved_tick > 0 {
+                } else if row.saving {
+                    span { class: "saved-tag", "Saving…" }
+                } else if settled {
                     span { class: "saved-tag", "Saved ✓" }
                 }
             }
