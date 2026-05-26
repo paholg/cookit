@@ -63,7 +63,7 @@ fn MealRow(meal: Meal, modifiable: bool, on_deleted: EventHandler<()>) -> Elemen
     rsx! {
         li {
             div { class: "meal-row-main",
-                Link { to: Route::MealDetail { meal_key }, "{meal.name}" }
+                Link { to: Route::MealDetail { meal_key, tab: None }, "{meal.name}" }
             }
         }
     }

@@ -21,8 +21,10 @@ pub fn RecipeView(detail: RecipeDetail, multiplier: f64) -> Element {
 
             table { class: "recipe-steps",
                 tbody {
-                    for step in detail.steps {
-                        tr { key: "{step.id}",
+                    for (i, step) in detail.steps.into_iter().enumerate() {
+                        tr {
+                            key: "{step.id}",
+                            id: "step-{i + 1}",
                             td { class: "ingredients",
                                 for ing in step.ingredients.iter() {
                                     div {
