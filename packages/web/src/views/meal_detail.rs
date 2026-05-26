@@ -9,10 +9,13 @@ use crate::{
 };
 
 #[component]
-pub fn MealDetail(id: i64) -> Element {
+pub fn MealDetail(meal_key: String) -> Element {
     let user = use_context::<CurrentUserCtx>();
     let authenticated = user.read().is_some();
-    let meal = use_resource(move || get_meal(id));
+    let meal = {
+        let meal_key = meal_key.clone();
+        use_resource(move || get_meal(meal_key.clone()))
+    };
     let mut tab = use_signal(|| 0usize);
     let mut making = use_signal(|| false);
     let mut make_error: Signal<Option<String>> = use_signal(|| None);
@@ -42,23 +45,29 @@ pub fn MealDetail(id: i64) -> Element {
                                 "aria-label": "Make shopping list",
                                 title: "Make shopping list",
                                 disabled: making(),
-                                onclick: move |_| async move {
-                                    making.set(true);
-                                    make_error.set(None);
-                                    match create_from_meal(id, authenticated).await {
-                                        Ok(new_id) => {
-                                            nav.push(Route::ShoppingListDetail { id: new_id });
-                                        }
-                                        Err(e) => {
-                                            make_error.set(Some(e));
-                                            making.set(false);
+                                onclick: {
+                                    let meal_key = meal_key.clone();
+                                    move |_| {
+                                        let meal_key = meal_key.clone();
+                                        async move {
+                                            making.set(true);
+                                            make_error.set(None);
+                                            match create_from_meal(meal_key, authenticated).await {
+                                                Ok(new_id) => {
+                                                    nav.push(Route::ShoppingListDetail { id: new_id });
+                                                }
+                                                Err(e) => {
+                                                    make_error.set(Some(e));
+                                                    making.set(false);
+                                                }
+                                            }
                                         }
                                     }
                                 },
                                 ListIcon {}
                             }
                             Link {
-                                to: Route::MealEdit { id },
+                                to: Route::MealEdit { meal_key: meal_key.clone() },
                                 button {
                                     r#type: "button",
                                     class: "icon-button",

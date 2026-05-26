@@ -3,14 +3,17 @@ use api::meals::get_meal;
 use dioxus::prelude::*;
 
 #[component]
-pub fn MealEdit(id: i64) -> Element {
-    let meal = use_resource(move || get_meal(id));
+pub fn MealEdit(meal_key: String) -> Element {
+    let meal = {
+        let meal_key = meal_key.clone();
+        use_resource(move || get_meal(meal_key.clone()))
+    };
 
     let body = match meal.cloned() {
         Some(Ok(detail)) => rsx! {
             MealForm {
                 initial: MealDraft::from_detail(detail),
-                mode: MealFormMode::Edit { id },
+                mode: MealFormMode::Edit { meal_key: meal_key.clone() },
             }
         },
         Some(Err(e)) => rsx! {

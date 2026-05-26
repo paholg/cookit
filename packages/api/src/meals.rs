@@ -1,10 +1,10 @@
 //! Unified meal API used by the UI. Dispatches every call to one of two
 //! backends:
 //!
-//! - Positive ids and authenticated `create`/`list` calls go to the server
-//!   functions in [`crate::remote`], which talk to the SQLite DB.
-//! - Negative ids and unauthenticated `create`/`list` calls go to
-//!   [`web_client::meals`], which talks to browser `localStorage`.
+//! - Keys prefixed with `local-` and unauthenticated `create`/`list` calls
+//!   go to [`web_client::meals`], which talks to browser `localStorage`.
+//! - All other keys (and authenticated `create`/`list` calls) go to the
+//!   server functions in [`crate::remote`], which talk to the SQLite DB.
 //!
 //! Only the lines that actually call into `web_client` are gated on the `web`
 //! feature; the dispatch shape, error wrapping, and recipe composition are
@@ -13,6 +13,12 @@
 use types::{Meal, MealDetail, MealRecipe, NewMeal};
 
 use crate::remote;
+
+const LOCAL_PREFIX: &str = "local-";
+
+fn is_local(key: &str) -> bool {
+    key.starts_with(LOCAL_PREFIX)
+}
 
 fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
@@ -30,15 +36,15 @@ pub async fn list_meals(authenticated: bool) -> Result<Vec<Meal>, String> {
     Ok(out)
 }
 
-pub async fn get_meal(id: i64) -> Result<MealDetail, String> {
-    if id < 0 {
-        get_local_meal(id).await
+pub async fn get_meal(key: String) -> Result<MealDetail, String> {
+    if is_local(&key) {
+        get_local_meal(key).await
     } else {
-        remote::get_meal(id).await.map_err(err)
+        remote::get_meal(key).await.map_err(err)
     }
 }
 
-pub async fn create_meal(input: NewMeal, authenticated: bool) -> Result<i64, String> {
+pub async fn create_meal(input: NewMeal, authenticated: bool) -> Result<String, String> {
     if authenticated {
         remote::create_meal(input).await.map_err(err)
     } else {
@@ -46,29 +52,23 @@ pub async fn create_meal(input: NewMeal, authenticated: bool) -> Result<i64, Str
     }
 }
 
-pub async fn update_meal(id: i64, input: NewMeal) -> Result<(), String> {
-    if id < 0 {
-        update_local(id, input)
+pub async fn update_meal(key: String, input: NewMeal) -> Result<(), String> {
+    if is_local(&key) {
+        update_local(key, input)
     } else {
-        remote::update_meal(id, input).await.map_err(err)
+        remote::update_meal(key, input).await.map_err(err)
     }
 }
 
-pub async fn delete_meal(id: i64) -> Result<(), String> {
-    if id < 0 {
-        delete_local(id)
+pub async fn delete_meal(key: String) -> Result<(), String> {
+    if is_local(&key) {
+        delete_local(key)
     } else {
-        remote::delete_meal(id).await.map_err(err)
+        remote::delete_meal(key).await.map_err(err)
     }
 }
 
 // ---------- local backend bridge ----------
-//
-// Each helper is a one-liner over `web_client::meals` when the `web` feature is
-// on, and a clear "unavailable" error when it isn't. Keeping the cfg-gating
-// confined to these helpers (rather than sprinkling it across the dispatch
-// functions above) lets rust-analyzer keep checking the dispatch logic and
-// recipe composition regardless of which feature set is active.
 
 fn list_local() -> Result<Vec<Meal>, String> {
     #[cfg(feature = "web")]
@@ -81,7 +81,7 @@ fn list_local() -> Result<Vec<Meal>, String> {
     }
 }
 
-fn create_local(input: NewMeal) -> Result<i64, String> {
+fn create_local(input: NewMeal) -> Result<String, String> {
     #[cfg(feature = "web")]
     {
         web_client::meals::create_meal(input).map_err(err)
@@ -93,41 +93,41 @@ fn create_local(input: NewMeal) -> Result<i64, String> {
     }
 }
 
-fn update_local(id: i64, input: NewMeal) -> Result<(), String> {
+fn update_local(key: String, input: NewMeal) -> Result<(), String> {
     #[cfg(feature = "web")]
     {
-        web_client::meals::update_meal(id, input).map_err(err)
+        web_client::meals::update_meal(&key, input).map_err(err)
     }
     #[cfg(not(feature = "web"))]
     {
-        let _ = (id, input);
+        let _ = (key, input);
         Err("local meal storage unavailable on this target".into())
     }
 }
 
-fn delete_local(id: i64) -> Result<(), String> {
+fn delete_local(key: String) -> Result<(), String> {
     #[cfg(feature = "web")]
     {
-        web_client::meals::delete_meal(id).map_err(err)
+        web_client::meals::delete_meal(&key).map_err(err)
     }
     #[cfg(not(feature = "web"))]
     {
-        let _ = id;
+        let _ = key;
         Err("local meal storage unavailable on this target".into())
     }
 }
 
 /// Compose a full [`MealDetail`] for a locally-stored meal by fetching each
 /// referenced recipe from the public `get_recipe` server function. Recipes are
-/// not stored locally — only the multiplier and the recipe id — so this hits
+/// not stored locally — only the multiplier and the recipe key — so this hits
 /// the network sequentially per recipe, matching the server-side traversal in
 /// `server::ops::get_meal`.
-async fn get_local_meal(id: i64) -> Result<MealDetail, String> {
-    let stored = read_local_stored(id)?;
+async fn get_local_meal(key: String) -> Result<MealDetail, String> {
+    let stored = read_local_stored(&key)?;
 
     let mut recipes = Vec::with_capacity(stored.recipes.len());
     for (position, mr) in stored.recipes.into_iter().enumerate() {
-        let recipe = crate::get_recipe(mr.recipe_id).await.map_err(err)?;
+        let recipe = crate::get_recipe(mr.recipe_key).await.map_err(err)?;
         recipes.push(MealRecipe {
             multiplier: mr.multiplier,
             position: position as i64,
@@ -137,7 +137,8 @@ async fn get_local_meal(id: i64) -> Result<MealDetail, String> {
 
     Ok(MealDetail {
         meal: Meal {
-            id,
+            id: 0,
+            key,
             user_id: None,
             name: stored.name,
         },
@@ -146,13 +147,13 @@ async fn get_local_meal(id: i64) -> Result<MealDetail, String> {
 }
 
 #[cfg(feature = "web")]
-fn read_local_stored(id: i64) -> Result<web_client::meals::StoredMeal, String> {
-    web_client::meals::get_stored(id).map_err(err)
+fn read_local_stored(key: &str) -> Result<web_client::meals::StoredMeal, String> {
+    web_client::meals::get_stored(key).map_err(err)
 }
 
 #[cfg(not(feature = "web"))]
-fn read_local_stored(id: i64) -> Result<LocalStub, String> {
-    let _ = id;
+fn read_local_stored(key: &str) -> Result<LocalStub, String> {
+    let _ = key;
     Err("local meal storage unavailable on this target".into())
 }
 

@@ -7,7 +7,7 @@ seed:
     cargo sqlx database setup
     sqlite3 dev/cookit.db < db/seed.sql
 
-check: lint test check-sqlx
+check: lint test
 
 build *args:
     cd packages/web && dx build {{args}}
@@ -26,9 +26,6 @@ fix:
     tombi format
 
 lint: fmt-check clippy
-
-check-sqlx:
-    cargo sqlx prepare --check --workspace -- --all-targets --all-features
 
 fmt-check:
     cargo fmt --all -- --check

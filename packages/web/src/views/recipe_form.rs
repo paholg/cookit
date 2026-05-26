@@ -230,10 +230,10 @@ fn autogrow_textarea(key: String) {
     });
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum RecipeFormMode {
     Create,
-    Edit { id: i64 },
+    Edit { recipe_key: String },
 }
 
 #[component]
@@ -260,38 +260,46 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         .chain(Volume::iter().map(|u| u.to_string()))
         .collect();
 
-    let submit = move |e: FormEvent| {
-        e.prevent_default();
-        if submitting() {
-            return;
-        }
-        let payload = match draft.read().to_payload() {
-            Ok(p) => p,
-            Err(msg) => {
-                error.set(Some(msg));
+    let submit = {
+        let mode = mode.clone();
+        move |e: FormEvent| {
+            e.prevent_default();
+            if submitting() {
                 return;
             }
-        };
-        submitting.set(true);
-        error.set(None);
-        spawn(async move {
-            let result: Result<i64, String> = match mode {
-                RecipeFormMode::Create => create_recipe(payload).await.map_err(|e| e.to_string()),
-                RecipeFormMode::Edit { id } => match update_recipe(id, payload).await {
-                    Ok(()) => Ok(id),
-                    Err(e) => Err(e.to_string()),
-                },
-            };
-            match result {
-                Ok(id) => {
-                    nav.push(Route::RecipeDetail { id });
-                }
+            let payload = match draft.read().to_payload() {
+                Ok(p) => p,
                 Err(msg) => {
-                    submitting.set(false);
                     error.set(Some(msg));
+                    return;
                 }
-            }
-        });
+            };
+            submitting.set(true);
+            error.set(None);
+            let mode = mode.clone();
+            spawn(async move {
+                let result: Result<String, String> = match mode {
+                    RecipeFormMode::Create => {
+                        create_recipe(payload).await.map_err(|e| e.to_string())
+                    }
+                    RecipeFormMode::Edit { recipe_key } => {
+                        match update_recipe(recipe_key.clone(), payload).await {
+                            Ok(()) => Ok(recipe_key),
+                            Err(e) => Err(e.to_string()),
+                        }
+                    }
+                };
+                match result {
+                    Ok(recipe_key) => {
+                        nav.push(Route::RecipeDetail { recipe_key });
+                    }
+                    Err(msg) => {
+                        submitting.set(false);
+                        error.set(Some(msg));
+                    }
+                }
+            });
+        }
     };
 
     let title = match mode {
@@ -328,7 +336,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
     rsx! {
         header { class: "page-header",
             h1 { "{title}" }
-            if let RecipeFormMode::Edit { id } = mode {
+            if let RecipeFormMode::Edit { recipe_key } = mode.clone() {
                 button {
                     r#type: "button",
                     class: "icon-button trash",
@@ -337,6 +345,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                     disabled: deleting() || submitting(),
                     onclick: move |_| {
                         if deleting() { return; }
+                        let recipe_key = recipe_key.clone();
                         spawn(async move {
                             let confirmed = document::eval(
                                 "return confirm('Delete this recipe? This cannot be undone.')",
@@ -348,7 +357,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
 
                             deleting.set(true);
                             error.set(None);
-                            match delete_recipe(id).await {
+                            match delete_recipe(recipe_key).await {
                                 Ok(()) => {
                                     nav.push(Route::RecipeList {});
                                 }
@@ -429,8 +438,8 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
             }
 
             div { class: "form-actions",
-                if let RecipeFormMode::Edit { id } = mode {
-                    Link { to: Route::RecipeDetail { id }, class: "button-link", "Cancel" }
+                if let RecipeFormMode::Edit { recipe_key } = mode.clone() {
+                    Link { to: Route::RecipeDetail { recipe_key }, class: "button-link", "Cancel" }
                 }
                 button {
                     r#type: "submit",

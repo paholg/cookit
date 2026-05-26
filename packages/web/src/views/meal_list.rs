@@ -38,7 +38,7 @@ pub fn MealList() -> Element {
                 ul { class: "recipe-list",
                     for meal in list {
                         MealRow {
-                            key: "{meal.id}",
+                            key: "{meal.key}",
                             modifiable: can_modify(&user.read(), meal.user_id),
                             meal,
                             on_deleted: move |_| meals.restart(),
@@ -58,12 +58,12 @@ pub fn MealList() -> Element {
 
 #[component]
 fn MealRow(meal: Meal, modifiable: bool, on_deleted: EventHandler<()>) -> Element {
-    let id = meal.id;
+    let meal_key = meal.key.clone();
 
     rsx! {
         li {
             div { class: "meal-row-main",
-                Link { to: Route::MealDetail { id }, "{meal.name}" }
+                Link { to: Route::MealDetail { meal_key }, "{meal.name}" }
             }
         }
     }

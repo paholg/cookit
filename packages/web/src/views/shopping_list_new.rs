@@ -12,7 +12,7 @@ pub fn ShoppingListNew() -> Element {
 
     let meals = use_resource(move || list_meals(authenticated));
     let mut name = use_signal(String::new);
-    let mut from_meal_id: Signal<Option<i64>> = use_signal(|| None);
+    let mut from_meal_key: Signal<Option<String>> = use_signal(|| None);
     let mut submitting = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
 
@@ -21,8 +21,8 @@ pub fn ShoppingListNew() -> Element {
         submitting.set(true);
         error.set(None);
 
-        let result = match from_meal_id() {
-            Some(meal_id) => create_from_meal(meal_id, authenticated).await,
+        let result = match from_meal_key() {
+            Some(meal_key) => create_from_meal(meal_key, authenticated).await,
             None => {
                 let trimmed = name.read().trim().to_string();
                 if trimmed.is_empty() {
@@ -65,14 +65,14 @@ pub fn ShoppingListNew() -> Element {
                 match meals.cloned() {
                     Some(Ok(list)) if !list.is_empty() => rsx! {
                         select {
-                            value: from_meal_id().map(|id| id.to_string()).unwrap_or_default(),
+                            value: from_meal_key().unwrap_or_default(),
                             onchange: move |e| {
                                 let v = e.value();
-                                from_meal_id.set(v.parse::<i64>().ok());
+                                from_meal_key.set(if v.is_empty() { None } else { Some(v) });
                             },
                             option { value: "", "— Empty list —" }
                             for m in list {
-                                option { value: "{m.id}", "{m.name}" }
+                                option { value: "{m.key}", "{m.name}" }
                             }
                         }
                     },
@@ -89,7 +89,7 @@ pub fn ShoppingListNew() -> Element {
                 input {
                     placeholder: "List name",
                     value: name(),
-                    disabled: from_meal_id().is_some(),
+                    disabled: from_meal_key().is_some(),
                     oninput: move |e| name.set(e.value()),
                 }
             }

@@ -19,18 +19,18 @@ enum Route {
     RecipeList {},
     #[route("/recipes/new")]
     RecipeNew {},
-    #[route("/recipes/:id")]
-    RecipeDetail { id: i64 },
-    #[route("/recipes/:id/edit")]
-    RecipeEdit { id: i64 },
+    #[route("/recipes/:recipe_key")]
+    RecipeDetail { recipe_key: String },
+    #[route("/recipes/:recipe_key/edit")]
+    RecipeEdit { recipe_key: String },
     #[route("/meals")]
     MealList {},
     #[route("/meals/new")]
     MealNew {},
-    #[route("/meals/:id")]
-    MealDetail { id: i64 },
-    #[route("/meals/:id/edit")]
-    MealEdit { id: i64 },
+    #[route("/meals/:meal_key")]
+    MealDetail { meal_key: String },
+    #[route("/meals/:meal_key/edit")]
+    MealEdit { meal_key: String },
     #[route("/ingredients")]
     IngredientList {},
     #[route("/shopping-lists")]

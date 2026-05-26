@@ -22,10 +22,10 @@ pub fn RecipeList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for recipe in list {
-                        li { key: "{recipe.id}",
+                        li { key: "{recipe.key}",
                             Link {
                                 to: Route::RecipeDetail {
-                                    id: recipe.id,
+                                    recipe_key: recipe.key.clone(),
                                 },
                                 "{recipe.name}"
                             }

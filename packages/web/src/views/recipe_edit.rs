@@ -1,14 +1,18 @@
 use crate::views::recipe_form::{RecipeDraft, RecipeForm, RecipeFormMode};
 use api::get_recipe;
 use dioxus::prelude::*;
+
 #[component]
-pub fn RecipeEdit(id: i64) -> Element {
-    let recipe = use_server_future(move || get_recipe(id))?;
+pub fn RecipeEdit(recipe_key: String) -> Element {
+    let recipe = {
+        let recipe_key = recipe_key.clone();
+        use_server_future(move || get_recipe(recipe_key.clone()))?
+    };
     let body = match recipe.cloned() {
         Some(Ok(detail)) => rsx! {
             RecipeForm {
                 initial: RecipeDraft::from_detail(detail),
-                mode: RecipeFormMode::Edit { id },
+                mode: RecipeFormMode::Edit { recipe_key: recipe_key.clone() },
             }
         },
         Some(Err(e)) => rsx! {

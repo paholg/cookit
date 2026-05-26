@@ -122,8 +122,40 @@ impl std::fmt::Display for Unit {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Recipe {
     pub id: i64,
+    pub key: String,
     pub name: String,
     pub source: Option<String>,
+}
+
+/// URL-safe kebab-case slug of `name`. Used as the public identifier for
+/// recipes and meals. Lowercases ASCII letters/digits, replaces runs of
+/// everything else with a single `-`, trims leading/trailing `-`. Non-ASCII
+/// characters are treated as separators (transliteration is out of scope).
+/// Falls back to `"item"` if the result is empty so we never produce an empty
+/// key — that would silently collide with `''` defaults.
+pub fn slugify(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut last_dash = true;
+
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            out.extend(c.to_lowercase());
+            last_dash = false;
+        } else if !last_dash {
+            out.push('-');
+            last_dash = true;
+        }
+    }
+
+    while out.ends_with('-') {
+        out.pop();
+    }
+
+    if out.is_empty() {
+        "item".to_string()
+    } else {
+        out
+    }
 }
 
 /// Sections of a typical grocery store, ordered roughly by store-walking flow
@@ -231,6 +263,7 @@ pub struct NewRecipe {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Meal {
     pub id: i64,
+    pub key: String,
     /// `None` for meals stored in the browser's localStorage (unauthenticated
     /// users); `Some(uid)` for meals owned by a user in the database.
     pub user_id: Option<i64>,
@@ -252,7 +285,7 @@ pub struct MealDetail {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct NewMealRecipe {
-    pub recipe_id: i64,
+    pub recipe_key: String,
     pub multiplier: f64,
 }
 
@@ -397,6 +430,7 @@ mod aggregate_tests {
                 recipe: RecipeDetail {
                     recipe: Recipe {
                         id: i as i64,
+                        key: format!("r{i}"),
                         name: format!("r{i}"),
                         source: None,
                     },
@@ -412,11 +446,22 @@ mod aggregate_tests {
         MealDetail {
             meal: Meal {
                 id: 1,
+                key: "m".into(),
                 user_id: None,
                 name: "m".into(),
             },
             recipes,
         }
+    }
+
+    #[test]
+    fn slugify_basics() {
+        assert_eq!(slugify("Black Beans"), "black-beans");
+        assert_eq!(slugify("  Chicken & Waffles  "), "chicken-waffles");
+        assert_eq!(slugify("Mom's Chili (Spicy!)"), "mom-s-chili-spicy");
+        assert_eq!(slugify("---"), "item");
+        assert_eq!(slugify(""), "item");
+        assert_eq!(slugify("café"), "caf");
     }
 
     #[test]
