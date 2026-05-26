@@ -166,19 +166,12 @@ pub fn slugify(name: &str) -> String {
 #[strum(ascii_case_insensitive)]
 pub enum GrocerySection {
     Produce,
-    Bakery,
-    Deli,
-    Meat,
-    Seafood,
+    Pantry,
     Dairy,
     Frozen,
-    Pantry,
-    Spices,
-    Condiments,
-    Beverages,
-    Snacks,
+    Bakery,
+    Meat,
     Alcohol,
-    Household,
 }
 
 impl GrocerySection {
