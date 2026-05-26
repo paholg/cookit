@@ -87,9 +87,10 @@
               cargo-nextest
               just
               litecli
-              pkg-config
               openssl
+              pkg-config
               playwright-test
+              sqlite
               sqlx-cli
               tombi
             ]
@@ -102,7 +103,6 @@
             strictDeps = true;
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl ];
-            SQLX_OFFLINE = "true";
           };
 
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -121,15 +121,18 @@
             // {
               inherit cargoArtifacts;
               nativeBuildInputs = commonArgs.nativeBuildInputs ++ [
-                pkgs.dioxus-cli
-                wasmBindgenCli
                 pkgs.binaryen
+                pkgs.dioxus-cli
+                pkgs.sqlx-cli
                 rustMinimal
+                wasmBindgenCli
               ];
               doCheck = false;
               doNotPostBuildInstallCargoBinaries = true;
               buildPhaseCargoCommand = ''
                 export HOME=$(mktemp -d)
+                export DATABASE_URL="sqlite://$(mktemp)"
+                cargo sqlx database setup
                 dx build --release --platform web --package web
               '';
               installPhaseCommand = ''
@@ -148,7 +151,7 @@
           };
           devShells.default = pkgs.mkShell {
             env = {
-              DATABASE_URL = "sqlite:///home/paho/src/cookit/dev/cookit.db";
+              SQLX_OFFLINE = false; # Not sure why I need this.
               PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
               PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
             };

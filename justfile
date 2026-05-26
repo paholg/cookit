@@ -7,10 +7,6 @@ seed:
     cargo sqlx database setup
     sqlite3 dev/cookit.db < db/seed.sql
 
-prepare:
-    cargo sqlx migrate run
-    cargo sqlx prepare --workspace -- --all-targets --all-features
-
 check: lint test check-sqlx
 
 build *args:
@@ -24,7 +20,7 @@ up:
     cargo upgrade -i
 
 fix:
-    just prepare
+    cargo sqlx database setup
     cargo clippy --fix --allow-staged
     cargo fmt --all
     tombi format
