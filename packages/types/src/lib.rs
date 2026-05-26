@@ -181,6 +181,14 @@ pub enum GrocerySection {
     Household,
 }
 
+impl GrocerySection {
+    pub fn alphabetical_names() -> Vec<String> {
+        let mut vec: Vec<String> = GrocerySection::iter().map(|gs| gs.to_string()).collect();
+        vec.sort();
+        vec
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Ingredient {
     pub id: i64,

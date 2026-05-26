@@ -1,8 +1,8 @@
 use api::{list_ingredients, update_ingredient};
 use dioxus::prelude::*;
 use std::str::FromStr;
-use strum::IntoEnumIterator;
 use types::{GrocerySection, Ingredient, IngredientUpdate};
+
 #[derive(Clone, PartialEq)]
 struct RowDraft {
     id: i64,
@@ -198,7 +198,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                                     rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
                                 },
                                 option { value: "", "—" }
-                                for section in GrocerySection::iter() {
+                                for section in GrocerySection::alphabetical_names() {
                                     option { value: "{section}", "{section}" }
                                 }
                             }
@@ -208,13 +208,12 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label { class: "checkbox-label",
                     input {
                         r#type: "checkbox",
-                        checked: row
-                                                                                                                                                                                .ignore_density,
+                        checked: row.ignore_density,
                         oninput: move |e| {
                             rows.write()[idx].ignore_density = e.checked();
                         },
                     }
-                    span { "Ignore density (e.g. eggs, lemons)" }
+                    span { "Ignore density" }
                 }
             }
             div { class: "ingredient-row-actions",
