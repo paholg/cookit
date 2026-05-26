@@ -142,6 +142,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                             RecipeView {
                                 detail: mr.recipe.clone(),
                                 multiplier: mr.multiplier,
+                                meal_key: meal_key.clone(),
                             }
                         }
                     }

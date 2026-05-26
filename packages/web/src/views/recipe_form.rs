@@ -1,4 +1,8 @@
-use crate::{Route, draft_id::DraftId};
+use crate::{
+    Route,
+    draft_id::DraftId,
+    views::duration::{format_duration, parse_duration},
+};
 use api::{create_recipe, delete_recipe, list_ingredients, update_recipe};
 use dioxus::prelude::*;
 use std::str::FromStr;
@@ -25,6 +29,10 @@ pub struct StepDraft {
     pub id: DraftId,
     pub instruction: String,
     pub ingredients: Vec<IngDraft>,
+    /// Free-form duration text (`30s`, `1h 30m`, ...). Empty means no timer.
+    pub duration_text: String,
+    /// Set when the last blur-parse of `duration_text` failed. Blocks save.
+    pub duration_error: Option<String>,
     /// Counter for allocating ids to ingredients added inside this step.
     /// Per-step so server/client SSR produce matching ids on first render.
     next_ing_id: i64,
@@ -121,6 +129,8 @@ impl RecipeDraft {
                             unit: i.unit.map(|u| u.label()).unwrap_or_default(),
                         })
                         .collect(),
+                    duration_text: s.duration_seconds.map(format_duration).unwrap_or_default(),
+                    duration_error: None,
                     next_ing_id: 0,
                 })
                 .collect(),
@@ -163,9 +173,20 @@ impl RecipeDraft {
                 .map(str::to_string)
                 .collect();
 
+            let duration_text = step.duration_text.trim();
+            let duration_seconds = if duration_text.is_empty() {
+                None
+            } else {
+                Some(
+                    parse_duration(duration_text)
+                        .map_err(|e| format!("step {} duration: {e}", step_idx + 1))?,
+                )
+            };
+
             steps.push(NewStep {
                 instructions,
                 ingredients: ings,
+                duration_seconds,
             });
         }
         Ok(NewRecipe {
@@ -596,6 +617,46 @@ fn StepEditor(
                         }
                     },
                     "{step_snapshot.instruction}"
+                }
+            }
+
+            label { class: "step-duration",
+                "Timer (optional)"
+                input {
+                    r#type: "text",
+                    class: if step_snapshot.duration_error.is_some() { "duration-input invalid" } else { "duration-input" },
+                    placeholder: "e.g. 30s, 1h 30m",
+                    value: "{step_snapshot.duration_text}",
+                    oninput: move |e: FormEvent| {
+                        let v = e.value();
+                        with_step(&mut draft, step_id, |s| {
+                            s.duration_text = v;
+                            // Clear stale error as soon as the user edits.
+                            s.duration_error = None;
+                        });
+                    },
+                    onblur: move |_| {
+                        with_step(&mut draft, step_id, |s| {
+                            let trimmed = s.duration_text.trim();
+                            if trimmed.is_empty() {
+                                s.duration_text.clear();
+                                s.duration_error = None;
+                            } else {
+                                match parse_duration(trimmed) {
+                                    Ok(secs) => {
+                                        s.duration_text = format_duration(secs);
+                                        s.duration_error = None;
+                                    }
+                                    Err(msg) => {
+                                        s.duration_error = Some(msg);
+                                    }
+                                }
+                            }
+                        });
+                    },
+                }
+                if let Some(err) = step_snapshot.duration_error.as_ref() {
+                    span { class: "duration-error", "{err}" }
                 }
             }
         }

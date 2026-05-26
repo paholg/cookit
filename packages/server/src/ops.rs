@@ -65,7 +65,9 @@ pub async fn get_recipe_by_id(id: i64) -> Result<Option<RecipeDetail>> {
 
 async fn get_recipe_inner(pool: &Pool<Sqlite>, recipe: Recipe) -> Result<Option<RecipeDetail>> {
     let step_rows = sqlx::query!(
-        r#"SELECT id as "id!: i64", position as "position!: i64"
+        r#"SELECT id as "id!: i64",
+                  position as "position!: i64",
+                  duration_seconds as "duration_seconds: i64"
            FROM recipe_steps WHERE recipe_id = ? ORDER BY position"#,
         recipe.id,
     )
@@ -139,6 +141,7 @@ async fn get_recipe_inner(pool: &Pool<Sqlite>, recipe: Recipe) -> Result<Option<
             position: sr.position,
             instructions,
             ingredients,
+            duration_seconds: sr.duration_seconds,
         });
     }
     Ok(Some(RecipeDetail { recipe, steps }))
@@ -392,6 +395,7 @@ async fn meal_id_for_key(pool: &sqlx::SqlitePool, key: &str) -> Result<i64> {
 struct ConvertedStep {
     instructions: Vec<String>,
     ingredients: Vec<ConvertedIngredient>,
+    duration_seconds: Option<i64>,
 }
 
 fn convert_steps(steps: &[NewStep]) -> Result<Vec<ConvertedStep>> {
@@ -438,9 +442,19 @@ fn convert_steps(steps: &[NewStep]) -> Result<Vec<ConvertedStep>> {
             .map(|t| t.to_string())
             .collect();
 
+        if let Some(d) = step.duration_seconds
+            && d <= 0
+        {
+            return Err(anyhow!(
+                "step {}: duration must be positive, got {d}s",
+                step_idx + 1,
+            ));
+        }
+
         out.push(ConvertedStep {
             instructions,
             ingredients: ings,
+            duration_seconds: step.duration_seconds,
         });
     }
     Ok(out)
@@ -454,11 +468,12 @@ async fn insert_steps_into(
     for (step_idx, step) in converted_steps.into_iter().enumerate() {
         let step_position = step_idx as i64;
         let step_id = sqlx::query!(
-            r#"INSERT INTO recipe_steps (recipe_id, position)
-               VALUES (?, ?)
+            r#"INSERT INTO recipe_steps (recipe_id, position, duration_seconds)
+               VALUES (?, ?, ?)
                RETURNING id as "id!: i64""#,
             recipe_id,
             step_position,
+            step.duration_seconds,
         )
         .fetch_one(&mut *conn)
         .await
@@ -1105,6 +1120,7 @@ mod tests {
             steps: vec![NewStep {
                 instructions: vec!["do the thing".into()],
                 ingredients,
+                duration_seconds: None,
             }],
         }
     }
@@ -1153,6 +1169,7 @@ mod tests {
                     ing("ground beef", 1.0, UnitKind::Mass, "lb"),
                     ing("onion", 1.0, UnitKind::Custom, "medium"),
                 ],
+                duration_seconds: None,
             }],
         };
 
@@ -1190,6 +1207,7 @@ mod tests {
                     ing("water", 1.0, UnitKind::Volume, "cup"),
                     ing("kosher salt", 2.0, UnitKind::Volume, "tsp"),
                 ],
+                duration_seconds: None,
             }],
         };
 
@@ -1375,10 +1393,12 @@ mod tests {
                 NewStep {
                     instructions: vec!["old step 1".into()],
                     ingredients: vec![ing("beef", 1.0, UnitKind::Mass, "lb")],
+                    duration_seconds: None,
                 },
                 NewStep {
                     instructions: vec!["old step 2".into()],
                     ingredients: vec![ing("water", 1.0, UnitKind::Volume, "cup")],
+                    duration_seconds: None,
                 },
             ],
         })
@@ -1396,6 +1416,7 @@ mod tests {
                         ing("beef", 2.0, UnitKind::Mass, "lb"),
                         ing("tomato", 3.0, UnitKind::Count, ""),
                     ],
+                    duration_seconds: None,
                 }],
             },
         )
@@ -1502,6 +1523,7 @@ mod tests {
                     "Fold in the wet ingredients.".into(),
                 ],
                 ingredients: vec![ing("flour", 1.0, UnitKind::Mass, "g")],
+                duration_seconds: None,
             }],
         })
         .await
