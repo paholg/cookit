@@ -418,7 +418,7 @@ async fn upsert_user(
     groups: &[String],
     is_admin: bool,
 ) -> Result<i64> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let groups_csv = groups.join(",");
     let is_admin_int: i64 = if is_admin { 1 } else { 0 };
     let row = sqlx::query!(

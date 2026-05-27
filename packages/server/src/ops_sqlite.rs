@@ -14,7 +14,7 @@ pub fn forbidden() -> anyhow::Error {
 }
 
 pub async fn list_recipes() -> Result<Vec<Recipe>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     sqlx::query_as!(
         Recipe,
         r#"SELECT id as "id!: i64", key as "key!", name as "name!", source
@@ -26,7 +26,7 @@ pub async fn list_recipes() -> Result<Vec<Recipe>> {
 }
 
 pub async fn get_recipe_by_key(key: &str) -> Result<Option<RecipeDetail>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let Some(recipe) = sqlx::query_as!(
         Recipe,
@@ -45,7 +45,7 @@ pub async fn get_recipe_by_key(key: &str) -> Result<Option<RecipeDetail>> {
 }
 
 pub async fn get_recipe_by_id(id: i64) -> Result<Option<RecipeDetail>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let Some(recipe) = sqlx::query_as!(
         Recipe,
@@ -148,7 +148,7 @@ async fn get_recipe_inner(pool: &Pool<Sqlite>, recipe: Recipe) -> Result<Option<
 }
 
 pub async fn list_ingredients() -> Result<Vec<Ingredient>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let rows = sqlx::query!(
         r#"SELECT id as "id!: i64", name as "name!",
                   density_g_per_ml, grocery_section,
@@ -195,7 +195,7 @@ pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<()> {
         return Err(anyhow!("density must be a positive number, got {d}"));
     }
     let section = input.grocery_section.map(|s| s.to_string());
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let affected = sqlx::query!(
         r#"UPDATE ingredients
            SET name = ?, density_g_per_ml = ?, grocery_section = ?, ignore_density = ?
@@ -228,7 +228,7 @@ pub async fn create_recipe(input: NewRecipe) -> Result<String> {
         .map(str::trim)
         .filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
 
     let key = unique_recipe_key(&mut tx, &slugify(name)).await?;
@@ -298,7 +298,7 @@ async fn unique_meal_key(conn: &mut SqliteConnection, base: &str) -> Result<Stri
     }
 }
 pub async fn delete_recipe(key: &str) -> Result<()> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let id = recipe_id_for_key(pool, key).await?;
 
@@ -345,7 +345,7 @@ pub async fn update_recipe(key: &str, input: NewRecipe) -> Result<()> {
         .map(str::trim)
         .filter(|s| !s.is_empty());
     let converted = convert_steps(&input.steps)?;
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let id = recipe_id_for_key(pool, key).await?;
 
@@ -545,7 +545,7 @@ struct ConvertedIngredient {
     unit: Option<Unit>,
 }
 pub async fn list_meals() -> Result<Vec<Meal>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     sqlx::query_as!(
         Meal,
         r#"SELECT id as "id!: i64", key as "key!", user_id as "user_id: i64", name as "name!"
@@ -557,7 +557,7 @@ pub async fn list_meals() -> Result<Vec<Meal>> {
 }
 
 pub async fn get_meal_by_key(key: &str) -> Result<Option<MealDetail>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let Some(meal) = sqlx::query_as!(
         Meal,
@@ -576,7 +576,7 @@ pub async fn get_meal_by_key(key: &str) -> Result<Option<MealDetail>> {
 }
 
 pub async fn get_meal_by_id(id: i64) -> Result<Option<MealDetail>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
 
     let Some(meal) = sqlx::query_as!(
         Meal,
@@ -631,7 +631,7 @@ pub async fn create_meal(input: NewMeal, owner_id: i64) -> Result<String> {
         return Err(anyhow!("meal name is required"));
     }
     validate_meal_recipes(&input.recipes)?;
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
 
     // Strip a leading "local-" so server-side meal keys can never collide
@@ -665,7 +665,7 @@ pub async fn update_meal(key: &str, input: NewMeal, actor_id: i64, is_admin: boo
 
     validate_meal_recipes(&input.recipes)?;
 
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let id = meal_id_for_key(pool, key).await?;
     ensure_meal_writable(pool, id, actor_id, is_admin).await?;
 
@@ -691,7 +691,7 @@ pub async fn update_meal(key: &str, input: NewMeal, actor_id: i64, is_admin: boo
 }
 
 pub async fn delete_meal(key: &str, actor_id: i64, is_admin: bool) -> Result<()> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let id = meal_id_for_key(pool, key).await?;
     ensure_meal_writable(pool, id, actor_id, is_admin).await?;
 
@@ -779,7 +779,7 @@ async fn insert_meal_recipes_into(
     Ok(())
 }
 pub async fn list_ingredient_sections() -> Result<HashMap<i64, Option<GrocerySection>>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let rows = sqlx::query!(r#"SELECT id as "id!: i64", grocery_section FROM ingredients"#,)
         .fetch_all(pool)
         .await
@@ -805,7 +805,7 @@ pub async fn list_ingredient_sections() -> Result<HashMap<i64, Option<GrocerySec
 }
 
 pub async fn list_shopping_lists(owner_id: i64, is_admin: bool) -> Result<Vec<ShoppingList>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let rows = if is_admin {
         sqlx::query_as!(
             ShoppingList,
@@ -828,7 +828,7 @@ pub async fn list_shopping_lists(owner_id: i64, is_admin: bool) -> Result<Vec<Sh
 }
 
 pub async fn get_shopping_list(id: i64) -> Result<Option<ShoppingListDetail>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let Some(list) = sqlx::query_as!(
         ShoppingList,
         r#"SELECT id as "id!: i64", user_id as "user_id: i64", name as "name!"
@@ -902,7 +902,7 @@ pub async fn create_shopping_list(input: NewShoppingList, owner_id: i64) -> Resu
     }
     validate_shopping_items(&input.items)?;
 
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let mut tx = pool.begin().await.context("begin tx")?;
     let list_id = sqlx::query!(
         r#"INSERT INTO shopping_lists (user_id, name) VALUES (?, ?)
@@ -923,7 +923,7 @@ pub async fn create_shopping_list(input: NewShoppingList, owner_id: i64) -> Resu
 }
 
 pub async fn delete_shopping_list(id: i64, actor_id: i64, is_admin: bool) -> Result<()> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     ensure_shopping_list_writable(pool, id, actor_id, is_admin).await?;
     let affected = sqlx::query!("DELETE FROM shopping_lists WHERE id = ?", id)
         .execute(pool)
@@ -945,7 +945,7 @@ pub async fn add_shopping_list_item(
     if item.name.trim().is_empty() {
         return Err(anyhow!("item name is required"));
     }
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     ensure_shopping_list_writable(pool, list_id, actor_id, is_admin).await?;
 
     let mut tx = pool.begin().await.context("begin tx")?;
@@ -969,7 +969,7 @@ pub async fn set_shopping_list_item_checked(
     actor_id: i64,
     is_admin: bool,
 ) -> Result<()> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     ensure_item_writable(pool, item_id, actor_id, is_admin).await?;
     let affected = sqlx::query!(
         "UPDATE shopping_list_items SET checked = ? WHERE id = ?",
@@ -987,7 +987,7 @@ pub async fn set_shopping_list_item_checked(
 }
 
 pub async fn delete_shopping_list_item(item_id: i64, actor_id: i64, is_admin: bool) -> Result<()> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     ensure_item_writable(pool, item_id, actor_id, is_admin).await?;
     let affected = sqlx::query!("DELETE FROM shopping_list_items WHERE id = ?", item_id)
         .execute(pool)
@@ -1135,7 +1135,7 @@ mod tests {
     }
 
     async fn test_user() -> i64 {
-        let pool = crate::db::pool().await;
+        let pool = crate::db_sqlite::pool().await;
         sqlx::query!(
             r#"INSERT INTO users (oidc_sub, email, name, groups, is_admin)
                VALUES ('test-sub', 'test@example.com', 'tester', '', 1)

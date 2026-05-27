@@ -101,7 +101,7 @@ pub(crate) async fn session_key() -> &'static Key {
 }
 
 pub(crate) async fn load_user(id: i64) -> Result<Option<CurrentUser>> {
-    let pool = crate::db::pool().await;
+    let pool = crate::db_sqlite::pool().await;
     let row = sqlx::query!(
         r#"SELECT id as "id!: i64", name as "name!", email as "email!",
                   is_admin as "is_admin!: bool"
