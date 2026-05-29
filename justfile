@@ -10,7 +10,7 @@ seed:
 check: lint test
 
 build *args:
-    cd packages/web && dx build {{args}}
+    cd crates/web && dx build {{args}}
 
 test *args:
     cargo nextest run --workspace --all-targets --no-fail-fast {{args}}

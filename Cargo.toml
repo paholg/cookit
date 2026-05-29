@@ -1,21 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-  "packages/api",
-  "packages/server",
-  "packages/types",
-  "packages/ui",
-  "packages/web",
-  "packages/web_client"
+  "crates/api",
+  "crates/server",
+  "crates/types",
+  "crates/ui",
+  "crates/web",
+  "crates/web_client"
 ]
 
 [workspace.dependencies]
 dioxus = { version = "0.7.9" }
 jiff = "0.2"
 
-api = { path = "packages/api" }
-server = { path = "packages/server" }
-types = { path = "packages/types" }
+api = { path = "crates/api" }
+server = { path = "crates/server" }
+types = { path = "crates/types" }
 # workspace
-ui = { path = "packages/ui" }
-web_client = { path = "packages/web_client" }
+ui = { path = "crates/ui" }
+web_client = { path = "crates/web_client" }

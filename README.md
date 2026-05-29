@@ -6,7 +6,7 @@ Your new workspace contains a member crate for each of the web, desktop and mobi
 your_project/
 ├─ README.md
 ├─ Cargo.toml
-└─ packages/
+└─ crates/
    ├─ web/
    │  └─ ... # Web specific UI/logic
    ├─ desktop/
