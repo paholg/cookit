@@ -8,8 +8,11 @@ anyhow = "1"
 axum = "0.8"
 base64 = "0.22"
 cookie = { version = "0.18", features = ["percent-encode", "signed"] }
+diesel.workspace = true
+diesel-derive-enum.workspace = true
 dioxus = { workspace = true, features = ["fullstack", "server"] }
 http = "1"
+jiff-diesel = { version = "0.1.3", features = ["postgres"] }
 openidconnect = "4"
 reqwest = { version = "0.12", default-features = false, features = [
   "rustls-tls"
@@ -25,8 +28,9 @@ sqlx = { version = "0.8", features = [
 time = "0.3"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
-types = { workspace = true }
+types = { workspace = true, features = ["server"] }
 url = "2"
+uuid.workspace = true
 
 [features]
 # Replace OIDC with simple "log in as user/admin" buttons for local

@@ -10,5 +10,19 @@ services:
       - ~/.claude.json:/home/vscode/.claude.json
     environment:
       COLORTERM: truecolor
-      DATABASE_URL: "sqlite:///workspace/dev/cookit.db"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/cookit"
       WORKSPACE_DIR: ${WORKSPACE_DIR}
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:18.3
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cookit
+    volumes:
+      - pg_data:/var/lib/postgresql
+
+volumes:
+  pg_data:

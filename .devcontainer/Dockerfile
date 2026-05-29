@@ -16,7 +16,7 @@ RUN apt-get update \
 USER vscode
 ENV CARGO_HOME=/home/vscode/.cargo \
     RUSTUP_HOME=/home/vscode/.rustup \
-    PATH=/home/vscode/.cargo/bin:$PATH
+    PATH="/home/vscode/.cargo/bin:/home/vscode/.local/bin:${PATH}"
 
 # Rust toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
@@ -29,19 +29,20 @@ RUN curl -L --proto '=https' --tlsv1.2 -sSf \
     https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh \
     | bash
 
+# tombi
+RUN curl -fsSL https://tombi-toml.github.io/tombi/install.sh | sh
+
 RUN cargo binstall --no-confirm \
     atuin \
     cargo-dist \
     cargo-edit \
     cargo-nextest \
+    diesel_cli \
     dioxus-cli \
     just \
-    sqlx-cli \
     && true
 
 COPY --chown=vscode:vscode zshrc /home/vscode/.zshrc
-
-ENV PATH="/home/vscode/.local/bin:${PATH}"
 
 ARG CLAUDE_CODE_CACHE_BUST=replaceme
 RUN curl -fsSL https://claude.ai/install.sh | bash \

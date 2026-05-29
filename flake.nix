@@ -130,9 +130,6 @@
               doCheck = false;
               doNotPostBuildInstallCargoBinaries = true;
               buildPhaseCargoCommand = ''
-                export HOME=$(mktemp -d)
-                export DATABASE_URL="sqlite://$(mktemp)"
-                cargo sqlx database setup
                 dx build --release --platform web --package web
               '';
               installPhaseCommand = ''
@@ -150,11 +147,6 @@
             inherit cookit-tests;
           };
           devShells.default = pkgs.mkShell {
-            env = {
-              SQLX_OFFLINE = false; # Not sure why I need this.
-              PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
-              PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
-            };
             packages = devPackages;
           };
         }

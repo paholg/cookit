@@ -10,12 +10,14 @@ members = [
 ]
 
 [workspace.dependencies]
+diesel = { version = "2.3", features = ["postgres_backend", "uuid"] }
+diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dioxus = { version = "0.7.9" }
 jiff = "0.2"
+uuid = "1"
 
 api = { path = "crates/api" }
 server = { path = "crates/server" }
 types = { path = "crates/types" }
-# workspace
 ui = { path = "crates/ui" }
 web_client = { path = "crates/web_client" }

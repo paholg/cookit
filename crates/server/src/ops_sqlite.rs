@@ -539,11 +539,13 @@ async fn insert_steps_into(
     }
     Ok(())
 }
+
 struct ConvertedIngredient {
     name: String,
     quantity: Option<f64>,
     unit: Option<Unit>,
 }
+
 pub async fn list_meals() -> Result<Vec<Meal>> {
     let pool = crate::db_sqlite::pool().await;
     sqlx::query_as!(

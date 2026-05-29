@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS shopping_list_items;
+DROP TABLE IF EXISTS shopping_lists;
+DROP TABLE IF EXISTS meal_recipes;
+DROP TABLE IF EXISTS meals;
+DROP TABLE IF EXISTS recipe_step_ingredients;
+DROP TABLE IF EXISTS recipe_step_instructions;
+DROP TABLE IF EXISTS recipe_steps;
+DROP TABLE IF EXISTS recipes;
+DROP TABLE IF EXISTS ingredients;
+DROP TABLE IF EXISTS users;

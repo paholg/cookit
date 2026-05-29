@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use strum::{Display, EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 
+pub mod id;
+
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString, EnumIter,
 )]

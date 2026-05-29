@@ -4,8 +4,20 @@ serve *args:
     dx serve -p web --features dev-auth {{args}}
 
 seed:
-    cargo sqlx database setup
-    sqlite3 dev/cookit.db < db/seed.sql
+    # cargo sqlx database setup
+    # sqlite3 dev/cookit.db < db/seed.sql
+
+db-setup:
+    diesel setup
+
+db-migrate:
+    diesel migration run
+
+db-redo:
+    diesel migration redo
+
+db-revert:
+    diesel migration revert
 
 check: lint test
 
@@ -20,7 +32,6 @@ up:
     cargo upgrade -i
 
 fix:
-    cargo sqlx database setup
     cargo clippy --fix --allow-staged
     cargo fmt --all
     tombi format

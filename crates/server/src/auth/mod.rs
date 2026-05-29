@@ -64,7 +64,8 @@ pub async fn current_user() -> Option<CurrentUser> {
     if session.exp <= now() {
         return None;
     }
-    load_user(session.user_id).await.ok().flatten()
+    // load_user(session.user_id).await.ok().flatten()
+    todo!()
 }
 
 pub async fn require_user() -> Result<CurrentUser, ServerFnError> {
@@ -100,25 +101,25 @@ pub(crate) async fn session_key() -> &'static Key {
     }
 }
 
-pub(crate) async fn load_user(id: i64) -> Result<Option<CurrentUser>> {
-    let pool = crate::db_sqlite::pool().await;
-    let row = sqlx::query!(
-        r#"SELECT id as "id!: i64", name as "name!", email as "email!",
-                  is_admin as "is_admin!: bool"
-           FROM users WHERE id = ?"#,
-        id,
-    )
-    .fetch_optional(pool)
-    .await
-    .context("load_user select")?;
+// pub(crate) async fn load_user(id: i64) -> Result<Option<CurrentUser>> {
+//     let pool = crate::db_sqlite::pool().await;
+//     let row = sqlx::query!(
+//         r#"SELECT id as "id!: i64", name as "name!", email as "email!",
+//                   is_admin as "is_admin!: bool"
+//            FROM users WHERE id = ?"#,
+//         id,
+//     )
+//     .fetch_optional(pool)
+//     .await
+//     .context("load_user select")?;
 
-    Ok(row.map(|r| CurrentUser {
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        is_admin: r.is_admin,
-    }))
-}
+//     Ok(row.map(|r| CurrentUser {
+//         id: r.id,
+//         name: r.name,
+//         email: r.email,
+//         is_admin: r.is_admin,
+//     }))
+// }
 
 pub(crate) fn jar_from_headers(headers: &axum::http::HeaderMap) -> CookieJar {
     let mut jar = CookieJar::new();

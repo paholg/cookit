@@ -129,7 +129,8 @@ in
       after = [ "network.target" ];
 
       environment = {
-        DATABASE_URL = "sqlite://${cfg.dataDir}/cookit.db?mode=rwc";
+        # FIXME
+        # DATABASE_URL = "sqlite://${cfg.dataDir}/cookit.db?mode=rwc";
         IP = cfg.ipAddress;
         PORT = toString cfg.port;
         URL = cfg.cookitUrl;
