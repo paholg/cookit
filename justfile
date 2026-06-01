@@ -29,7 +29,8 @@ up:
 
 fix:
     cargo clippy --fix --allow-staged
-    dx fmt
+    # Can break rsx :(
+    # dx fmt
     cargo fmt --all
     tombi format
 

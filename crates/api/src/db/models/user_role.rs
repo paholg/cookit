@@ -16,7 +16,7 @@ use crate::db::{
     feature = "server",
     ExistingTypePath = "crate::db::schema::sql_types::Role"
 )]
-pub(crate) enum Role {
+pub enum Role {
     Admin,
     User,
 }
@@ -29,20 +29,20 @@ pub(crate) enum Role {
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(User)))]
-pub(crate) struct UserRole {
-    pub(crate) id: UserRoleId,
-    pub(crate) book_id: BookId,
+pub struct UserRole {
+    pub id: UserRoleId,
+    pub book_id: BookId,
     #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub(crate) updated_at: jiff::Timestamp,
-    pub(crate) user_id: UserId,
-    pub(crate) role: Role,
+    pub updated_at: jiff::Timestamp,
+    pub user_id: UserId,
+    pub role: Role,
 }
 
 #[derive(Debug)]
 #[cfg_attr(feature = "server", derive(Insertable))]
 #[cfg_attr(feature = "server", diesel(table_name = user_roles))]
-pub(crate) struct NewUserRole {
-    pub(crate) book_id: BookId,
-    pub(crate) user_id: UserId,
-    pub(crate) role: Role,
+pub struct NewUserRole {
+    pub book_id: BookId,
+    pub user_id: UserId,
+    pub role: Role,
 }

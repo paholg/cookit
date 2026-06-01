@@ -1,3 +1,10 @@
+#[cfg(feature = "server")]
+use {
+    crate::error::ForbiddenSnafu,
+    diesel::{BelongingToDsl, ExpressionMethods, QueryDsl},
+    diesel_async::RunQueryDsl,
+    snafu::ensure,
+};
 use {
     crate::{
         db::{
@@ -13,20 +20,6 @@ use {
     },
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "server")]
-use {
-    diesel::{BelongingToDsl, ExpressionMethods, QueryDsl},
-    diesel_async::RunQueryDsl,
-};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurrentUser {
-    pub id: UserId,
-    pub book_id: BookId,
-    pub name: String,
-    pub email: String,
-    pub role: Role,
-}
 
 #[cfg(feature = "server")]
 pub struct Session {
@@ -82,4 +75,18 @@ impl Session {
             role: self.role.role,
         }
     }
+
+    pub fn require_admin(&self) -> crate::Result<()> {
+        ensure!(self.role.role == Role::Admin, ForbiddenSnafu);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CurrentUser {
+    pub id: UserId,
+    pub book_id: BookId,
+    pub name: String,
+    pub email: String,
+    pub role: Role,
 }

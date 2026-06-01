@@ -1,7 +1,10 @@
 use {
-    api::me,
+    api::{
+        id::ShoppingListId,
+        routes::me,
+        session::{CurrentUser, Session},
+    },
     dioxus::prelude::*,
-    types::{CurrentUser, id::ShoppingListId},
     ui::navbar::Navbar,
     views::{
         IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
@@ -10,7 +13,8 @@ use {
 };
 
 mod draft_id;
-pub mod local_storage;
+// FIXME
+// pub mod local_storage;
 pub mod timers;
 mod views;
 

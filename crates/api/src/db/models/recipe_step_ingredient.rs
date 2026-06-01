@@ -1,12 +1,16 @@
+use {
+    crate::{db::models::ingredient::Ingredient, id::{BookId, IngredientId, RecipeStepId, RecipeStepIngredientId}},
+    serde::{Deserialize, Serialize},
+};
+
 #[cfg(feature = "server")]
 use crate::db::{
-    models::{book::Book, ingredient::Ingredient, recipe_step::RecipeStep},
+    models::{book::Book, recipe_step::RecipeStep},
     prelude::*,
     schema::recipe_step_ingredients,
 };
-use crate::id::{BookId, IngredientId, RecipeStepId, RecipeStepIngredientId};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",
     derive(HasQuery, Identifiable, AsChangeset, Associations)
@@ -39,4 +43,10 @@ pub(crate) struct NewRecipeStepIngredient<'a> {
     pub(crate) unit_kind: Option<&'a str>,
     pub(crate) unit: Option<&'a str>,
     pub(crate) ingredient_id: IngredientId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecipeStepIngredientDetail {
+    pub rsi: RecipeStepIngredient,
+    pub ingredient: Ingredient,
 }

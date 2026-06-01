@@ -11,7 +11,6 @@ use {
     anyhow::{Context, Result, anyhow},
     gloo_storage::{LocalStorage, Storage},
     serde::{Deserialize, Serialize},
-    types::{Meal, NewMeal, NewMealRecipe, id::MealId, slugify},
     uuid::Uuid,
 };
 

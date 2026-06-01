@@ -1,4 +1,4 @@
-use {std::fmt, uuid::Uuid};
+use {api::id::Id, std::fmt, uuid::Uuid};
 
 /// Stable identifier for a draft item (step, ingredient, meal row, …).
 ///
@@ -18,8 +18,8 @@ impl Default for DraftId {
     }
 }
 
-impl<T> From<types::id::Id<T>> for DraftId {
-    fn from(id: types::id::Id<T>) -> Self {
+impl<T> From<Id<T>> for DraftId {
+    fn from(id: Id<T>) -> Self {
         Self::Persisted(*id.as_uuid())
     }
 }
