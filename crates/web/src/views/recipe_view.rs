@@ -2,8 +2,8 @@ use {
     super::{duration::format_duration, format::format_quantity},
     crate::timers::{self, RunningTimersCtx},
     dioxus::prelude::*,
+    api::{RecipeDetail, RecipeStepIngredientDetail},
     pulldown_cmark::{Options, Parser, html},
-    types::{RecipeDetail, RecipeStepIngredient},
     ui::icons::HourglassIcon,
 };
 
@@ -33,16 +33,16 @@ pub fn RecipeView(
             table { class: "recipe-steps",
                 tbody {
                     for (idx, step) in detail.steps.into_iter().enumerate() {
-                        tr { key: "{step.id}", id: "step-{idx + 1}",
+                        tr { key: "{step.step.id}", id: "step-{idx + 1}",
                             td { class: "ingredients",
                                 for ing in step.ingredients.iter() {
                                     div {
-                                        key: "{ing.id}",
+                                        key: "{ing.rsi.id}",
                                         class: "ingredient-block",
                                         "{format_ingredient_line(ing, multiplier)}"
                                     }
                                 }
-                                if let Some(d) = step.duration_s {
+                                if let Some(d) = step.step.duration_s {
                                     {
                                         let step_number = (idx + 1) as i64;
                                         let pretty = format_duration(d as i64);
@@ -75,7 +75,7 @@ pub fn RecipeView(
                             td { class: "instruction",
                                 div {
                                     class: "instruction-block",
-                                    dangerous_inner_html: render_markdown(&step.text),
+                                    dangerous_inner_html: render_markdown(&step.step.text),
                                 }
                             }
                         }
@@ -98,17 +98,15 @@ fn render_markdown(src: &str) -> String {
     out
 }
 
-fn format_ingredient_line(ing: &RecipeStepIngredient, multiplier: f64) -> String {
-    let qty = ing.quantity.map(|q| format_quantity(q * multiplier));
-    let unit = ing
-        .unit
-        .as_ref()
-        .map(|u| u.label())
-        .filter(|l| !l.is_empty());
+fn format_ingredient_line(ing: &RecipeStepIngredientDetail, multiplier: f64) -> String {
+    let name = ing.ingredient.name.as_ref();
+    let qty = ing.rsi.quantity.map(|q| format_quantity(q * multiplier));
+    let unit = ing.rsi.unit.as_ref().filter(|l| !l.is_empty());
+
     match (qty, unit) {
-        (Some(q), Some(u)) => format!("{q} {u} {}", ing.ingredient_name),
-        (Some(q), None) => format!("{q} {}", ing.ingredient_name),
-        (None, Some(u)) => format!("{u} {}", ing.ingredient_name),
-        (None, None) => ing.ingredient_name.clone(),
+        (Some(q), Some(u)) => format!("{q} {u} {name}"),
+        (Some(q), None) => format!("{q} {name}"),
+        (None, Some(u)) => format!("{u} {name}"),
+        (None, None) => name.to_string(),
     }
 }

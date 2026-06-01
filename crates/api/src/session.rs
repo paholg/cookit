@@ -1,21 +1,20 @@
 #[cfg(feature = "server")]
 use {
-    crate::error::ForbiddenSnafu,
+    crate::{
+        db::{
+            conn::{DbConn, get_conn},
+            models::{book::Book, user::User, user_role::UserRole},
+            schema::{books, user_roles, users},
+        },
+        error::ForbiddenSnafu,
+    },
     diesel::{BelongingToDsl, ExpressionMethods, QueryDsl},
     diesel_async::RunQueryDsl,
     snafu::ensure,
 };
 use {
     crate::{
-        db::{
-            conn::{DbConn, get_conn},
-            models::{
-                book::Book,
-                user::User,
-                user_role::{Role, UserRole},
-            },
-            schema::{books, user_roles, users},
-        },
+        db::models::user_role::Role,
         id::{BookId, UserId},
     },
     serde::{Deserialize, Serialize},
@@ -89,4 +88,10 @@ pub struct CurrentUser {
     pub name: String,
     pub email: String,
     pub role: Role,
+}
+
+impl CurrentUser {
+    pub fn is_admin(&self) -> bool {
+        self.role == Role::Admin
+    }
 }

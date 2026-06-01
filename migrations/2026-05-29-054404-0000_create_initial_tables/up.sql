@@ -23,9 +23,9 @@ CREATE TYPE role AS enum ('admin', 'user');
 
 CREATE TABLE user_roles(
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role role NOT NULL,
     UNIQUE(book_id, user_id)
 );
@@ -35,7 +35,7 @@ SELECT
 
 CREATE TABLE ingredients (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     name TEXT NOT NULL UNIQUE,
     density_g_per_ml DOUBLE PRECISION,
@@ -47,7 +47,7 @@ SELECT
 
 CREATE TABLE recipes (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     slug TEXT NOT NULL,
     name TEXT NOT NULL,
@@ -62,9 +62,9 @@ SELECT
 
 CREATE TABLE recipe_steps (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    recipe_id UUID NOT NULL REFERENCES recipes(id),
+    recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
     position INTEGER NOT NULL,
     text TEXT NOT NULL,
     duration_s INTEGER,
@@ -76,9 +76,9 @@ SELECT
 
 CREATE TABLE recipe_step_ingredients (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    step_id UUID NOT NULL REFERENCES recipe_steps(id),
+    step_id UUID NOT NULL REFERENCES recipe_steps(id) ON DELETE CASCADE,
     position INTEGER NOT NULL,
     quantity DOUBLE PRECISION,
     unit_kind TEXT,
@@ -92,7 +92,7 @@ SELECT
 
 CREATE TABLE meals (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     slug TEXT NOT NULL,
     name TEXT NOT NULL,
@@ -104,9 +104,9 @@ SELECT
 
 CREATE TABLE meal_recipes (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    meal_id UUID NOT NULL REFERENCES meals(id),
+    meal_id UUID NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
     recipe_id UUID NOT NULL REFERENCES recipes(id),
     multiplier DOUBLE PRECISION NOT NULL DEFAULT 1.0,
     position INTEGER NOT NULL,
@@ -118,7 +118,7 @@ SELECT
 
 CREATE TABLE shopping_lists (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     slug TEXT NOT NULL,
     name TEXT NOT NULL,
@@ -130,9 +130,9 @@ SELECT
 
 CREATE TABLE shopping_list_items (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    book_id UUID NOT NULL REFERENCES books(id),
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    shopping_list_id UUID NOT NULL REFERENCES shopping_lists(id),
+    shopping_list_id UUID NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
     position INTEGER NOT NULL,
     quantity DOUBLE PRECISION,
     unit_kind TEXT,

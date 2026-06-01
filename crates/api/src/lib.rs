@@ -1,8 +1,4 @@
-pub mod config;
 pub mod db;
-pub mod middleware;
-// FIXME
-// pub mod ops;
 pub mod duration;
 pub mod error;
 pub mod grocery_section;
@@ -12,19 +8,28 @@ pub mod routes;
 pub mod session;
 pub mod unit;
 
-pub use error::Result;
+// Server-only modules: pull in axum/figment, which don't build for wasm.
+#[cfg(feature = "server")]
+pub mod config;
+#[cfg(feature = "server")]
+pub mod middleware;
 
-// Public surface for clients (the web crate). The diesel row structs stay
-// crate-private; these are the shared read DTOs, edit builders, and validation
-// errors that cross the wire and bind the forms.
+#[cfg(feature = "server")]
+pub use middleware::log_server_errors;
+
 pub use {
     db::models::{
-        ingredient::Ingredient,
-        recipe::{RecipeBuilder, RecipeDetail, RecipeError},
+        ingredient::{Ingredient, IngredientUpdate},
+        meal::{Meal, MealBuilder, MealDetail, MealError},
+        meal_recipe::{MealRecipeBuilder, MealRecipeDetail, MealRecipeError},
+        recipe::{Recipe, RecipeBuilder, RecipeDetail, RecipeError},
         recipe_step::{RecipeStepBuilder, RecipeStepDetail, RecipeStepError},
         recipe_step_ingredient::{
             RecipeStepIngredientBuilder, RecipeStepIngredientDetail, RecipeStepIngredientError,
         },
+        shopping_list::{ShoppingList, ShoppingListDetail},
+        shopping_list_item::{ShoppingListItem, ShoppingListItemInput, ShoppingListItemView},
     },
+    error::Result,
     routes::*,
 };

@@ -1,21 +1,15 @@
 use {
-    crate::{CurrentUserCtx, Route},
-    api::{
-        meals::list_meals,
-        shopping_lists::{create_from_meal, create_shopping_list},
-    },
+    crate::Route,
+    api::{create_shopping_list, create_shopping_list_from_meal, list_meals},
     dioxus::prelude::*,
-    types::NewShoppingList,
     ui::ClientOnly,
 };
 
 #[component]
 pub fn ShoppingListNew() -> Element {
-    let user = use_context::<CurrentUserCtx>();
-    let authenticated = user.read().is_some();
     let nav = navigator();
 
-    let meals = use_resource(move || list_meals(authenticated));
+    let meals = use_server_future(list_meals)?;
     let mut name = use_signal(String::new);
     let mut from_meal_key: Signal<Option<String>> = use_signal(|| None);
     let mut submitting = use_signal(|| false);
@@ -27,7 +21,7 @@ pub fn ShoppingListNew() -> Element {
         error.set(None);
 
         let result = match from_meal_key() {
-            Some(meal_key) => create_from_meal(meal_key, authenticated).await,
+            Some(meal_key) => create_shopping_list_from_meal(meal_key).await,
             None => {
                 let trimmed = name.read().trim().to_string();
                 if trimmed.is_empty() {
@@ -35,14 +29,7 @@ pub fn ShoppingListNew() -> Element {
                     error.set(Some("Pick a meal or enter a list name.".into()));
                     return;
                 }
-                create_shopping_list(
-                    NewShoppingList {
-                        name: trimmed,
-                        items: Vec::new(),
-                    },
-                    authenticated,
-                )
-                .await
+                create_shopping_list(trimmed).await
             }
         };
 
@@ -51,7 +38,7 @@ pub fn ShoppingListNew() -> Element {
                 nav.replace(Route::ShoppingListDetail { id });
             }
             Err(e) => {
-                error.set(Some(e));
+                error.set(Some(e.to_string()));
                 submitting.set(false);
             }
         }

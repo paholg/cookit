@@ -1,10 +1,8 @@
 use {
     crate::{
-        db::models::recipe_step::{
-            RecipeStep, RecipeStepBuilder, RecipeStepDetail, RecipeStepError,
-        },
+        db::models::recipe_step::{RecipeStepBuilder, RecipeStepDetail, RecipeStepError},
         helpers::Name,
-        id::{BookId, DraftId, RecipeId, RecipeStepTable, RecipeTable},
+        id::{BookId, RecipeDraftId, RecipeId, RecipeStepDraftId},
     },
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
@@ -17,6 +15,7 @@ use {
             models::{
                 book::Book,
                 ingredient::{Ingredient, IngredientNew},
+                recipe_step::RecipeStep,
                 recipe_step_ingredient::{
                     RecipeStepIngredient, RecipeStepIngredientBuilder, RecipeStepIngredientDetail,
                 },
@@ -25,14 +24,14 @@ use {
             schema::{ingredients, recipe_step_ingredients, recipe_steps, recipes},
         },
         helpers::slugify,
-        id::{IngredientId, RecipeStepId, RecipeStepIngredientId},
+        id::{DraftId, IngredientId, RecipeStepId, RecipeStepIngredientId},
         session::Session,
     },
     anyhow::{Context, anyhow},
     diesel_async::AsyncConnection,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
@@ -79,7 +78,7 @@ impl Recipe {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeDetail {
     pub recipe: Recipe,
     pub steps: Vec<RecipeStepDetail>,
@@ -142,7 +141,7 @@ impl RecipeDetail {
 /// the form and is the wire payload for [`RecipeBuilder::upsert`].
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeBuilder {
-    pub id: DraftId<RecipeTable>,
+    pub id: RecipeDraftId,
     pub name: String,
     pub source: String,
     pub steps: Vec<RecipeStepBuilder>,
@@ -153,7 +152,7 @@ pub struct RecipeBuilder {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeError {
     pub name: Option<String>,
-    pub steps: HashMap<DraftId<RecipeStepTable>, RecipeStepError>,
+    pub steps: HashMap<RecipeStepDraftId, RecipeStepError>,
 }
 
 impl RecipeError {

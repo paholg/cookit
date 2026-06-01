@@ -22,10 +22,7 @@ pub enum Role {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(
-    feature = "server",
-    derive(HasQuery, Identifiable, AsChangeset, Associations)
-)]
+#[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(User)))]
@@ -41,7 +38,7 @@ pub struct UserRole {
 #[derive(Debug)]
 #[cfg_attr(feature = "server", derive(Insertable))]
 #[cfg_attr(feature = "server", diesel(table_name = user_roles))]
-pub struct NewUserRole {
+pub struct UserRoleNew {
     pub book_id: BookId,
     pub user_id: UserId,
     pub role: Role,

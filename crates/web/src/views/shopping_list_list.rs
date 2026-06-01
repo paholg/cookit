@@ -1,17 +1,13 @@
 use {
-    crate::{CurrentUserCtx, Route},
-    api::shopping_lists::{delete_shopping_list, list_shopping_lists},
+    crate::Route,
+    api::{ShoppingList, delete_shopping_list, list_shopping_lists},
     dioxus::prelude::*,
-    types::ShoppingList,
     ui::icons::TrashIcon,
 };
 
 #[component]
 pub fn ShoppingListList() -> Element {
-    let user = use_context::<CurrentUserCtx>();
-    let authenticated = user.read().is_some();
-
-    let mut lists = use_resource(move || list_shopping_lists(authenticated));
+    let mut lists = use_server_future(list_shopping_lists)?;
 
     rsx! {
         document::Title { "Shopping" }
@@ -27,7 +23,11 @@ pub fn ShoppingListList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for sl in list {
-                        ShoppingListRow { key: "{sl.id}", list: sl, on_deleted: move |_| lists.restart() }
+                        ShoppingListRow {
+                            key: "{sl.id}",
+                            list: sl,
+                            on_deleted: move |_| lists.restart(),
+                        }
                     }
                 }
             },
@@ -70,7 +70,7 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
                         deleting.set(true);
                         match delete_shopping_list(id).await {
                             Ok(()) => on_deleted.call(()),
-                            Err(e) => error.set(Some(e)),
+                            Err(e) => error.set(Some(e.to_string())),
                         }
                         deleting.set(false);
                     },

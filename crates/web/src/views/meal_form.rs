@@ -1,103 +1,41 @@
 use {
-    crate::{CurrentUserCtx, Route, draft_id::DraftId},
+    crate::Route,
     api::{
-        list_recipes,
-        meals::{create_meal, delete_meal, update_meal},
+        MealBuilder, MealRecipeBuilder, Recipe, delete_meal,
+        id::{DraftId, MealRecipeDraftId},
+        list_recipes, upsert_meal,
     },
     dioxus::prelude::*,
-    types::{MealDetail, NewMeal, NewMealRecipe, Recipe},
+    std::collections::HashSet,
     ui::{ClientOnly, icons::TrashIcon},
 };
 
-#[derive(Default, Clone, PartialEq)]
-pub struct MealRecipeDraft {
-    pub id: DraftId,
-    pub recipe_key: Option<String>,
-    pub multiplier: String,
+fn row_key(id: MealRecipeDraftId) -> String {
+    format!("meal-recipe-{id}")
 }
 
-#[derive(Default, Clone, PartialEq)]
-pub struct MealDraft {
-    pub name: String,
-    pub recipes: Vec<MealRecipeDraft>,
-    next_row_id: i64,
+/// Append an empty recipe row (defaulting to ×1), returning its id.
+fn push_new_row(draft: &mut Signal<MealBuilder>) -> MealRecipeDraftId {
+    let mut d = draft.write();
+    let id = DraftId::next(d.recipes.iter().map(|r| r.id));
+    d.recipes.push(MealRecipeBuilder {
+        id,
+        recipe_slug: String::new(),
+        multiplier: "1".to_string(),
+    });
+    id
 }
 
-impl MealDraft {
-    fn alloc_row_id(&mut self) -> DraftId {
-        let id = DraftId::New(self.next_row_id);
-        self.next_row_id += 1;
-        id
-    }
-
-    pub fn empty() -> Self {
-        let mut d = Self::default();
-        let id = d.alloc_row_id();
-        d.recipes.push(MealRecipeDraft {
-            id,
-            recipe_key: None,
-            multiplier: "1".into(),
-        });
-        d
-    }
-
-    pub fn from_detail(detail: MealDetail) -> Self {
-        Self {
-            name: detail.name,
-            recipes: detail
-                .recipes
-                .into_iter()
-                .map(|mr| MealRecipeDraft {
-                    id: mr.recipe_detail.recipe.id.into(),
-                    recipe_key: Some(mr.recipe_detail.recipe.slug),
-                    multiplier: format_mult(mr.multiplier),
-                })
-                .collect(),
-            next_row_id: 0,
-        }
-    }
-
-    fn to_payload(&self) -> Result<NewMeal, String> {
-        let mut recipes = Vec::with_capacity(self.recipes.len());
-        for (idx, r) in self.recipes.iter().enumerate() {
-            let Some(recipe_key) = r.recipe_key.clone() else {
-                return Err(format!("row {}: pick a recipe", idx + 1));
-            };
-            let m_text = r.multiplier.trim();
-            let multiplier: f64 = if m_text.is_empty() {
-                return Err(format!("row {}: multiplier is required", idx + 1));
-            } else {
-                m_text
-                    .parse()
-                    .map_err(|_| format!("row {}: `{m_text}` is not a valid number", idx + 1))?
-            };
-            recipes.push(NewMealRecipe {
-                recipe_slug: recipe_key,
-                multiplier,
-            });
-        }
-        Ok(NewMeal {
-            name: self.name.clone(),
-            recipes,
-        })
-    }
-}
-
-fn all_recipes_used(draft: &MealDraft, available: &[Recipe]) -> bool {
-    let picked: std::collections::HashSet<&str> = draft
+/// True when every available recipe is already picked, so there's nothing left
+/// to add.
+fn all_recipes_used(draft: &MealBuilder, available: &[Recipe]) -> bool {
+    let picked: HashSet<&str> = draft
         .recipes
         .iter()
-        .filter_map(|r| r.recipe_key.as_deref())
+        .map(|r| r.recipe_slug.as_str())
+        .filter(|s| !s.is_empty())
         .collect();
     !available.is_empty() && available.iter().all(|r| picked.contains(r.slug.as_str()))
-}
-
-fn format_mult(m: f64) -> String {
-    if (m.fract()).abs() < f64::EPSILON {
-        format!("{}", m as i64)
-    } else {
-        format!("{m}")
-    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -105,59 +43,57 @@ pub enum MealFormMode {
     Create,
     Edit { meal_key: String },
 }
+
 #[component]
-pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
+pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
     let mut draft = use_signal(|| initial.clone());
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
     let mut deleting = use_signal(|| false);
     let nav = use_navigator();
-    let user = use_context::<CurrentUserCtx>();
-    let authenticated = user.read().is_some();
+
     let recipes = use_server_future(list_recipes)?;
     let available: Vec<Recipe> = match recipes.cloned() {
         Some(Ok(list)) => list,
-        _ => Vec::new(),
-    };
-    let submit = {
-        let mode = mode.clone();
-        move |e: FormEvent| {
-            e.prevent_default();
-            if submitting() {
-                return;
-            }
-            let payload = match draft.read().to_payload() {
-                Ok(p) => p,
-                Err(msg) => {
-                    error.set(Some(msg));
-                    return;
-                }
+        Some(Err(e)) => {
+            return rsx! {
+                p { class: "error", "Failed to load recipes: {e}" }
             };
-            submitting.set(true);
-            error.set(None);
-            let mode = mode.clone();
-            spawn(async move {
-                let result: Result<String, String> = match mode {
-                    MealFormMode::Create => create_meal(payload, authenticated).await,
-                    MealFormMode::Edit { meal_key } => update_meal(meal_key.clone(), payload)
-                        .await
-                        .map(|()| meal_key),
-                };
-                match result {
-                    Ok(meal_key) => {
-                        nav.push(Route::MealDetail {
-                            meal_key,
-                            tab: None,
-                        });
-                    }
-                    Err(msg) => {
-                        submitting.set(false);
-                        error.set(Some(msg));
-                    }
-                }
-            });
         }
+        None => Vec::new(),
     };
+
+    let submit = move |e: FormEvent| {
+        e.prevent_default();
+        if submitting() {
+            return;
+        }
+
+        let payload = draft.read().clone();
+        if let Err(err) = payload.validate() {
+            error.set(Some(err.summary()));
+            return;
+        }
+
+        submitting.set(true);
+        error.set(None);
+
+        spawn(async move {
+            match upsert_meal(payload).await {
+                Ok(detail) => {
+                    nav.push(Route::MealDetail {
+                        meal_key: detail.meal.slug,
+                        tab: None,
+                    });
+                }
+                Err(e) => {
+                    submitting.set(false);
+                    error.set(Some(e.to_string()));
+                }
+            }
+        });
+    };
+
     let title = match mode {
         MealFormMode::Create => "New meal",
         MealFormMode::Edit { .. } => "Edit meal",
@@ -166,6 +102,15 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
         MealFormMode::Create => "Save meal",
         MealFormMode::Edit { .. } => "Save changes",
     };
+
+    let rows: Vec<(MealRecipeDraftId, String)> = draft
+        .read()
+        .recipes
+        .iter()
+        .map(|r| (r.id, row_key(r.id)))
+        .collect();
+    let add_disabled = available.is_empty() || all_recipes_used(&draft.read(), &available);
+
     rsx! {
         header { class: "page-header",
             h1 { "{title}" }
@@ -177,28 +122,25 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                     title: "Delete meal",
                     disabled: deleting() || submitting(),
                     onclick: move |_| {
-                        if deleting() {
-                            return;
-                        }
+                        if deleting() { return; }
                         let meal_key = meal_key.clone();
                         spawn(async move {
                             let confirmed = document::eval(
-                                    "return confirm('Delete this meal? This cannot be undone.')",
-                                )
+                                "return confirm('Delete this meal? This cannot be undone.')",
+                            )
                                 .join::<bool>()
                                 .await
                                 .unwrap_or(false);
-                            if !confirmed {
-                                return;
-                            }
+                            if !confirmed { return; }
+
                             deleting.set(true);
                             error.set(None);
                             match delete_meal(meal_key).await {
                                 Ok(()) => {
                                     nav.push(Route::MealList {});
                                 }
-                                Err(msg) => {
-                                    error.set(Some(msg));
+                                Err(e) => {
+                                    error.set(Some(e.to_string()));
                                     deleting.set(false);
                                 }
                             }
@@ -208,6 +150,7 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 }
             }
         }
+
         form { class: "recipe-form", onsubmit: submit,
             label {
                 "Name"
@@ -218,53 +161,34 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                     oninput: move |e| draft.write().name = e.value(),
                 }
             }
+
             h2 { "Recipes" }
-            {
-                let rows: Vec<(DraftId, MealRecipeDraft)> = draft
-                    .read()
-                    .recipes
-                    .iter()
-                    .map(|r| (r.id, r.clone()))
-                    .collect();
-                let avail = available.clone();
-                rsx! {
-                    for (row_id, row) in rows.into_iter() {
-                        MealRecipeRow {
-                            key: "{row_id}",
-                            row_id,
-                            row,
-                            draft,
-                            recipes: avail.clone(),
-                        }
-                    }
+            for (row_id, key) in rows.into_iter() {
+                MealRecipeRow {
+                    key: "{key}",
+                    row_id,
+                    draft,
+                    recipes: available.clone(),
                 }
             }
             button {
                 r#type: "button",
                 class: "secondary",
-                disabled: available.is_empty() || all_recipes_used(&draft.read(), &available),
+                disabled: add_disabled,
                 onclick: move |_| {
-                    let mut d = draft.write();
-                    let id = d.alloc_row_id();
-                    d.recipes
-                        .push(MealRecipeDraft {
-                            id,
-                            recipe_key: None,
-                            multiplier: "1".into(),
-                        });
+                    push_new_row(&mut draft);
                 },
                 "+ Add recipe"
             }
+
             if let Some(err) = error.read().clone() {
                 p { class: "error", "{err}" }
             }
+
             div { class: "form-actions",
                 if let MealFormMode::Edit { meal_key } = mode.clone() {
                     Link {
-                        to: Route::MealDetail {
-                            meal_key,
-                            tab: None,
-                        },
+                        to: Route::MealDetail { meal_key, tab: None },
                         class: "button-link",
                         "Cancel"
                     }
@@ -283,21 +207,22 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
         }
     }
 }
-#[component]
-fn MealRecipeRow(
-    row_id: DraftId,
-    row: MealRecipeDraft,
-    draft: Signal<MealDraft>,
-    recipes: Vec<Recipe>,
-) -> Element {
-    let selected = row.recipe_key.clone().unwrap_or_default();
 
-    let used_by_others: std::collections::HashSet<String> = draft
+#[component]
+fn MealRecipeRow(row_id: MealRecipeDraftId, draft: Signal<MealBuilder>, recipes: Vec<Recipe>) -> Element {
+    let mut draft = draft;
+    let Some(row) = draft.read().recipes.iter().find(|r| r.id == row_id).cloned() else {
+        return rsx! {};
+    };
+
+    let selected = row.recipe_slug.clone();
+    let used_by_others: HashSet<String> = draft
         .read()
         .recipes
         .iter()
         .filter(|r| r.id != row_id)
-        .filter_map(|r| r.recipe_key.clone())
+        .map(|r| r.recipe_slug.clone())
+        .filter(|s| !s.is_empty())
         .collect();
 
     rsx! {
@@ -307,17 +232,16 @@ fn MealRecipeRow(
                     value: "{selected}",
                     oninput: move |e| {
                         let v = e.value();
-                        let key = if v.is_empty() { None } else { Some(v) };
                         let mut d = draft.write();
                         if let Some(r) = d.recipes.iter_mut().find(|r| r.id == row_id) {
-                            r.recipe_key = key;
+                            r.recipe_slug = v;
                         }
                     },
                     option { value: "", "— pick a recipe —" }
                     for r in recipes.iter().filter(|r| !used_by_others.contains(&r.slug)) {
                         option {
                             value: "{r.slug}",
-                            selected: row.recipe_key.as_deref() == Some(r.slug.as_str()),
+                            selected: row.recipe_slug == r.slug,
                             "{r.name}"
                         }
                     }

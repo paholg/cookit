@@ -1,229 +1,69 @@
-use crate::{
-    Route,
-    draft_id::DraftId,
-    views::duration::{format_duration, parse_duration},
+use {
+    super::duration::{format_duration, parse_duration},
+    crate::Route,
+    api::{
+        RecipeBuilder, RecipeStepBuilder, RecipeStepIngredientBuilder, delete_recipe,
+        id::{DraftId, RecipeStepDraftId, RecipeStepIngredientDraftId},
+        list_ingredients,
+        unit::{Mass, Volume},
+        upsert_recipe,
+    },
+    dioxus::prelude::*,
+    std::collections::HashMap,
+    strum::IntoEnumIterator,
+    ui::{
+        ClientOnly,
+        icons::{InsertAboveIcon, TrashIcon},
+    },
 };
-use api::{create_recipe, delete_recipe, list_ingredients, update_recipe};
-use dioxus::prelude::*;
-use std::str::FromStr;
-use strum::IntoEnumIterator;
-use types::{Mass, NewRecipe, NewStep, NewStepIngredient, RecipeDetail, UnitKind, Volume};
-use ui::ClientOnly;
-use ui::icons::{InsertAboveIcon, TrashIcon};
 
-#[derive(Default, Clone, PartialEq)]
-pub struct IngDraft {
-    pub id: DraftId,
-    pub name: String,
-    pub quantity: String,
-    pub unit: String,
+fn step_key(id: RecipeStepDraftId) -> String {
+    format!("step-{id}")
 }
 
-impl IngDraft {
-    fn key(&self) -> String {
-        format!("ingredient-{}", self.id)
-    }
+fn ing_key(id: RecipeStepIngredientDraftId) -> String {
+    format!("ingredient-{id}")
 }
 
-#[derive(Default, Clone, PartialEq)]
-pub struct StepDraft {
-    pub id: DraftId,
-    pub instruction: String,
-    pub ingredients: Vec<IngDraft>,
-    /// Free-form duration text (`30s`, `1h 30m`, ...). Empty means no timer.
-    pub duration_text: String,
-    /// Set when the last blur-parse of `duration_text` failed. Blocks save.
-    pub duration_error: Option<String>,
-    /// Counter for allocating ids to ingredients added inside this step.
-    /// Per-step so server/client SSR produce matching ids on first render.
-    next_ing_id: i64,
+/// Append an empty step, returning its freshly allocated id.
+fn push_new_step(draft: &mut Signal<RecipeBuilder>) -> RecipeStepDraftId {
+    let mut d = draft.write();
+    let id = DraftId::next(d.steps.iter().map(|s| s.id));
+    d.steps.push(RecipeStepBuilder {
+        id,
+        ..Default::default()
+    });
+    id
 }
 
-impl StepDraft {
-    fn key(&self) -> String {
-        format!("step-{}", self.id)
-    }
-
-    fn alloc_ing_id(&mut self) -> DraftId {
-        let id = DraftId::New(self.next_ing_id);
-        self.next_ing_id += 1;
-        id
-    }
-
-    fn push_new_ingredient(&mut self) -> DraftId {
-        let id = self.alloc_ing_id();
-        self.ingredients.push(IngDraft {
+/// Insert an empty step at `idx`, returning its freshly allocated id.
+fn insert_new_step_at(draft: &mut Signal<RecipeBuilder>, idx: usize) -> RecipeStepDraftId {
+    let mut d = draft.write();
+    let id = DraftId::next(d.steps.iter().map(|s| s.id));
+    d.steps.insert(
+        idx,
+        RecipeStepBuilder {
             id,
             ..Default::default()
-        });
-        id
-    }
+        },
+    );
+    id
 }
 
-#[derive(Default, Clone, PartialEq)]
-pub struct RecipeDraft {
-    pub id: DraftId,
-    pub name: String,
-    pub source: String,
-    pub steps: Vec<StepDraft>,
-    /// Counter for allocating ids to steps added to this draft.
-    next_step_id: i64,
-}
-
-impl RecipeDraft {
-    fn alloc_step_id(&mut self) -> DraftId {
-        let id = DraftId::New(self.next_step_id);
-        self.next_step_id += 1;
-        id
-    }
-
-    fn push_new_step(&mut self) -> DraftId {
-        let id = self.alloc_step_id();
-        self.steps.push(StepDraft {
-            id,
-            ..Default::default()
-        });
-        id
-    }
-
-    fn insert_new_step_at(&mut self, idx: usize) -> DraftId {
-        let id = self.alloc_step_id();
-        self.steps.insert(
-            idx,
-            StepDraft {
-                id,
-                ..Default::default()
-            },
-        );
-        id
-    }
-
-    pub fn empty() -> Self {
-        let mut d = Self::default();
-        d.push_new_step();
-        d
-    }
-
-    pub fn from_detail(detail: RecipeDetail) -> Self {
-        Self {
-            id: detail.recipe.id.into(),
-            name: detail.recipe.name,
-            source: detail.recipe.source.unwrap_or_default(),
-            steps: detail
-                .steps
-                .into_iter()
-                .map(|s| StepDraft {
-                    id: s.id.into(),
-                    instruction: s
-                        .instructions
-                        .into_iter()
-                        .map(|i| i.text)
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    ingredients: s
-                        .ingredients
-                        .into_iter()
-                        .map(|i| IngDraft {
-                            id: i.id.into(),
-                            name: i.ingredient_name,
-                            quantity: i.quantity.map(format_qty).unwrap_or_default(),
-                            unit: i.unit.map(|u| u.label()).unwrap_or_default(),
-                        })
-                        .collect(),
-                    duration_text: s.duration_seconds.map(format_duration).unwrap_or_default(),
-                    duration_error: None,
-                    next_ing_id: 0,
-                })
-                .collect(),
-            next_step_id: 0,
-        }
-    }
-
-    fn to_payload(&self) -> Result<NewRecipe, String> {
-        let mut steps = Vec::with_capacity(self.steps.len());
-        for (step_idx, step) in self.steps.iter().enumerate() {
-            let mut ings = Vec::with_capacity(step.ingredients.len());
-            for (ing_idx, ing) in step.ingredients.iter().enumerate() {
-                if ing.name.trim().is_empty() {
-                    continue;
-                }
-                let qty_text = ing.quantity.trim();
-                let quantity: Option<f64> = if qty_text.is_empty() {
-                    None
-                } else {
-                    Some(qty_text.parse().map_err(|_| {
-                        format!(
-                            "step {} ingredient {}: `{qty_text}` is not a valid number",
-                            step_idx + 1,
-                            ing_idx + 1
-                        )
-                    })?)
-                };
-                ings.push(NewStepIngredient {
-                    ingredient_name: ing.name.clone(),
-                    quantity,
-                    unit_kind: Some(derive_unit_kind(&ing.unit)),
-                    unit: ing.unit.clone(),
-                });
-            }
-            let instructions = step
-                .instruction
-                .lines()
-                .map(str::trim)
-                .filter(|l| !l.is_empty())
-                .map(str::to_string)
-                .collect();
-
-            let duration_text = step.duration_text.trim();
-            let duration_seconds = if duration_text.is_empty() {
-                None
-            } else {
-                Some(
-                    parse_duration(duration_text)
-                        .map_err(|e| format!("step {} duration: {e}", step_idx + 1))?,
-                )
-            };
-
-            steps.push(NewStep {
-                instructions,
-                ingredients: ings,
-                duration_seconds,
-            });
-        }
-        Ok(NewRecipe {
-            name: self.name.clone(),
-            source: {
-                let t = self.source.trim();
-                if t.is_empty() {
-                    None
-                } else {
-                    Some(t.to_string())
-                }
-            },
-            steps,
-        })
-    }
-}
-
-fn derive_unit_kind(text: &str) -> UnitKind {
-    let t = text.trim();
-    if t.is_empty() {
-        UnitKind::Count
-    } else if Mass::from_str(t).is_ok() {
-        UnitKind::Mass
-    } else if Volume::from_str(t).is_ok() {
-        UnitKind::Volume
-    } else {
-        UnitKind::Count
-    }
-}
-
-fn format_qty(q: f64) -> String {
-    if (q.fract()).abs() < f64::EPSILON {
-        format!("{}", q as i64)
-    } else {
-        format!("{q}")
-    }
+/// Append an empty ingredient row to a step, returning its id. `None` if the
+/// step has been removed.
+fn push_new_ingredient(
+    draft: &mut Signal<RecipeBuilder>,
+    step_id: RecipeStepDraftId,
+) -> Option<RecipeStepIngredientDraftId> {
+    let mut d = draft.write();
+    let step = d.steps.iter_mut().find(|s| s.id == step_id)?;
+    let id = DraftId::next(step.ingredients.iter().map(|i| i.id));
+    step.ingredients.push(RecipeStepIngredientBuilder {
+        id,
+        ..Default::default()
+    });
+    Some(id)
 }
 
 /// Focus the element with the matching `data-focus-key`. Deferred via
@@ -259,16 +99,22 @@ pub enum RecipeFormMode {
 }
 
 #[component]
-pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
+pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
     let mut draft = use_signal(|| initial.clone());
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
     let mut deleting = use_signal(|| false);
+    // Transient per-step timer parse errors, surfaced on blur. Not part of the
+    // wire payload, so they live alongside the draft rather than inside it.
+    let duration_errors = use_signal(HashMap::<RecipeStepDraftId, String>::new);
     let nav = use_navigator();
 
     let ingredients = use_server_future(list_ingredients)?;
     let ingredient_names: Vec<String> = match ingredients.cloned() {
-        Some(Ok(list)) => list.into_iter().map(|i| i.name).collect(),
+        Some(Ok(list)) => list
+            .into_iter()
+            .map(|i| i.name.as_ref().to_string())
+            .collect(),
         Some(Err(e)) => {
             return rsx! {
                 p { class: "error", "Failed to load ingredients: {e}" }
@@ -282,46 +128,34 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         .chain(Volume::iter().map(|u| u.to_string()))
         .collect();
 
-    let submit = {
-        let mode = mode.clone();
-        move |e: FormEvent| {
-            e.prevent_default();
-            if submitting() {
-                return;
-            }
-            let payload = match draft.read().to_payload() {
-                Ok(p) => p,
-                Err(msg) => {
-                    error.set(Some(msg));
-                    return;
-                }
-            };
-            submitting.set(true);
-            error.set(None);
-            let mode = mode.clone();
-            spawn(async move {
-                let result: Result<String, String> = match mode {
-                    RecipeFormMode::Create => {
-                        create_recipe(payload).await.map_err(|e| e.to_string())
-                    }
-                    RecipeFormMode::Edit { recipe_key } => {
-                        match update_recipe(recipe_key.clone(), payload).await {
-                            Ok(()) => Ok(recipe_key),
-                            Err(e) => Err(e.to_string()),
-                        }
-                    }
-                };
-                match result {
-                    Ok(recipe_key) => {
-                        nav.push(Route::RecipeDetail { recipe_key });
-                    }
-                    Err(msg) => {
-                        submitting.set(false);
-                        error.set(Some(msg));
-                    }
-                }
-            });
+    let submit = move |e: FormEvent| {
+        e.prevent_default();
+        if submitting() {
+            return;
         }
+
+        let payload = draft.read().clone();
+        if let Err(err) = payload.validate() {
+            error.set(Some(err.summary()));
+            return;
+        }
+
+        submitting.set(true);
+        error.set(None);
+
+        spawn(async move {
+            match upsert_recipe(payload).await {
+                Ok(detail) => {
+                    nav.push(Route::RecipeDetail {
+                        recipe_key: detail.recipe.slug,
+                    });
+                }
+                Err(e) => {
+                    submitting.set(false);
+                    error.set(Some(e.to_string()));
+                }
+            }
+        });
     };
 
     let title = match mode {
@@ -334,7 +168,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
     };
 
     let mut add_step_fn = move || {
-        let id = draft.write().push_new_step();
+        let id = push_new_step(&mut draft);
         focus_field(format!("instr-step-{id}"));
     };
     let add_step = Callback::new(move |_| add_step_fn());
@@ -346,12 +180,12 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
         }
     };
 
-    let steps_snapshot: Vec<(DraftId, String, usize)> = draft
+    let steps_snapshot: Vec<(RecipeStepDraftId, String, usize)> = draft
         .read()
         .steps
         .iter()
         .enumerate()
-        .map(|(i, s)| (s.id, s.key(), i))
+        .map(|(i, s)| (s.id, step_key(s.id), i))
         .collect();
     let multi_step = steps_snapshot.len() > 1;
 
@@ -428,7 +262,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                         if e.key() == Key::Enter && e.modifiers().is_empty() {
                             e.prevent_default();
                             if let Some(first) = draft.read().steps.first() {
-                                focus_field(format!("instr-{}", first.key()));
+                                focus_field(format!("instr-{}", step_key(first.id)));
                             }
                         }
                     },
@@ -440,6 +274,7 @@ pub fn RecipeForm(initial: RecipeDraft, mode: RecipeFormMode) -> Element {
                 StepEditor {
                     key: "{step_key}",
                     draft,
+                    duration_errors,
                     step_id,
                     step_idx,
                     multi_step,
@@ -484,7 +319,11 @@ fn has_command_modifier(m: &Modifiers) -> bool {
 
 /// Find a step by id and run the closure with a mutable reference to it.
 /// No-op if the step has been removed.
-fn with_step(draft: &mut Signal<RecipeDraft>, step_id: DraftId, f: impl FnOnce(&mut StepDraft)) {
+fn with_step(
+    draft: &mut Signal<RecipeBuilder>,
+    step_id: RecipeStepDraftId,
+    f: impl FnOnce(&mut RecipeStepBuilder),
+) {
     let mut d = draft.write();
     if let Some(s) = d.steps.iter_mut().find(|s| s.id == step_id) {
         f(s);
@@ -494,10 +333,10 @@ fn with_step(draft: &mut Signal<RecipeDraft>, step_id: DraftId, f: impl FnOnce(&
 /// Find an ingredient by ids and run the closure with a mutable reference.
 /// No-op if either has been removed.
 fn with_ingredient(
-    draft: &mut Signal<RecipeDraft>,
-    step_id: DraftId,
-    ing_id: DraftId,
-    f: impl FnOnce(&mut IngDraft),
+    draft: &mut Signal<RecipeBuilder>,
+    step_id: RecipeStepDraftId,
+    ing_id: RecipeStepIngredientDraftId,
+    f: impl FnOnce(&mut RecipeStepIngredientBuilder),
 ) {
     with_step(draft, step_id, |s| {
         if let Some(i) = s.ingredients.iter_mut().find(|i| i.id == ing_id) {
@@ -508,31 +347,30 @@ fn with_ingredient(
 
 #[component]
 fn StepEditor(
-    draft: Signal<RecipeDraft>,
-    step_id: DraftId,
+    draft: Signal<RecipeBuilder>,
+    duration_errors: Signal<HashMap<RecipeStepDraftId, String>>,
+    step_id: RecipeStepDraftId,
     step_idx: usize,
     multi_step: bool,
     existing_names: Vec<String>,
     unit_options: Vec<String>,
 ) -> Element {
     let mut draft = draft;
+    let mut duration_errors = duration_errors;
     let Some(step_snapshot) = draft.read().steps.iter().find(|s| s.id == step_id).cloned() else {
         return rsx! {};
     };
 
-    let step_key = step_snapshot.key();
-    let ingredients_snapshot: Vec<(DraftId, String)> = step_snapshot
+    let step_key = step_key(step_id);
+    let duration_error = duration_errors.read().get(&step_id).cloned();
+    let ingredients_snapshot: Vec<(RecipeStepIngredientDraftId, String)> = step_snapshot
         .ingredients
         .iter()
-        .map(|i| (i.id, i.key()))
+        .map(|i| (i.id, ing_key(i.id)))
         .collect();
 
     let mut add_ingredient_fn = move || {
-        let mut new_id = None;
-        with_step(&mut draft, step_id, |s| {
-            new_id = Some(s.push_new_ingredient());
-        });
-        if let Some(id) = new_id {
+        if let Some(id) = push_new_ingredient(&mut draft, step_id) {
             focus_field(format!("qty-step-{step_id}-ingredient-{id}"));
         }
     };
@@ -550,7 +388,7 @@ fn StepEditor(
                         "aria-label": "Insert step above",
                         title: "Insert step above",
                         onclick: move |_| {
-                            let id = draft.write().insert_new_step_at(step_idx);
+                            let id = insert_new_step_at(&mut draft, step_idx);
                             focus_field(format!("instr-step-{id}"));
                         },
                         InsertAboveIcon {}
@@ -621,38 +459,35 @@ fn StepEditor(
                 "Timer (optional)"
                 input {
                     r#type: "text",
-                    class: if step_snapshot.duration_error.is_some() { "duration-input invalid" } else { "duration-input" },
+                    class: if duration_error.is_some() { "duration-input invalid" } else { "duration-input" },
                     placeholder: "e.g. 30s, 1h 30m",
                     value: "{step_snapshot.duration_text}",
                     oninput: move |e: FormEvent| {
                         let v = e.value();
-                        with_step(&mut draft, step_id, |s| {
-                            s.duration_text = v;
-                            // Clear stale error as soon as the user edits.
-                            s.duration_error = None;
-                        });
+                        with_step(&mut draft, step_id, |s| s.duration_text = v);
+                        // Clear stale error as soon as the user edits.
+                        duration_errors.write().remove(&step_id);
                     },
                     onblur: move |_| {
+                        let mut err = None;
                         with_step(&mut draft, step_id, |s| {
                             let trimmed = s.duration_text.trim();
                             if trimmed.is_empty() {
                                 s.duration_text.clear();
-                                s.duration_error = None;
                             } else {
                                 match parse_duration(trimmed) {
-                                    Ok(secs) => {
-                                        s.duration_text = format_duration(secs);
-                                        s.duration_error = None;
-                                    }
-                                    Err(msg) => {
-                                        s.duration_error = Some(msg);
-                                    }
+                                    Ok(secs) => s.duration_text = format_duration(secs),
+                                    Err(msg) => err = Some(msg),
                                 }
                             }
                         });
+                        match err {
+                            Some(msg) => { duration_errors.write().insert(step_id, msg); }
+                            None => { duration_errors.write().remove(&step_id); }
+                        }
                     },
                 }
-                if let Some(err) = step_snapshot.duration_error.as_ref() {
+                if let Some(err) = duration_error.as_ref() {
                     span { class: "duration-error", "{err}" }
                 }
             }
@@ -662,9 +497,9 @@ fn StepEditor(
 
 #[component]
 fn IngredientEditor(
-    draft: Signal<RecipeDraft>,
-    step_id: DraftId,
-    ing_id: DraftId,
+    draft: Signal<RecipeBuilder>,
+    step_id: RecipeStepDraftId,
+    ing_id: RecipeStepIngredientDraftId,
     focus_key_suffix: String,
     on_enter_add: Callback<()>,
     existing_names: Vec<String>,

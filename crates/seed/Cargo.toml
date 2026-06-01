@@ -1,0 +1,10 @@
+[package]
+name = "seed"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+api = { workspace = true, features = ["server"] }
+diesel.workspace = true
+eyre = "0.6.12"
+tokio.workspace = true

@@ -1,9 +1,13 @@
 use {
     api::{
-        Ingredient, grocery_section::GrocerySection, id::IngredientId, list_ingredients,
-        update_ingredient,
+        Ingredient, IngredientUpdate,
+        grocery_section::GrocerySection,
+        helpers::{Name, PositiveFloat},
+        id::IngredientId,
+        list_ingredients, update_ingredient,
     },
     dioxus::prelude::*,
+    std::str::FromStr,
     ui::ClientOnly,
 };
 
@@ -36,31 +40,26 @@ impl RowDraft {
         }
     }
 
-    fn snapshot(&self) -> Ingredient {
-        Ingredient {
-            id: self.id,
-            name: self.name.clone(),
-            density_g_per_ml: parse_optional_density(&self.density),
-            grocery_section: self.section,
-        }
+    /// An ingredient still missing density or grocery section needs attention.
+    fn is_incomplete(&self) -> bool {
+        parse_optional_density(&self.density).is_none() || self.section.is_none()
     }
 
     fn to_payload(&self) -> Result<IngredientUpdate, String> {
-        if self.name.trim().is_empty() {
-            return Err("name is required".into());
-        }
-        let density = if self.density.trim().is_empty() {
-            None
-        } else {
-            Some(
-                self.density
-                    .trim()
-                    .parse::<f64>()
-                    .map_err(|_| format!("`{}` is not a valid density", self.density.trim()))?,
-            )
+        let name = Name::parse(&self.name).map_err(|e| e.to_string())?;
+
+        let density = match self.density.trim() {
+            "" => None,
+            t => {
+                let v: f64 = t
+                    .parse()
+                    .map_err(|_| format!("`{t}` is not a valid density"))?;
+                Some(PositiveFloat::parse(v).map_err(|e| e.to_string())?)
+            }
         };
+
         Ok(IngredientUpdate {
-            name: self.name.clone(),
+            name,
             density_g_per_ml: density,
             grocery_section: self.section,
         })
@@ -146,7 +145,7 @@ pub fn IngredientList() -> Element {
     let incomplete_count = rows
         .read()
         .iter()
-        .filter(|r| r.snapshot().is_incomplete())
+        .filter(|r| r.is_incomplete())
         .count();
     rsx! {
         document::Title { "CookIt!" }
@@ -188,7 +187,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
     let Some(row) = row else {
         return rsx! {};
     };
-    let incomplete = row.snapshot().is_incomplete();
+    let incomplete = row.is_incomplete();
     let settled = row.last_saved_gen > 0
         && row.last_saved_gen == row.pending_gen
         && !row.saving
@@ -211,7 +210,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label {
                     span { class: "field-label",
                         "Density (g/ml)"
-                        if incomplete && row.snapshot().density_g_per_ml.is_none() {
+                        if incomplete && parse_optional_density(&row.density).is_none() {
                             span { class: "warn-tag", " ⚠" }
                         }
                     }

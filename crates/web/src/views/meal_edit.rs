@@ -1,6 +1,6 @@
 use {
-    crate::views::meal_form::{MealDraft, MealForm, MealFormMode},
-    api::meals::get_meal,
+    crate::views::meal_form::{MealForm, MealFormMode},
+    api::{MealBuilder, get_meal},
     dioxus::prelude::*,
 };
 
@@ -8,13 +8,13 @@ use {
 pub fn MealEdit(meal_key: String) -> Element {
     let meal = {
         let meal_key = meal_key.clone();
-        use_resource(move || get_meal(meal_key.clone()))
+        use_server_future(move || get_meal(meal_key.clone()))?
     };
 
     let body = match meal.cloned() {
         Some(Ok(detail)) => rsx! {
             MealForm {
-                initial: MealDraft::from_detail(detail),
+                initial: MealBuilder::from(detail),
                 mode: MealFormMode::Edit {
                     meal_key: meal_key.clone(),
                 },

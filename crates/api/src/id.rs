@@ -61,7 +61,7 @@ impl<T> Id<T> {
 
 macro_rules! table_id {
     () => {};
-    ($id:ident, $struct:ident, $prefix:tt; $($tail:tt)*) => {
+    ($id:ident, $draft_id:ident, $struct:ident, $prefix:tt; $($tail:tt)*) => {
         pub struct $struct;
 
         impl TablePrefix for $struct {
@@ -69,23 +69,24 @@ macro_rules! table_id {
         }
 
         pub type $id = Id<$struct>;
+        pub type $draft_id = DraftId<$struct>;
 
         table_id!($($tail)*);
     };
 }
 
 table_id! {
-    BookId, BookTable, bok;
-    IngredientId, IngredientTable, ing;
-    MealId, MealTable, mel;
-    MealRecipeId, MealRecipeTable, mrp;
-    RecipeStepIngredientId, RecipeStepIngredientTable, rsi;
-    RecipeStepId, RecipeStepTable, rst;
-    RecipeId, RecipeTable, rec;
-    ShoppingListId, ShoppingListTable, shl;
-    ShoppingListItemId, ShoppingListItemTable, sli;
-    UserRoleId, UserRoleTable, url;
-    UserId, UserTable, usr;
+    BookId, BookDraftId, BookTable, bok;
+    IngredientId, IngredientDraftId, IngredientTable, ing;
+    MealId, MealDraftId, MealTable, mel;
+    MealRecipeId, MealRecipeDraftId, MealRecipeTable, mrp;
+    RecipeStepIngredientId, RecipeStepIngredientDraftId, RecipeStepIngredientTable, rsi;
+    RecipeStepId, RecipeStepDraftId, RecipeStepTable, rst;
+    RecipeId, RecipeDraftId, RecipeTable, rec;
+    ShoppingListId, ShoppingListDraftId, ShoppingListTable, shl;
+    ShoppingListItemId, ShoppingListItemDraftId, ShoppingListItemTable, sli;
+    UserRoleId, UserRoleDraftId, UserRoleTable, url;
+    UserId, UserDraftId, UserTable, usr;
 }
 
 impl<T> Clone for Id<T> {

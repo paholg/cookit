@@ -1,0 +1,11 @@
+{
+  "name": "cookit-e2e",
+  "private": true,
+  "description": "Playwright end-to-end smoke tests for the CookIt fullstack server.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

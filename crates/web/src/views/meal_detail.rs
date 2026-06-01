@@ -1,25 +1,21 @@
 use {
     crate::{
-        CurrentUserCtx, Route,
+        Route,
         views::{RecipeView, WakeLockToggle},
     },
-    api::{meals::get_meal, shopping_lists::create_from_meal},
+    api::{create_shopping_list_from_meal, get_meal},
     dioxus::prelude::*,
     ui::icons::{EditIcon, ListIcon},
 };
 
 #[component]
 pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
-    let user = use_context::<CurrentUserCtx>();
-    let authenticated = user.read().is_some();
     let meal = {
         let meal_key = meal_key.clone();
-        use_resource(move || get_meal(meal_key.clone()))
+        use_server_future(move || get_meal(meal_key.clone()))?
     };
-    let mut making = use_signal(|| false);
-    let mut make_error: Signal<Option<String>> = use_signal(|| None);
-    let nav = navigator();
 
+    // After the meal loads, honor a `#step-N` hash by scrolling it into view.
     use_effect(move || {
         let ready = meal.read().as_ref().map(|r| r.is_ok()).unwrap_or(false);
         if ready {
@@ -38,10 +34,13 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
         }
     });
 
+    let mut making = use_signal(|| false);
+    let mut make_error: Signal<Option<String>> = use_signal(|| None);
+
     let title = meal
         .cloned()
         .and_then(|m| m.ok())
-        .map(|d| d.name)
+        .map(|d| d.meal.name)
         .unwrap_or_else(|| "CookIt!".to_string());
 
     let body = match meal.cloned() {
@@ -53,23 +52,25 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                     detail
                         .recipes
                         .iter()
-                        .position(|mr| mr.recipe_detail.recipe.slug == slug)
+                        .position(|mr| mr.recipe.recipe.slug == slug)
                 })
                 .unwrap_or(0);
 
-            let oc_meal_key = meal_key.clone();
-            let onclick = move |_| {
-                let meal_key = oc_meal_key.clone();
-                async move {
-                    making.set(true);
-                    make_error.set(None);
-                    match create_from_meal(meal_key, authenticated).await {
-                        Ok(new_id) => {
-                            nav.push(Route::ShoppingListDetail { id: new_id });
-                        }
-                        Err(e) => {
-                            make_error.set(Some(e));
-                            making.set(false);
+            let make_list = {
+                let meal_key = meal_key.clone();
+                move |_| {
+                    let meal_key = meal_key.clone();
+                    async move {
+                        making.set(true);
+                        make_error.set(None);
+                        match create_shopping_list_from_meal(meal_key).await {
+                            Ok(new_id) => {
+                                navigator().push(Route::ShoppingListDetail { id: new_id });
+                            }
+                            Err(e) => {
+                                make_error.set(Some(e.to_string()));
+                                making.set(false);
+                            }
                         }
                     }
                 }
@@ -78,7 +79,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
             rsx! {
                 article { class: "meal",
                     header { class: "page-header",
-                        h1 { "{detail.name}" }
+                        h1 { "{detail.meal.name}" }
                         div { class: "page-header-actions",
                             WakeLockToggle {}
                             button {
@@ -87,13 +88,11 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                                 "aria-label": "Make shopping list",
                                 title: "Make shopping list",
                                 disabled: making(),
-                                onclick,
+                                onclick: make_list,
                                 ListIcon {}
                             }
                             Link {
-                                to: Route::MealEdit {
-                                    meal_key: meal_key.clone(),
-                                },
+                                to: Route::MealEdit { meal_key: meal_key.clone() },
                                 button {
                                     r#type: "button",
                                     class: "icon-button",
@@ -115,22 +114,22 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                         nav { class: "meal-tabs",
                             for (i, mr) in detail.recipes.iter().enumerate() {
                                 button {
-                                    key: "{mr.recipe_detail.recipe.id}",
+                                    key: "{mr.recipe.recipe.id}",
                                     r#type: "button",
                                     class: if i == current { "tab active" } else { "tab" },
                                     onclick: {
-                                        let recipe_slug = mr.recipe_detail.recipe.slug.clone();
+                                        let recipe_slug = mr.recipe.recipe.slug.clone();
                                         let meal_key = meal_key.clone();
                                         move |_| {
-                                            nav.replace(Route::MealDetail {
+                                            navigator().replace(Route::MealDetail {
                                                 meal_key: meal_key.clone(),
                                                 tab: Some(recipe_slug.clone()),
                                             });
                                         }
                                     },
-                                    "{mr.recipe_detail.recipe.name}"
-                                    if (mr.multiplier - 1.0).abs() > f64::EPSILON {
-                                        span { class: "tab-mult", " ({format_mult(mr.multiplier)}×)" }
+                                    "{mr.recipe.recipe.name}"
+                                    if (mr.meal_recipe.multiplier - 1.0).abs() > f64::EPSILON {
+                                        span { class: "tab-mult", " ({format_mult(mr.meal_recipe.multiplier)}×)" }
                                     }
                                 }
                             }
@@ -138,8 +137,8 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
 
                         if let Some(mr) = detail.recipes.get(current) {
                             RecipeView {
-                                detail: mr.recipe_detail.clone(),
-                                multiplier: mr.multiplier,
+                                detail: mr.recipe.clone(),
+                                multiplier: mr.meal_recipe.multiplier,
                                 meal_key: meal_key.clone(),
                             }
                         }

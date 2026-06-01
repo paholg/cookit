@@ -1,16 +1,12 @@
 use {
-    crate::{CurrentUserCtx, Route},
-    api::meals::list_meals,
+    crate::Route,
+    api::{Meal, list_meals},
     dioxus::prelude::*,
-    types::Meal,
 };
 
 #[component]
 pub fn MealList() -> Element {
-    let user = use_context::<CurrentUserCtx>();
-    let authenticated = user.read().is_some();
-
-    let mut meals = use_resource(move || list_meals(authenticated));
+    let meals = use_server_future(list_meals)?;
 
     rsx! {
         document::Title { "CookIt!" }
@@ -26,11 +22,7 @@ pub fn MealList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for meal in list {
-                        MealRow {
-                            key: "{meal.slug}",
-                            meal,
-                            on_deleted: move |_| meals.restart(),
-                        }
+                        MealRow { key: "{meal.slug}", meal }
                     }
                 }
             },
@@ -45,17 +37,14 @@ pub fn MealList() -> Element {
 }
 
 #[component]
-fn MealRow(meal: Meal, on_deleted: EventHandler<()>) -> Element {
+fn MealRow(meal: Meal) -> Element {
     let meal_key = meal.slug.clone();
 
     rsx! {
         li {
             div { class: "meal-row-main",
                 Link {
-                    to: Route::MealDetail {
-                        meal_key,
-                        tab: None,
-                    },
+                    to: Route::MealDetail { meal_key, tab: None },
                     "{meal.name}"
                 }
             }

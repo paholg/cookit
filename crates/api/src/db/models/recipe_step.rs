@@ -4,7 +4,7 @@ use {
             RecipeStepIngredientBuilder, RecipeStepIngredientDetail, RecipeStepIngredientError,
         },
         duration::{format_duration, parse_duration},
-        id::{BookId, DraftId, RecipeId, RecipeStepId, RecipeStepIngredientTable, RecipeStepTable},
+        id::{BookId, RecipeId, RecipeStepDraftId, RecipeStepId, RecipeStepIngredientDraftId},
     },
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
@@ -17,7 +17,7 @@ use crate::db::{
     schema::recipe_steps,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",
     derive(HasQuery, Identifiable, AsChangeset, Associations)
@@ -36,7 +36,7 @@ pub struct RecipeStep {
     pub duration_s: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepDetail {
     pub step: RecipeStep,
     pub ingredients: Vec<RecipeStepIngredientDetail>,
@@ -45,7 +45,7 @@ pub struct RecipeStepDetail {
 /// Edit-form representation of one step and its ingredient rows.
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepBuilder {
-    pub id: DraftId<RecipeStepTable>,
+    pub id: RecipeStepDraftId,
     pub instruction: String,
     /// Free-form duration text (`30s`, `1h 30m`, ...). Empty means no timer.
     pub duration_text: String,
@@ -57,7 +57,7 @@ pub struct RecipeStepBuilder {
 pub struct RecipeStepError {
     pub instruction: Option<String>,
     pub duration: Option<String>,
-    pub ingredients: HashMap<DraftId<RecipeStepIngredientTable>, RecipeStepIngredientError>,
+    pub ingredients: HashMap<RecipeStepIngredientDraftId, RecipeStepIngredientError>,
 }
 
 impl RecipeStepError {

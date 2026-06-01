@@ -8,7 +8,7 @@ use {
 pub fn RecipeList() -> Element {
     let recipes = use_server_future(list_recipes)?;
     let user = use_context::<CurrentUserCtx>();
-    let is_admin = user.read().as_ref().is_some_and(|u| u.is_admin);
+    let is_admin = user.read().as_ref().is_some_and(|u| u.is_admin());
     rsx! {
         document::Title { "CookIt!" }
         header { class: "page-header",

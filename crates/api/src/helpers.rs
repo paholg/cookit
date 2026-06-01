@@ -47,7 +47,7 @@ mod tests {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",
     derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)
@@ -100,7 +100,7 @@ mod name_diesel {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",
     derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)

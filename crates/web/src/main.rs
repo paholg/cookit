@@ -2,7 +2,7 @@ use {
     api::{
         id::ShoppingListId,
         routes::me,
-        session::{CurrentUser, Session},
+        session::CurrentUser,
     },
     dioxus::prelude::*,
     ui::navbar::Navbar,
@@ -12,7 +12,6 @@ use {
     },
 };
 
-mod draft_id;
 // FIXME
 // pub mod local_storage;
 pub mod timers;
@@ -68,11 +67,8 @@ fn main() {
     {
         use dioxus::server::axum::middleware;
         dioxus::serve(|| async {
-            let auth_router = api::auth_router().await;
             let app_router = dioxus::server::router(App);
-            Ok(auth_router
-                .merge(app_router)
-                .layer(middleware::from_fn(api::log_server_errors)))
+            Ok(app_router.layer(middleware::from_fn(api::log_server_errors)))
         })
     }
 }

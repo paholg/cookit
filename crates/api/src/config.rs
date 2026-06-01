@@ -1,10 +1,10 @@
 #[cfg(feature = "server")]
 use figment::{Figment, providers::Env};
-use {secrecy::SecretString, serde::Deserialize, std::sync::LazyLock, url::Url};
+use {serde::Deserialize, std::sync::LazyLock, url::Url};
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub session_secret: SecretString,
+    // pub session_secret: SecretString,
     pub database_url: Url,
 }
 

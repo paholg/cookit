@@ -2,23 +2,26 @@ use {
     crate::{
         db::models::ingredient::Ingredient,
         id::{
-            BookId, DraftId, IngredientId, RecipeStepId, RecipeStepIngredientId,
-            RecipeStepIngredientTable,
+            BookId, IngredientId, RecipeStepId, RecipeStepIngredientDraftId, RecipeStepIngredientId,
         },
-        unit::{Mass, Unit, Volume},
     },
     serde::{Deserialize, Serialize},
-    std::str::FromStr,
 };
 
 #[cfg(feature = "server")]
-use crate::db::{
-    models::{book::Book, recipe_step::RecipeStep},
-    prelude::*,
-    schema::recipe_step_ingredients,
+use {
+    crate::{
+        db::{
+            models::{book::Book, recipe_step::RecipeStep},
+            prelude::*,
+            schema::recipe_step_ingredients,
+        },
+        unit::{Mass, Unit, Volume},
+    },
+    std::str::FromStr,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",
     derive(HasQuery, Identifiable, AsChangeset, Associations)
@@ -55,7 +58,7 @@ pub(crate) struct RecipeStepIngredientRecord {
     pub(crate) ingredient_id: IngredientId,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepIngredientDetail {
     pub rsi: RecipeStepIngredient,
     pub ingredient: Ingredient,
@@ -65,7 +68,7 @@ pub struct RecipeStepIngredientDetail {
 /// form can hold mid-typing input; they're parsed on save.
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RecipeStepIngredientBuilder {
-    pub id: DraftId<RecipeStepIngredientTable>,
+    pub id: RecipeStepIngredientDraftId,
     /// Blank means the row is unfilled and dropped on save.
     pub name: String,
     pub quantity: String,
@@ -162,6 +165,7 @@ pub(crate) fn parse_quantity(text: &str) -> Result<Option<f64>, String> {
 
 /// Interpret the free-form unit text. A known mass/volume unit keeps its kind;
 /// anything else is treated as a count label. Empty means no unit.
+#[cfg(feature = "server")]
 pub(crate) fn parse_unit(text: &str) -> Option<Unit> {
     let t = text.trim();
     if t.is_empty() {

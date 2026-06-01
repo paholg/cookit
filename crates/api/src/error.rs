@@ -1,4 +1,4 @@
-use {dioxus::server::ServerFnError, snafu::prelude::*};
+use {dioxus::prelude::ServerFnError, snafu::prelude::*};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -7,6 +7,12 @@ pub enum Error {
     Validation { msg: String },
     #[snafu(display("Forbidden"))]
     Forbidden,
+
+    #[cfg(feature = "server")]
+    #[snafu(display("Database exhausted"))]
+    DatabasePool {
+        source: diesel_async::pooled_connection::deadpool::PoolError,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -16,6 +22,8 @@ impl Error {
         match self {
             Error::Validation { msg: _ } => 422,
             Error::Forbidden => 403,
+            #[cfg(feature = "server")]
+            Error::DatabasePool { source: _ } => 503,
         }
     }
 }
