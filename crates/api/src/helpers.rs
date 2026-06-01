@@ -53,7 +53,7 @@ mod tests {
     derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)
 )]
 #[cfg_attr(feature = "server", diesel(sql_type = diesel::sql_types::Text))]
-pub struct Name(String);
+pub struct Name(pub String);
 
 impl Name {
     pub fn parse(s: impl AsRef<str>) -> crate::Result<Self> {
@@ -106,7 +106,7 @@ mod name_diesel {
     derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)
 )]
 #[cfg_attr(feature = "server", diesel(sql_type = diesel::sql_types::Float8))]
-pub struct PositiveFloat(f64);
+pub struct PositiveFloat(pub f64);
 
 impl PositiveFloat {
     pub fn parse(v: f64) -> anyhow::Result<Self> {

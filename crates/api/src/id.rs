@@ -2,7 +2,7 @@ use {
     serde::{Deserialize, Serialize},
     std::{
         fmt::{self, Write},
-        hash::Hash,
+        hash::{Hash, Hasher},
         marker::PhantomData,
     },
     uuid::Uuid,
@@ -163,5 +163,117 @@ where
         out: &mut diesel::serialize::Output<'b, '_, DB>,
     ) -> diesel::serialize::Result {
         self.id.to_sql(out)
+    }
+}
+
+/// Stable identifier for a row inside an edit form, before and after it has
+/// been saved.
+///
+/// `Persisted` wraps the real [`Id`] of a row that already exists in the
+/// database; `New` is a provisional id allocated by the form itself, via a
+/// deterministic per-form counter ([`DraftId::next`]) rather than any
+/// process-global source, so server-rendered HTML matches what the client
+/// produces on first render and Dioxus hydration succeeds.
+///
+/// It is generic over the same table marker as `Id<T>`, so a draft step id
+/// can't be mixed up with a draft ingredient id. As a wire value it is the key
+/// the server uses to decide insert (`New`) vs. update (`Persisted`) during an
+/// upsert.
+#[derive(Serialize, Deserialize)]
+// `untagged` distinguishes the variants on the wire by shape — a `Persisted`
+// id serializes as the uuid (a JSON string), a `New` id as a JSON number.
+// (Self-describing formats only; fine for JSON, would break under postcard.)
+// `bound = ""` drops the spurious `T: Serialize`/`Deserialize` bounds serde
+// would otherwise add — `T` is only a `PhantomData` marker.
+#[serde(untagged, bound = "")]
+pub enum DraftId<T> {
+    Persisted(Id<T>),
+    New(i64),
+}
+
+impl<T> DraftId<T> {
+    /// The next provisional id for a form, one past the highest `New` id already
+    /// present. Deterministic given the same set of rows, so it produces the
+    /// same value during SSR and hydration.
+    pub fn next(existing: impl IntoIterator<Item = DraftId<T>>) -> DraftId<T> {
+        let max = existing
+            .into_iter()
+            .filter_map(|d| match d {
+                DraftId::New(n) => Some(n),
+                DraftId::Persisted(_) => None,
+            })
+            .max()
+            .unwrap_or(-1);
+
+        DraftId::New(max + 1)
+    }
+
+    /// The real database id, if this row has been persisted.
+    pub fn persisted(self) -> Option<Id<T>> {
+        match self {
+            DraftId::Persisted(id) => Some(id),
+            DraftId::New(_) => None,
+        }
+    }
+}
+
+impl<T> Default for DraftId<T> {
+    fn default() -> Self {
+        Self::New(0)
+    }
+}
+
+impl<T> From<Id<T>> for DraftId<T> {
+    fn from(id: Id<T>) -> Self {
+        Self::Persisted(id)
+    }
+}
+
+// Hand-written, like `Id<T>`'s impls, to avoid the spurious `T: Trait` bounds
+// the derives would add for the `PhantomData` marker.
+impl<T> Clone for DraftId<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for DraftId<T> {}
+
+impl<T> PartialEq for DraftId<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DraftId::Persisted(a), DraftId::Persisted(b)) => a == b,
+            (DraftId::New(a), DraftId::New(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<T> Eq for DraftId<T> {}
+
+impl<T> Hash for DraftId<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            DraftId::Persisted(id) => (0u8, id).hash(state),
+            DraftId::New(n) => (1u8, n).hash(state),
+        }
+    }
+}
+
+impl<T> fmt::Display for DraftId<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DraftId::Persisted(id) => write!(f, "p-{id}"),
+            DraftId::New(n) => write!(f, "n-{n}"),
+        }
+    }
+}
+
+impl<T> fmt::Debug for DraftId<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DraftId::Persisted(id) => write!(f, "Persisted({id})"),
+            DraftId::New(n) => write!(f, "New({n})"),
+        }
     }
 }

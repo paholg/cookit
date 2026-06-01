@@ -82,7 +82,7 @@ impl Session {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurrentUser {
     pub id: UserId,
     pub book_id: BookId,

@@ -6,6 +6,9 @@ use {
 #[cfg(feature = "server")]
 use crate::db::{models::user::User, prelude::*, schema::books};
 
+/// The unit of tenancy for CookIt.
+///
+/// Virtually every table has a book_id column, placing it in a user's "cookbook".
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "server",

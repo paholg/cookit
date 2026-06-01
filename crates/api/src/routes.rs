@@ -2,7 +2,7 @@ use {
     crate::{
         db::models::{
             ingredient::{Ingredient, IngredientUpdate},
-            recipe::{Recipe, RecipeDetail},
+            recipe::{Recipe, RecipeBuilder, RecipeDetail},
         },
         id::IngredientId,
         session::{CurrentUser, Session},
@@ -49,29 +49,21 @@ pub async fn update_ingredient(
     Ok(ingredient)
 }
 
-#[post("/api/recipes")]
-pub async fn create_recipe(input: NewRecipe) -> Result<String, ServerFnError> {
+/// Create or update a recipe and all of its steps/ingredients in one shot.
+/// `RecipeBuilder::id` decides insert vs. update. Returns the canonical
+/// `RecipeDetail` (server-generated slug, resolved ids) as a `get` would.
+#[post("/api/recipes/upsert")]
+pub async fn upsert_recipe(input: RecipeBuilder) -> Result<RecipeDetail, ServerFnError> {
     let mut session = Session::create().await?;
-    server::auth::require_admin().await?;
-    server::ops::create_recipe(input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    session.require_admin()?;
+    let detail = input.upsert(&mut session).await?;
+    Ok(detail)
 }
 
-#[post("/api/recipes/:key/update")]
-pub async fn update_recipe(key: String, input: NewRecipe) -> Result<(), ServerFnError> {
+#[post("/api/recipes/:slug/delete")]
+pub async fn delete_recipe(slug: String) -> Result<(), ServerFnError> {
     let mut session = Session::create().await?;
-    server::auth::require_admin().await?;
-    server::ops::update_recipe(&key, input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[post("/api/recipes/:key/delete")]
-pub async fn delete_recipe(key: String) -> Result<(), ServerFnError> {
-    let mut session = Session::create().await?;
-    server::auth::require_admin().await?;
-    server::ops::delete_recipe(&key)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    session.require_admin()?;
+    Recipe::delete(&mut session, &slug).await?;
+    Ok(())
 }

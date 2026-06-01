@@ -1,8 +1,9 @@
 use {
-    api::{list_ingredients, update_ingredient},
+    api::{
+        Ingredient, grocery_section::GrocerySection, id::IngredientId, list_ingredients,
+        update_ingredient,
+    },
     dioxus::prelude::*,
-    std::str::FromStr,
-    types::{GrocerySection, Ingredient, IngredientUpdate, id::IngredientId},
     ui::ClientOnly,
 };
 
@@ -22,10 +23,10 @@ impl RowDraft {
     fn from(i: &Ingredient) -> Self {
         Self {
             id: i.id,
-            name: i.name.clone(),
+            name: i.name.0.clone(),
             density: i
                 .density_g_per_ml
-                .map(|d| format!("{d}"))
+                .map(|d| format!("{}", d.0))
                 .unwrap_or_default(),
             section: i.grocery_section,
             saving: false,

@@ -27,6 +27,16 @@ pub struct Ingredient {
     pub grocery_section: Option<GrocerySection>,
 }
 
+/// Columns for creating a bare ingredient (just a name); density and grocery
+/// section are filled in later via the ingredient editor.
+#[cfg(feature = "server")]
+#[derive(Insertable)]
+#[diesel(table_name = ingredients)]
+pub(crate) struct IngredientNew<'a> {
+    pub(crate) book_id: BookId,
+    pub(crate) name: &'a str,
+}
+
 #[cfg(feature = "server")]
 impl Ingredient {
     pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Ingredient>> {
@@ -51,7 +61,11 @@ pub struct IngredientUpdate {
 
 #[cfg(feature = "server")]
 impl IngredientUpdate {
-    pub async fn apply(self, id: IngredientId, session: &mut Session) -> anyhow::Result<Ingredient> {
+    pub async fn apply(
+        self,
+        id: IngredientId,
+        session: &mut Session,
+    ) -> anyhow::Result<Ingredient> {
         diesel::update(
             ingredients::table
                 .filter(ingredients::id.eq(id))
