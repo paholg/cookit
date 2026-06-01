@@ -1,15 +1,16 @@
-use api::me;
-use dioxus::prelude::*;
-use types::CurrentUser;
-#[cfg(feature = "dev-auth")]
-use ui::ClientOnly;
-use ui::navbar::Navbar;
-use views::{
-    IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList,
-    RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
+use {
+    api::me,
+    dioxus::prelude::*,
+    types::{CurrentUser, id::ShoppingListId},
+    ui::navbar::Navbar,
+    views::{
+        IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
+        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
+    },
 };
 
 mod draft_id;
+pub mod local_storage;
 pub mod timers;
 mod views;
 
@@ -43,31 +44,33 @@ enum Route {
     #[route("/shopping-lists/new")]
     ShoppingListNew {},
     #[route("/shopping-lists/:id")]
-    ShoppingListDetail { id: i64 },
+    ShoppingListDetail { id: ShoppingListId },
 }
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const ERROR_BANNER_JS: Asset = asset!("/assets/error-banner.js");
 const FAVICON: Asset = asset!("/assets/favicon.svg");
 
-#[cfg(not(feature = "server"))]
 fn main() {
-    // Route wasm Rust panics to `console.error` with a real stack trace.
-    // Without this the browser swallows them silently.
-    console_error_panic_hook::set_once();
-    dioxus::launch(App);
-}
+    #[cfg(not(feature = "server"))]
+    {
+        // Route wasm Rust panics to `console.error` with a real stack trace.
+        // Without this the browser swallows them silently.
+        console_error_panic_hook::set_once();
+        dioxus::launch(App);
+    }
 
-#[cfg(feature = "server")]
-fn main() {
-    use dioxus::server::axum::middleware;
-    dioxus::serve(|| async {
-        let auth_router = api::auth_router().await;
-        let app_router = dioxus::server::router(App);
-        Ok(auth_router
-            .merge(app_router)
-            .layer(middleware::from_fn(api::log_server_errors)))
-    })
+    #[cfg(feature = "server")]
+    {
+        use dioxus::server::axum::middleware;
+        dioxus::serve(|| async {
+            let auth_router = api::auth_router().await;
+            let app_router = dioxus::server::router(App);
+            Ok(auth_router
+                .merge(app_router)
+                .layer(middleware::from_fn(api::log_server_errors)))
+        })
+    }
 }
 
 /// Convenience signal for components that need to know the logged-in user.
@@ -156,50 +159,9 @@ fn AuthControls() -> Element {
     }
 }
 
-#[cfg(not(feature = "dev-auth"))]
 fn login_controls() -> Element {
     rsx! {
         a { href: "/auth/login", class: "auth-login", "Log in" }
-    }
-}
-
-#[cfg(feature = "dev-auth")]
-fn login_controls() -> Element {
-    rsx! { DevLoginSelect {} }
-}
-
-#[cfg(feature = "dev-auth")]
-#[component]
-fn DevLoginSelect() -> Element {
-    let users_future = use_server_future(api::list_dev_users)?;
-    let users = match users_future.cloned() {
-        Some(Ok(list)) => list,
-        _ => return rsx! { span { class: "auth-login", "…" } },
-    };
-
-    rsx! {
-        form {
-            method: "post",
-            action: "/auth/dev-login",
-            class: "auth-login",
-            id: "dev-login-form",
-            ClientOnly {
-                select {
-                    name: "user_id",
-                    required: true,
-                    onchange: move |_| {
-                        let _ = document::eval("document.getElementById('dev-login-form').submit()");
-                    },
-                    option { value: "", disabled: true, selected: true, "Log in" }
-                    for u in users {
-                        option {
-                            value: "{u.id}",
-                            if u.is_admin { "{u.name} (admin)" } else { "{u.name}" }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

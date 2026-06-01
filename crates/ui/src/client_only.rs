@@ -17,7 +17,9 @@ pub fn ClientOnly(children: Element) -> Element {
     use_effect(move || hydrated.set(true));
 
     if hydrated() {
-        rsx! { {children} }
+        rsx! {
+            {children}
+        }
     } else {
         rsx! {}
     }

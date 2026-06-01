@@ -1,26 +1,15 @@
-use crate::{CurrentUserCtx, Route};
-use api::meals::list_meals;
-use dioxus::prelude::*;
-use types::{CurrentUser, Meal};
-
-fn can_modify(user: &Option<CurrentUser>, owner_id: Option<i64>) -> bool {
-    match owner_id {
-        // Local-storage meals have no owner — anyone viewing them owns them.
-        None => true,
-        Some(owner) => match user {
-            Some(u) => u.is_admin || u.id == owner,
-            None => false,
-        },
-    }
-}
+use {
+    crate::{CurrentUserCtx, Route},
+    api::meals::list_meals,
+    dioxus::prelude::*,
+    types::Meal,
+};
 
 #[component]
 pub fn MealList() -> Element {
     let user = use_context::<CurrentUserCtx>();
     let authenticated = user.read().is_some();
 
-    // `use_resource` (not `use_server_future`) because the local-storage branch
-    // runs in the browser; SSR can't see localStorage.
     let mut meals = use_resource(move || list_meals(authenticated));
 
     rsx! {
@@ -38,8 +27,7 @@ pub fn MealList() -> Element {
                 ul { class: "recipe-list",
                     for meal in list {
                         MealRow {
-                            key: "{meal.key}",
-                            modifiable: can_modify(&user.read(), meal.user_id),
+                            key: "{meal.slug}",
                             meal,
                             on_deleted: move |_| meals.restart(),
                         }
@@ -57,13 +45,19 @@ pub fn MealList() -> Element {
 }
 
 #[component]
-fn MealRow(meal: Meal, modifiable: bool, on_deleted: EventHandler<()>) -> Element {
-    let meal_key = meal.key.clone();
+fn MealRow(meal: Meal, on_deleted: EventHandler<()>) -> Element {
+    let meal_key = meal.slug.clone();
 
     rsx! {
         li {
             div { class: "meal-row-main",
-                Link { to: Route::MealDetail { meal_key, tab: None }, "{meal.name}" }
+                Link {
+                    to: Route::MealDetail {
+                        meal_key,
+                        tab: None,
+                    },
+                    "{meal.name}"
+                }
             }
         }
     }

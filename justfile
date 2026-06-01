@@ -1,11 +1,7 @@
 set dotenv-load := true
 
 serve *args:
-    dx serve -p web --features dev-auth {{args}}
-
-seed:
-    # cargo sqlx database setup
-    # sqlite3 dev/cookit.db < db/seed.sql
+    dx serve -p web {{args}}
 
 db-setup:
     diesel setup
@@ -33,6 +29,7 @@ up:
 
 fix:
     cargo clippy --fix --allow-staged
+    dx fmt
     cargo fmt --all
     tombi format
 
@@ -43,7 +40,6 @@ fmt-check:
     tombi format --check
 
 clippy:
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
     cargo clippy --workspace --all-targets --features web -- -D warnings
     cargo clippy --workspace --all-targets --features server -- -D warnings
-    cargo clippy --workspace --all-targets --features "server dev-auth" -- -D warnings

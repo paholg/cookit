@@ -1,6 +1,8 @@
-use crate::views::recipe_form::{RecipeDraft, RecipeForm, RecipeFormMode};
-use api::get_recipe;
-use dioxus::prelude::*;
+use {
+    crate::views::recipe_form::{RecipeDraft, RecipeForm, RecipeFormMode},
+    api::get_recipe,
+    dioxus::prelude::*,
+};
 
 #[component]
 pub fn RecipeEdit(recipe_key: String) -> Element {
@@ -12,7 +14,9 @@ pub fn RecipeEdit(recipe_key: String) -> Element {
         Some(Ok(detail)) => rsx! {
             RecipeForm {
                 initial: RecipeDraft::from_detail(detail),
-                mode: RecipeFormMode::Edit { recipe_key: recipe_key.clone() },
+                mode: RecipeFormMode::Edit {
+                    recipe_key: recipe_key.clone(),
+                },
             }
         },
         Some(Err(e)) => rsx! {

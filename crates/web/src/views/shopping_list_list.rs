@@ -1,8 +1,10 @@
-use crate::{CurrentUserCtx, Route};
-use api::shopping_lists::{delete_shopping_list, list_shopping_lists};
-use dioxus::prelude::*;
-use types::ShoppingList;
-use ui::icons::TrashIcon;
+use {
+    crate::{CurrentUserCtx, Route},
+    api::shopping_lists::{delete_shopping_list, list_shopping_lists},
+    dioxus::prelude::*,
+    types::ShoppingList,
+    ui::icons::TrashIcon,
+};
 
 #[component]
 pub fn ShoppingListList() -> Element {
@@ -25,11 +27,7 @@ pub fn ShoppingListList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for sl in list {
-                        ShoppingListRow {
-                            key: "{sl.id}",
-                            list: sl,
-                            on_deleted: move |_| lists.restart(),
-                        }
+                        ShoppingListRow { key: "{sl.id}", list: sl, on_deleted: move |_| lists.restart() }
                     }
                 }
             },
@@ -61,12 +59,14 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
                     disabled: deleting(),
                     onclick: move |_| async move {
                         let confirmed = document::eval(
-                            "return confirm('Delete this shopping list? This cannot be undone.')",
-                        )
+                                "return confirm('Delete this shopping list? This cannot be undone.')",
+                            )
                             .join::<bool>()
                             .await
                             .unwrap_or(false);
-                        if !confirmed { return; }
+                        if !confirmed {
+                            return;
+                        }
                         deleting.set(true);
                         match delete_shopping_list(id).await {
                             Ok(()) => on_deleted.call(()),

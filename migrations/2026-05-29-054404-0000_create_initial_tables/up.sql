@@ -19,7 +19,7 @@ CREATE TABLE books (
 SELECT
     diesel_manage_updated_at('books');
 
-CREATE TYPE role AS enum ('admin', 'user', 'readonly');
+CREATE TYPE role AS enum ('admin', 'user');
 
 CREATE TABLE user_roles(
     id UUID PRIMARY KEY DEFAULT uuidv7(),

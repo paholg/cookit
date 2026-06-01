@@ -6,10 +6,12 @@
 //! continues counting from where it really should be (or rings if expiry
 //! happened while the page was closed).
 
-use dioxus::prelude::*;
-use gloo_storage::{LocalStorage, Storage};
-use serde::{Deserialize, Serialize};
-use web_time::{SystemTime, UNIX_EPOCH};
+use {
+    dioxus::prelude::*,
+    gloo_storage::{LocalStorage, Storage},
+    serde::{Deserialize, Serialize},
+    web_time::{SystemTime, UNIX_EPOCH},
+};
 
 pub const STORAGE_KEY: &str = "cookit.timers";
 

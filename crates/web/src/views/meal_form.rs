@@ -1,13 +1,13 @@
-use crate::{CurrentUserCtx, Route, draft_id::DraftId};
-
-use api::{
-    list_recipes,
-    meals::{create_meal, delete_meal, update_meal},
+use {
+    crate::{CurrentUserCtx, Route, draft_id::DraftId},
+    api::{
+        list_recipes,
+        meals::{create_meal, delete_meal, update_meal},
+    },
+    dioxus::prelude::*,
+    types::{MealDetail, NewMeal, NewMealRecipe, Recipe},
+    ui::{ClientOnly, icons::TrashIcon},
 };
-use dioxus::prelude::*;
-use types::{MealDetail, NewMeal, NewMealRecipe, Recipe};
-use ui::ClientOnly;
-use ui::icons::TrashIcon;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct MealRecipeDraft {
@@ -43,13 +43,13 @@ impl MealDraft {
 
     pub fn from_detail(detail: MealDetail) -> Self {
         Self {
-            name: detail.meal.name,
+            name: detail.name,
             recipes: detail
                 .recipes
                 .into_iter()
                 .map(|mr| MealRecipeDraft {
-                    id: mr.recipe.recipe.id.into(),
-                    recipe_key: Some(mr.recipe.recipe.key),
+                    id: mr.recipe_detail.recipe.id.into(),
+                    recipe_key: Some(mr.recipe_detail.recipe.slug),
                     multiplier: format_mult(mr.multiplier),
                 })
                 .collect(),
@@ -72,7 +72,7 @@ impl MealDraft {
                     .map_err(|_| format!("row {}: `{m_text}` is not a valid number", idx + 1))?
             };
             recipes.push(NewMealRecipe {
-                recipe_key,
+                recipe_slug: recipe_key,
                 multiplier,
             });
         }
@@ -89,7 +89,7 @@ fn all_recipes_used(draft: &MealDraft, available: &[Recipe]) -> bool {
         .iter()
         .filter_map(|r| r.recipe_key.as_deref())
         .collect();
-    !available.is_empty() && available.iter().all(|r| picked.contains(r.key.as_str()))
+    !available.is_empty() && available.iter().all(|r| picked.contains(r.slug.as_str()))
 }
 
 fn format_mult(m: f64) -> String {
@@ -177,17 +177,20 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                     title: "Delete meal",
                     disabled: deleting() || submitting(),
                     onclick: move |_| {
-                        if deleting() { return; }
+                        if deleting() {
+                            return;
+                        }
                         let meal_key = meal_key.clone();
                         spawn(async move {
                             let confirmed = document::eval(
-                                "return confirm('Delete this meal? This cannot be undone.')",
-                            )
+                                    "return confirm('Delete this meal? This cannot be undone.')",
+                                )
                                 .join::<bool>()
                                 .await
                                 .unwrap_or(false);
-                            if !confirmed { return; }
-
+                            if !confirmed {
+                                return;
+                            }
                             deleting.set(true);
                             error.set(None);
                             match delete_meal(meal_key).await {
@@ -243,11 +246,12 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
                 onclick: move |_| {
                     let mut d = draft.write();
                     let id = d.alloc_row_id();
-                    d.recipes.push(MealRecipeDraft {
-                        id,
-                        recipe_key: None,
-                        multiplier: "1".into(),
-                    });
+                    d.recipes
+                        .push(MealRecipeDraft {
+                            id,
+                            recipe_key: None,
+                            multiplier: "1".into(),
+                        });
                 },
                 "+ Add recipe"
             }
@@ -256,7 +260,14 @@ pub fn MealForm(initial: MealDraft, mode: MealFormMode) -> Element {
             }
             div { class: "form-actions",
                 if let MealFormMode::Edit { meal_key } = mode.clone() {
-                    Link { to: Route::MealDetail { meal_key, tab: None }, class: "button-link", "Cancel" }
+                    Link {
+                        to: Route::MealDetail {
+                            meal_key,
+                            tab: None,
+                        },
+                        class: "button-link",
+                        "Cancel"
+                    }
                 }
                 button {
                     r#type: "submit",
@@ -303,10 +314,10 @@ fn MealRecipeRow(
                         }
                     },
                     option { value: "", "— pick a recipe —" }
-                    for r in recipes.iter().filter(|r| !used_by_others.contains(&r.key)) {
+                    for r in recipes.iter().filter(|r| !used_by_others.contains(&r.slug)) {
                         option {
-                            value: "{r.key}",
-                            selected: row.recipe_key.as_deref() == Some(r.key.as_str()),
+                            value: "{r.slug}",
+                            selected: row.recipe_key.as_deref() == Some(r.slug.as_str()),
                             "{r.name}"
                         }
                     }

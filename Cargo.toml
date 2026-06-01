@@ -1,23 +1,12 @@
 [workspace]
 resolver = "2"
-members = [
-  "crates/api",
-  "crates/server",
-  "crates/types",
-  "crates/ui",
-  "crates/web",
-  "crates/web_client"
-]
+members = ["crates/api", "crates/ui", "crates/web"]
 
 [workspace.dependencies]
-diesel = { version = "2.3", features = ["postgres_backend", "uuid"] }
+api = { path = "crates/api" }
+diesel = { version = "2.3", features = ["postgres", "postgres_backend", "uuid"] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dioxus = { version = "0.7.9" }
-jiff = "0.2"
-uuid = "1"
-
-api = { path = "crates/api" }
-server = { path = "crates/server" }
-types = { path = "crates/types" }
+jiff = { version = "0.2", features = ["serde"] }
 ui = { path = "crates/ui" }
-web_client = { path = "crates/web_client" }
+uuid = { version = "1", features = ["serde", "v7"] }

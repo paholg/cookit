@@ -1,5 +1,7 @@
-use crate::views::meal_form::{MealDraft, MealForm, MealFormMode};
-use dioxus::prelude::*;
+use {
+    crate::views::meal_form::{MealDraft, MealForm, MealFormMode},
+    dioxus::prelude::*,
+};
 #[component]
 pub fn MealNew() -> Element {
     rsx! {

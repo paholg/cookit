@@ -1,6 +1,8 @@
-use crate::{CurrentUserCtx, Route};
-use api::list_recipes;
-use dioxus::prelude::*;
+use {
+    crate::{CurrentUserCtx, Route},
+    api::list_recipes,
+    dioxus::prelude::*,
+};
 
 #[component]
 pub fn RecipeList() -> Element {
@@ -22,10 +24,10 @@ pub fn RecipeList() -> Element {
             Some(Ok(list)) => rsx! {
                 ul { class: "recipe-list",
                     for recipe in list {
-                        li { key: "{recipe.key}",
+                        li { key: "{recipe.slug}",
                             Link {
                                 to: Route::RecipeDetail {
-                                    recipe_key: recipe.key.clone(),
+                                    recipe_key: recipe.slug.clone(),
                                 },
                                 "{recipe.name}"
                             }

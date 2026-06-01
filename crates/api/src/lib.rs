@@ -1,95 +1,52 @@
-use dioxus::prelude::*;
-#[cfg(feature = "dev-auth")]
-use types::DevUser;
-use types::{CurrentUser, Ingredient, IngredientUpdate, NewRecipe, Recipe, RecipeDetail};
+pub mod config;
+pub mod db;
+pub mod middleware;
+// FIXME
+// pub mod ops;
+pub mod grocery_section;
+pub mod id;
+pub mod session;
+pub mod unit;
 
-pub mod meals;
-mod remote;
-mod remote_shopping;
-pub mod shopping_lists;
+/// URL-safe kebab-case slug of `name`. Lowercases ASCII letters/digits,
+/// replaces runs of everything else with a single `-`, trims leading/trailing
+/// `-`. Falls back to `"item"` if the result is empty.
+pub fn slugify(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut last_dash = true;
 
-/// Build the axum router for `/auth/*` endpoints. Merge this into the dioxus
-/// router from the server entrypoint.
-#[cfg(feature = "server")]
-pub async fn auth_router() -> dioxus::server::axum::Router {
-    server::auth::router().await
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            out.extend(c.to_lowercase());
+            last_dash = false;
+        } else if !last_dash {
+            out.push('-');
+            last_dash = true;
+        }
+    }
+
+    while out.ends_with('-') {
+        out.pop();
+    }
+
+    if out.is_empty() {
+        "item".to_string()
+    } else {
+        out
+    }
 }
 
-/// Middleware that logs any 5xx response so server failures aren't silent.
-#[cfg(feature = "server")]
-pub use server::middleware::log_server_errors;
+#[cfg(test)]
+mod tests {
+    use super::slugify;
 
-/// Dev-only roster of users used by the in-navbar "log in as" `<select>`.
-/// The server function only exists in builds compiled with `dev-auth`.
-#[cfg(feature = "dev-auth")]
-#[get("/api/dev-users")]
-pub async fn list_dev_users() -> Result<Vec<DevUser>, ServerFnError> {
-    server::auth::list_dev_users()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[get("/api/me")]
-pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {
-    Ok(server::auth::current_user().await.map(|u| CurrentUser {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        is_admin: u.is_admin,
-    }))
-}
-
-#[get("/api/recipes")]
-pub async fn list_recipes() -> Result<Vec<Recipe>, ServerFnError> {
-    server::ops::list_recipes()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[get("/api/recipes/:key")]
-pub async fn get_recipe(key: String) -> Result<RecipeDetail, ServerFnError> {
-    server::ops::get_recipe_by_key(&key)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?
-        .ok_or_else(|| ServerFnError::new(format!("recipe `{key}` not found")))
-}
-
-#[get("/api/ingredients")]
-pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
-    server::auth::require_user().await?;
-    server::ops::list_ingredients()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[post("/api/ingredients/:id/update")]
-pub async fn update_ingredient(id: i64, input: IngredientUpdate) -> Result<(), ServerFnError> {
-    server::auth::require_admin().await?;
-    server::ops::update_ingredient(id, input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[post("/api/recipes")]
-pub async fn create_recipe(input: NewRecipe) -> Result<String, ServerFnError> {
-    server::auth::require_admin().await?;
-    server::ops::create_recipe(input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[post("/api/recipes/:key/update")]
-pub async fn update_recipe(key: String, input: NewRecipe) -> Result<(), ServerFnError> {
-    server::auth::require_admin().await?;
-    server::ops::update_recipe(&key, input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[post("/api/recipes/:key/delete")]
-pub async fn delete_recipe(key: String) -> Result<(), ServerFnError> {
-    server::auth::require_admin().await?;
-    server::ops::delete_recipe(&key)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    #[test]
+    fn slugify_basics() {
+        assert_eq!(slugify("Black Beans"), "black-beans");
+        assert_eq!(slugify("  Chicken & Waffles  "), "chicken-waffles");
+        assert_eq!(slugify("Mom's Chili (Spicy!)"), "mom-s-chili-spicy");
+        assert_eq!(slugify("---"), "item");
+        assert_eq!(slugify(""), "item");
+        assert_eq!(slugify("café"), "caf");
+    }
 }

@@ -90,6 +90,7 @@
               openssl
               pkg-config
               playwright-test
+              rust-bin.nightly.latest.rustfmt
               sqlite
               sqlx-cli
               tombi

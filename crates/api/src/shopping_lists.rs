@@ -1,16 +1,19 @@
 //! Unified shopping-list API used by the UI. Dispatches to one of two
-//! backends, mirroring the meal pattern in [`crate::meals`]:
+//! backends:
 //!
-//! - Positive ids and authenticated `create`/`list` calls go to the server
-//!   functions in [`crate::remote_shopping`].
-//! - Negative ids and unauthenticated `create`/`list` calls go to
-//!   [`web_client::shopping_lists`], which talks to browser `localStorage`.
+//! - Slugs prefixed with `local-` and unauthenticated `create`/`list` calls
+//!   go to [`web_client::shopping_lists`], which talks to browser `localStorage`.
+//! - All other slugs (and authenticated calls) go to the server functions in
+//!   [`crate::remote_shopping`], which talk to the PostgreSQL DB.
 
-use types::{
-    NewShoppingList, NewShoppingListItem, ShoppingList, ShoppingListDetail, aggregate_from_meal,
+use {
+    crate::remote_shopping,
+    types::{
+        NewShoppingList, NewShoppingListItem, ShoppingList, ShoppingListDetail,
+        aggregate_from_meal,
+        id::{ShoppingListId, ShoppingListItemId},
+    },
 };
-
-use crate::remote_shopping;
 
 fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
@@ -26,80 +29,90 @@ pub async fn list_shopping_lists(authenticated: bool) -> Result<Vec<ShoppingList
     Ok(out)
 }
 
-pub async fn get_shopping_list(id: i64) -> Result<ShoppingListDetail, String> {
-    if id < 0 {
-        get_local(id)
-    } else {
-        remote_shopping::get_shopping_list(id).await.map_err(err)
-    }
+pub async fn get_shopping_list(id: ShoppingListId) -> Result<ShoppingListDetail, String> {
+    remote_shopping::get_shopping_list(id).await.map_err(err)
+}
+
+pub async fn get_local_shopping_list(slug: String) -> Result<ShoppingListDetail, String> {
+    get_local(&slug)
 }
 
 pub async fn create_shopping_list(
     input: NewShoppingList,
     authenticated: bool,
-) -> Result<i64, String> {
+) -> Result<ShoppingListId, String> {
     if authenticated {
         remote_shopping::create_shopping_list(input)
             .await
             .map_err(err)
     } else {
-        create_local(input)
+        Err("creating shopping lists requires authentication".into())
     }
 }
 
-/// Build a shopping list from an existing meal by aggregating its
-/// ingredients. The created list's storage backend is chosen the same way as
-/// for an empty list — authenticated → server, otherwise local.
-pub async fn create_from_meal(meal_key: String, authenticated: bool) -> Result<i64, String> {
-    let meal = crate::meals::get_meal(meal_key).await?;
+/// Build a shopping list from an existing meal by aggregating its ingredients.
+pub async fn create_from_meal(
+    meal_slug: String,
+    authenticated: bool,
+) -> Result<ShoppingListId, String> {
+    let meal = crate::meals::get_meal(meal_slug).await?;
     let sections = remote_shopping::list_ingredient_sections()
         .await
         .map_err(err)
         .unwrap_or_default();
     let items = aggregate_from_meal(&meal, &sections);
     let input = NewShoppingList {
-        name: meal.meal.name.clone(),
+        name: meal.name.clone(),
         items,
     };
     create_shopping_list(input, authenticated).await
 }
 
-pub async fn delete_shopping_list(id: i64) -> Result<(), String> {
-    if id < 0 {
-        delete_local(id)
-    } else {
-        remote_shopping::delete_shopping_list(id).await.map_err(err)
-    }
+pub async fn delete_shopping_list(id: ShoppingListId) -> Result<(), String> {
+    remote_shopping::delete_shopping_list(id).await.map_err(err)
 }
 
-pub async fn add_item(list_id: i64, item: NewShoppingListItem) -> Result<i64, String> {
-    if list_id < 0 {
-        add_item_local(list_id, item)
-    } else {
-        remote_shopping::add_shopping_list_item(list_id, item)
-            .await
-            .map_err(err)
-    }
+pub async fn delete_local_shopping_list(slug: String) -> Result<(), String> {
+    delete_local(&slug)
 }
 
-pub async fn set_item_checked(item_id: i64, checked: bool) -> Result<(), String> {
-    if item_id < 0 {
-        set_item_checked_local(item_id, checked)
-    } else {
-        remote_shopping::set_shopping_list_item_checked(item_id, checked)
-            .await
-            .map_err(err)
-    }
+pub async fn add_item(
+    list_id: ShoppingListId,
+    item: NewShoppingListItem,
+) -> Result<ShoppingListItemId, String> {
+    remote_shopping::add_shopping_list_item(list_id, item)
+        .await
+        .map_err(err)
 }
 
-pub async fn delete_item(item_id: i64) -> Result<(), String> {
-    if item_id < 0 {
-        delete_item_local(item_id)
-    } else {
-        remote_shopping::delete_shopping_list_item(item_id)
-            .await
-            .map_err(err)
-    }
+pub async fn add_item_local(
+    list_slug: String,
+    item: NewShoppingListItem,
+) -> Result<ShoppingListItemId, String> {
+    add_item_local_fn(&list_slug, item)
+}
+
+pub async fn set_item_checked(item_id: ShoppingListItemId, checked: bool) -> Result<(), String> {
+    remote_shopping::set_shopping_list_item_checked(item_id, checked)
+        .await
+        .map_err(err)
+}
+
+pub async fn set_item_checked_local(
+    item_id: ShoppingListItemId,
+    checked: bool,
+) -> Result<(), String> {
+    set_local_item_checked(item_id, checked)
+}
+
+pub async fn delete_item(item_id: ShoppingListItemId) -> Result<(), String> {
+    remote_shopping::delete_shopping_list_item(item_id)
+        .await
+        .map_err(err)
+}
+
+pub async fn delete_item_local(item_id: ShoppingListItemId) -> Result<(), String> {
+    delete_local_item(item_id)
 }
 
 // ---------- local backend bridge ----------
@@ -115,55 +128,46 @@ fn list_local() -> Result<Vec<ShoppingList>, String> {
     }
 }
 
-fn get_local(id: i64) -> Result<ShoppingListDetail, String> {
+fn get_local(slug: &str) -> Result<ShoppingListDetail, String> {
     #[cfg(feature = "web")]
     {
-        web_client::shopping_lists::get_shopping_list(id).map_err(err)
+        web_client::shopping_lists::get_shopping_list(slug).map_err(err)
     }
     #[cfg(not(feature = "web"))]
     {
-        let _ = id;
+        let _ = slug;
         Err("local shopping-list storage unavailable on this target".into())
     }
 }
 
-fn create_local(input: NewShoppingList) -> Result<i64, String> {
+fn delete_local(slug: &str) -> Result<(), String> {
     #[cfg(feature = "web")]
     {
-        web_client::shopping_lists::create_shopping_list(input).map_err(err)
+        web_client::shopping_lists::delete_shopping_list(slug).map_err(err)
     }
     #[cfg(not(feature = "web"))]
     {
-        let _ = input;
+        let _ = slug;
         Err("local shopping-list storage unavailable on this target".into())
     }
 }
 
-fn delete_local(id: i64) -> Result<(), String> {
+fn add_item_local_fn(
+    list_slug: &str,
+    item: NewShoppingListItem,
+) -> Result<ShoppingListItemId, String> {
     #[cfg(feature = "web")]
     {
-        web_client::shopping_lists::delete_shopping_list(id).map_err(err)
+        web_client::shopping_lists::add_item(list_slug, item).map_err(err)
     }
     #[cfg(not(feature = "web"))]
     {
-        let _ = id;
+        let _ = (list_slug, item);
         Err("local shopping-list storage unavailable on this target".into())
     }
 }
 
-fn add_item_local(list_id: i64, item: NewShoppingListItem) -> Result<i64, String> {
-    #[cfg(feature = "web")]
-    {
-        web_client::shopping_lists::add_item(list_id, item).map_err(err)
-    }
-    #[cfg(not(feature = "web"))]
-    {
-        let _ = (list_id, item);
-        Err("local shopping-list storage unavailable on this target".into())
-    }
-}
-
-fn set_item_checked_local(item_id: i64, checked: bool) -> Result<(), String> {
+fn set_local_item_checked(item_id: ShoppingListItemId, checked: bool) -> Result<(), String> {
     #[cfg(feature = "web")]
     {
         web_client::shopping_lists::set_item_checked(item_id, checked).map_err(err)
@@ -175,7 +179,7 @@ fn set_item_checked_local(item_id: i64, checked: bool) -> Result<(), String> {
     }
 }
 
-fn delete_item_local(item_id: i64) -> Result<(), String> {
+fn delete_local_item(item_id: ShoppingListItemId) -> Result<(), String> {
     #[cfg(feature = "web")]
     {
         web_client::shopping_lists::delete_item(item_id).map_err(err)

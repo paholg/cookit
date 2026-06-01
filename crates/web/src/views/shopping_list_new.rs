@@ -1,9 +1,13 @@
-use crate::{CurrentUserCtx, Route};
-use api::meals::list_meals;
-use api::shopping_lists::{create_from_meal, create_shopping_list};
-use dioxus::prelude::*;
-use types::NewShoppingList;
-use ui::ClientOnly;
+use {
+    crate::{CurrentUserCtx, Route},
+    api::{
+        meals::list_meals,
+        shopping_lists::{create_from_meal, create_shopping_list},
+    },
+    dioxus::prelude::*,
+    types::NewShoppingList,
+    ui::ClientOnly,
+};
 
 #[component]
 pub fn ShoppingListNew() -> Element {
@@ -55,11 +59,11 @@ pub fn ShoppingListNew() -> Element {
 
     rsx! {
         document::Title { "New shopping list" }
-        header { class: "page-header", h1 { "New shopping list" } }
+        header { class: "page-header",
+            h1 { "New shopping list" }
+        }
 
-        form {
-            class: "meal-form",
-            onsubmit: submit,
+        form { class: "meal-form", onsubmit: submit,
 
             fieldset {
                 legend { "Generate from a meal" }
@@ -74,7 +78,7 @@ pub fn ShoppingListNew() -> Element {
                                 },
                                 option { value: "", "— Empty list —" }
                                 for m in list {
-                                    option { value: "{m.key}", "{m.name}" }
+                                    option { value: "{m.slug}", "{m.name}" }
                                 }
                             }
                         }
@@ -82,8 +86,12 @@ pub fn ShoppingListNew() -> Element {
                     Some(Ok(_)) => rsx! {
                         p { class: "empty", "No meals to generate from." }
                     },
-                    Some(Err(e)) => rsx! { p { class: "error", "Error loading meals: {e}" } },
-                    None => rsx! { p { "Loading meals..." } },
+                    Some(Err(e)) => rsx! {
+                        p { class: "error", "Error loading meals: {e}" }
+                    },
+                    None => rsx! {
+                        p { "Loading meals..." }
+                    },
                 }
             }
 
@@ -101,11 +109,12 @@ pub fn ShoppingListNew() -> Element {
                 p { class: "error", "{e}" }
             }
 
-            button {
-                r#type: "submit",
-                class: "button",
-                disabled: submitting(),
-                if submitting() { "Creating..." } else { "Create" }
+            button { r#type: "submit", class: "button", disabled: submitting(),
+                if submitting() {
+                    "Creating..."
+                } else {
+                    "Create"
+                }
             }
         }
     }

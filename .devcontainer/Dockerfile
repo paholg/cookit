@@ -4,6 +4,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         fzf \
+        libpq-dev \
         libssl-dev \
         pkg-config \
         python3 \

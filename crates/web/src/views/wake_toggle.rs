@@ -1,5 +1,4 @@
-use dioxus::prelude::*;
-use ui::icons::LightbulbIcon;
+use {dioxus::prelude::*, ui::icons::LightbulbIcon};
 
 /// Acquires a screen wake lock and resolves with `"released"` once the lock
 /// is released — either because we asked for it via [`RELEASE_JS`], or because

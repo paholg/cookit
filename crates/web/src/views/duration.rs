@@ -5,9 +5,7 @@
 //! then expose two display helpers: one compact label for the form/button, and
 //! a clock-style countdown for the running timer bar.
 
-use std::str::FromStr;
-
-use jiff::SignedDuration;
+use {jiff::SignedDuration, std::str::FromStr};
 
 /// Parse user input into a positive number of seconds. Returns a human-readable
 /// error suitable for inline display next to the field.

@@ -1,4 +1,4 @@
-use std::fmt;
+use {std::fmt, uuid::Uuid};
 
 /// Stable identifier for a draft item (step, ingredient, meal row, …).
 ///
@@ -8,7 +8,7 @@ use std::fmt;
 /// the client produces on first render and hydration succeeds.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DraftId {
-    Persisted(i64),
+    Persisted(Uuid),
     New(i64),
 }
 
@@ -18,9 +18,9 @@ impl Default for DraftId {
     }
 }
 
-impl From<i64> for DraftId {
-    fn from(value: i64) -> Self {
-        Self::Persisted(value)
+impl<T> From<types::id::Id<T>> for DraftId {
+    fn from(id: types::id::Id<T>) -> Self {
+        Self::Persisted(*id.as_uuid())
     }
 }
 

@@ -1,6 +1,8 @@
-use crate::views::meal_form::{MealDraft, MealForm, MealFormMode};
-use api::meals::get_meal;
-use dioxus::prelude::*;
+use {
+    crate::views::meal_form::{MealDraft, MealForm, MealFormMode},
+    api::meals::get_meal,
+    dioxus::prelude::*,
+};
 
 #[component]
 pub fn MealEdit(meal_key: String) -> Element {
@@ -13,7 +15,9 @@ pub fn MealEdit(meal_key: String) -> Element {
         Some(Ok(detail)) => rsx! {
             MealForm {
                 initial: MealDraft::from_detail(detail),
-                mode: MealFormMode::Edit { meal_key: meal_key.clone() },
+                mode: MealFormMode::Edit {
+                    meal_key: meal_key.clone(),
+                },
             }
         },
         Some(Err(e)) => rsx! {

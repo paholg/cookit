@@ -3,11 +3,12 @@
 //! small pill that the user can click to reveal step info and action buttons
 //! for that specific timer; siblings stay compact.
 
-use dioxus::prelude::*;
-use gloo_timers::future::TimeoutFuture;
-
-use super::duration::format_countdown;
-use crate::timers::{self, RunningTimersCtx};
+use {
+    super::duration::format_countdown,
+    crate::timers::{self, RunningTimersCtx},
+    dioxus::prelude::*,
+    gloo_timers::future::TimeoutFuture,
+};
 
 /// Beep keeps running until every expired timer is silenced (or removed).
 /// Reuses the shared `__cookitAudioCtx` that the Start-timer click primed
@@ -132,8 +133,8 @@ pub fn TimerBar() -> Element {
                                     // stretching the row taller, so siblings
                                     // stay put when a single timer is opened.
                                     div {
-                                        class: "timer-popover",
-                                        onclick: move |e| e.stop_propagation(),
+                                    class: "timer-popover",
+                                    onclick: move |e| e.stop_propagation(),
                                         div { class: "timer-popover-step", "{t.recipe_name} - step {step_number}" }
                                         div { class: "timer-actions",
                                             if ringing {

@@ -1,5 +1,7 @@
-use crate::views::recipe_form::{RecipeDraft, RecipeForm, RecipeFormMode};
-use dioxus::prelude::*;
+use {
+    crate::views::recipe_form::{RecipeDraft, RecipeForm, RecipeFormMode},
+    dioxus::prelude::*,
+};
 #[component]
 pub fn RecipeNew() -> Element {
     rsx! {

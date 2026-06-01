@@ -1,35 +1,31 @@
-use dioxus::prelude::*;
-use pulldown_cmark::{Options, Parser, html};
-use types::{RecipeDetail, RecipeStepIngredient};
-use ui::icons::HourglassIcon;
-
-use super::duration::format_duration;
-use super::format::format_quantity;
-use crate::timers::{self, RunningTimersCtx};
+use {
+    super::{duration::format_duration, format::format_quantity},
+    crate::timers::{self, RunningTimersCtx},
+    dioxus::prelude::*,
+    pulldown_cmark::{Options, Parser, html},
+    types::{RecipeDetail, RecipeStepIngredient},
+    ui::icons::HourglassIcon,
+};
 
 #[component]
 pub fn RecipeView(
     detail: RecipeDetail,
     multiplier: f64,
-    /// Set when this view is rendered inside a `MealDetail`, so a timer
-    /// started here knows which meal it belongs to. `None` on the standalone
-    /// recipe page.
-    #[props(default)]
-    meal_key: Option<String>,
+    #[props(default)] meal_key: Option<String>,
 ) -> Element {
     let timers_ctx = use_context::<RunningTimersCtx>();
     let recipe_name = detail.recipe.name.clone();
-    let recipe_key = detail.recipe.key.clone();
+    let recipe_slug = detail.recipe.slug.clone();
 
     rsx! {
         section { class: "recipe",
-            if let Some(source) = detail.recipe.source.as_deref() {
+            if !detail.recipe.source.is_empty() {
                 p { class: "source",
                     "Source: "
-                    if source.starts_with("http") {
-                        a { href: "{source}", "{source}" }
+                    if detail.recipe.source.starts_with("http") {
+                        a { href: "{detail.recipe.source}", "{detail.recipe.source}" }
                     } else {
-                        span { "{source}" }
+                        span { "{detail.recipe.source}" }
                     }
                 }
             }
@@ -37,8 +33,7 @@ pub fn RecipeView(
             table { class: "recipe-steps",
                 tbody {
                     for (idx, step) in detail.steps.into_iter().enumerate() {
-                        tr { key: "{step.id}",
-                            id: "step-{idx + 1}",
+                        tr { key: "{step.id}", id: "step-{idx + 1}",
                             td { class: "ingredients",
                                 for ing in step.ingredients.iter() {
                                     div {
@@ -47,12 +42,12 @@ pub fn RecipeView(
                                         "{format_ingredient_line(ing, multiplier)}"
                                     }
                                 }
-                                if let Some(d) = step.duration_seconds {
+                                if let Some(d) = step.duration_s {
                                     {
                                         let step_number = (idx + 1) as i64;
-                                        let pretty = format_duration(d);
+                                        let pretty = format_duration(d as i64);
                                         let recipe_name = recipe_name.clone();
-                                        let recipe_key = recipe_key.clone();
+                                        let recipe_slug = recipe_slug.clone();
                                         let meal_key = meal_key.clone();
                                         rsx! {
                                             button {
@@ -64,10 +59,10 @@ pub fn RecipeView(
                                                     timers::start_timer(
                                                         timers_ctx,
                                                         meal_key.clone(),
-                                                        recipe_key.clone(),
+                                                        recipe_slug.clone(),
                                                         recipe_name.clone(),
                                                         step_number,
-                                                        d,
+                                                        d as i64,
                                                     );
                                                 },
                                                 HourglassIcon {}
@@ -78,12 +73,9 @@ pub fn RecipeView(
                                 }
                             }
                             td { class: "instruction",
-                                for instr in step.instructions {
-                                    div {
-                                        key: "{instr.id}",
-                                        class: "instruction-block",
-                                        dangerous_inner_html: render_markdown(&instr.text),
-                                    }
+                                div {
+                                    class: "instruction-block",
+                                    dangerous_inner_html: render_markdown(&step.text),
                                 }
                             }
                         }
@@ -113,7 +105,6 @@ fn format_ingredient_line(ing: &RecipeStepIngredient, multiplier: f64) -> String
         .as_ref()
         .map(|u| u.label())
         .filter(|l| !l.is_empty());
-
     match (qty, unit) {
         (Some(q), Some(u)) => format!("{q} {u} {}", ing.ingredient_name),
         (Some(q), None) => format!("{q} {}", ing.ingredient_name),

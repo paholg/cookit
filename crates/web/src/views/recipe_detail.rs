@@ -1,8 +1,12 @@
-use crate::views::{RecipeView, WakeLockToggle};
-use crate::{CurrentUserCtx, Route};
-use api::get_recipe;
-use dioxus::prelude::*;
-use ui::icons::EditIcon;
+use {
+    crate::{
+        CurrentUserCtx, Route,
+        views::{RecipeView, WakeLockToggle},
+    },
+    api::get_recipe,
+    dioxus::prelude::*,
+    ui::icons::EditIcon,
+};
 
 #[component]
 pub fn RecipeDetail(recipe_key: String) -> Element {
@@ -30,7 +34,9 @@ pub fn RecipeDetail(recipe_key: String) -> Element {
                         WakeLockToggle {}
                         if is_admin {
                             Link {
-                                to: Route::RecipeEdit { recipe_key: recipe_key.clone() },
+                                to: Route::RecipeEdit {
+                                    recipe_key: recipe_key.clone(),
+                                },
                                 button {
                                     r#type: "button",
                                     class: "icon-button",

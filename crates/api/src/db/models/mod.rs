@@ -1,0 +1,11 @@
+pub(crate) mod book;
+pub(crate) mod ingredient;
+pub(crate) mod meal;
+pub(crate) mod meal_recipe;
+pub(crate) mod recipe;
+pub(crate) mod recipe_step;
+pub(crate) mod recipe_step_ingredient;
+pub(crate) mod shopping_list;
+pub(crate) mod shopping_list_item;
+pub(crate) mod user;
+pub(crate) mod user_role;

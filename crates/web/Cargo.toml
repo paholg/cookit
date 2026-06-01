@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1"
 api = { workspace = true }
 console_error_panic_hook = "0.1"
 dioxus = { workspace = true, features = ["fullstack", "router"] }
@@ -16,12 +17,11 @@ pulldown-cmark = { version = "0.13", default-features = false, features = [
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = { version = "0.28", features = ["derive"] }
-types = { workspace = true }
 ui = { workspace = true }
+uuid = { workspace = true, features = ["js", "v4"] }
 web-time = "1"
 
 [features]
 default = []
-dev-auth = ["api/dev-auth"]
 server = ["api/server", "dioxus/server"]
 web = ["api/web", "dioxus/web"]

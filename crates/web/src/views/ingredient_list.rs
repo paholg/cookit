@@ -1,16 +1,17 @@
-use api::{list_ingredients, update_ingredient};
-use dioxus::prelude::*;
-use std::str::FromStr;
-use types::{GrocerySection, Ingredient, IngredientUpdate};
-use ui::ClientOnly;
+use {
+    api::{list_ingredients, update_ingredient},
+    dioxus::prelude::*,
+    std::str::FromStr,
+    types::{GrocerySection, Ingredient, IngredientUpdate, id::IngredientId},
+    ui::ClientOnly,
+};
 
 #[derive(Clone, PartialEq)]
 struct RowDraft {
-    id: i64,
+    id: IngredientId,
     name: String,
     density: String,
     section: Option<GrocerySection>,
-    ignore_density: bool,
     saving: bool,
     error: Option<String>,
     pending_gen: u64,
@@ -27,22 +28,22 @@ impl RowDraft {
                 .map(|d| format!("{d}"))
                 .unwrap_or_default(),
             section: i.grocery_section,
-            ignore_density: i.ignore_density,
             saving: false,
             error: None,
             pending_gen: 0,
             last_saved_gen: 0,
         }
     }
+
     fn snapshot(&self) -> Ingredient {
         Ingredient {
             id: self.id,
             name: self.name.clone(),
             density_g_per_ml: parse_optional_density(&self.density),
             grocery_section: self.section,
-            ignore_density: self.ignore_density,
         }
     }
+
     fn to_payload(&self) -> Result<IngredientUpdate, String> {
         if self.name.trim().is_empty() {
             return Err("name is required".into());
@@ -61,10 +62,10 @@ impl RowDraft {
             name: self.name.clone(),
             density_g_per_ml: density,
             grocery_section: self.section,
-            ignore_density: self.ignore_density,
         })
     }
 }
+
 fn parse_optional_density(s: &str) -> Option<f64> {
     let t = s.trim();
     if t.is_empty() { None } else { t.parse().ok() }
@@ -78,9 +79,7 @@ async fn autosave_delay() {
 fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
     let (id, this_gen) = {
         let mut w = rows.write();
-        let Some(row) = w.get_mut(idx) else {
-            return;
-        };
+        let Some(row) = w.get_mut(idx) else { return };
         row.pending_gen = row.pending_gen.wrapping_add(1);
         (row.id, row.pending_gen)
     };
@@ -121,7 +120,7 @@ fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
         let Some(row) = w.get_mut(idx) else { return };
         row.saving = false;
         match result {
-            Ok(()) => {
+            Ok(_updated) => {
                 row.last_saved_gen = this_gen;
             }
             Err(e) => {
@@ -130,6 +129,7 @@ fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
         }
     });
 }
+
 #[component]
 pub fn IngredientList() -> Element {
     let server = use_server_future(list_ingredients)?;
@@ -180,6 +180,7 @@ pub fn IngredientList() -> Element {
         }
     }
 }
+
 #[component]
 fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
     let row = rows.read().get(idx).cloned();
@@ -209,7 +210,7 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label {
                     span { class: "field-label",
                         "Density (g/ml)"
-                        if incomplete && row.snapshot().density_g_per_ml.is_none() && !row.ignore_density {
+                        if incomplete && row.snapshot().density_g_per_ml.is_none() {
                             span { class: "warn-tag", " ⚠" }
                         }
                     }
@@ -217,7 +218,6 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         r#type: "text",
                         inputmode: "decimal",
                         value: "{row.density}",
-                        disabled: row.ignore_density,
                         oninput: move |e| {
                             rows.write()[idx].density = e.value();
                             trigger_autosave(idx, rows);
@@ -249,17 +249,6 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                             }
                         }
                     }
-                }
-                label { class: "checkbox-label",
-                    input {
-                        r#type: "checkbox",
-                        checked: row.ignore_density,
-                        oninput: move |e| {
-                            rows.write()[idx].ignore_density = e.checked();
-                            trigger_autosave(idx, rows);
-                        },
-                    }
-                    span { "Ignore density" }
                 }
             }
             div { class: "ingredient-row-actions",
