@@ -1,8 +1,5 @@
+# syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
-
-# dpkg fsync()s after unpacking every file, which leaves apt I/O-bound (0% CPU)
-# for ages on overlay/devcontainer filesystems. Skip the per-file fsync.
-RUN echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/02apt-speedup
 
 # Node.js, for the Playwright end-to-end tests.
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
@@ -34,31 +31,43 @@ ENV CARGO_HOME=/home/vscode/.cargo \
     RUSTUP_HOME=/home/vscode/.rustup \
     PATH="/home/vscode/.cargo/bin:/home/vscode/.local/bin:${PATH}"
 
+# Pre-create the cache directories so the volumes mounted here inherit ownership.
+RUN mkdir -p /home/vscode/.cargo/registry \
+             /home/vscode/.cargo/git \
+             /home/vscode/.cache/sccache
+
 # Rust toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --default-toolchain stable \
         --component rust-analyzer --component rust-src \
         --target wasm32-unknown-unknown
 
-# cargo-binstall
-RUN curl -L --proto '=https' --tlsv1.2 -sSf \
-    https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh \
-    | bash
 
 # tombi
 RUN curl -fsSL https://tombi-toml.github.io/tombi/install.sh | sh
 
-RUN cargo binstall --no-confirm \
+# Set token for cargo-binstall to prevent rate-limiting.
+RUN --mount=type=secret,id=github_token,uid=1000 \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
+    curl -L --proto '=https' --tlsv1.2 -sSf \
+    https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh \
+    | bash
+
+RUN --mount=type=secret,id=github_token,uid=1000 \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
+    cargo binstall --no-confirm \
     atuin \
-    cargo-dist \
     cargo-edit \
     cargo-nextest \
     diesel_cli \
     just \
+    sccache \
     && true
 
 ARG DIOXUS_VERSION
-RUN cargo binstall --no-confirm dioxus-cli@${DIOXUS_VERSION}
+RUN --mount=type=secret,id=github_token,uid=1000 \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
+    cargo binstall --no-confirm dioxus-cli@${DIOXUS_VERSION}
 
 COPY --chown=vscode:vscode zshrc /home/vscode/.zshrc
 
