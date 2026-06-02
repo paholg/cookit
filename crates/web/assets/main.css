@@ -1,17 +1,17 @@
 :root {
   color-scheme: light dark;
 
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --surface-2: #f3f3f3;
-  --fg: #222;
-  --muted: #666;
-  --border: #ddd;
-  --border-strong: #c4c4c4;
-  --accent: #1d6f6a;
-  --accent-fg: #ffffff;
-  --accent-hover: #155753;
-  --danger: #b04141;
+  --bg: var(--background-50);
+  --fg: var(--text-950);
+  --muted: var(--text-700);
+  --surface: var(--background-100);
+  --surface-2: var(--background-200);
+  --border: var(--text-300);
+  --border-strong: var(--text-400);
+  --primary: var(--primary-600);
+  --primary-hover: var(--primary-800);
+  --on-primary: var(--text-50);
+  --alert: var(--secondary-600);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 
   --radius: 6px;
@@ -19,21 +19,14 @@
   --tap: 44px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161616;
-    --surface: #1f1f1f;
-    --surface-2: #262626;
-    --fg: #ececec;
-    --muted: #9a9a9a;
-    --border: #333333;
-    --border-strong: #444444;
-    --accent: #4ec3b8;
-    --accent-fg: #0e1f1e;
-    --accent-hover: #66d3c9;
-    --danger: #e07a7a;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  }
+/* Keep native controls (scrollbars, form widgets) in step with the chosen
+   theme, since it's driven by an attribute rather than the OS setting. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 * {
@@ -74,7 +67,7 @@ h3 {
 }
 
 a {
-  color: var(--accent);
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -101,8 +94,8 @@ a:hover {
 }
 
 .error {
-  border-color: var(--danger);
-  color: var(--danger);
+  border-color: var(--alert);
+  color: var(--alert);
 }
 
 ul.recipe-list {
@@ -184,9 +177,9 @@ button,
 
 button.primary,
 .button {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
   font-weight: 500;
 }
 
@@ -194,8 +187,8 @@ button.primary:hover,
 .button:hover,
 button.primary:active,
 .button:active {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
   text-decoration: none;
 }
 
@@ -204,8 +197,8 @@ button.secondary {
 }
 
 button.danger {
-  color: var(--danger);
-  border-color: var(--danger);
+  color: var(--alert);
+  border-color: var(--alert);
   background: var(--surface);
 }
 
@@ -243,14 +236,14 @@ button.icon-button {
 
 @media (hover: hover) {
   button.icon-button:hover {
-    color: var(--accent);
+    color: var(--primary);
     border-color: var(--border-strong);
     background: var(--surface);
   }
 }
 
 button.icon-button:active {
-  color: var(--accent);
+  color: var(--primary);
   border-color: var(--border-strong);
   background: var(--surface);
 }
@@ -266,35 +259,59 @@ button.icon-button svg {
 }
 
 button.icon-button.wake-toggle.on {
-  color: #b8860b;
+  color: var(--accent-600);
 }
 
 button.icon-button.wake-toggle.on svg path {
-  fill: #fcefb4;
+  fill: var(--accent-300);
 }
 
-@media (prefers-color-scheme: dark) {
-  button.icon-button.wake-toggle.on {
-    color: #e5b94a;
+@media (hover: hover) {
+  button.icon-button.wake-toggle:hover {
+    color: var(--accent-500);
   }
 
-  button.icon-button.wake-toggle.on svg path {
-    fill: #5a4a14;
+  button.icon-button.wake-toggle.on:hover {
+    color: var(--accent-800);
   }
 }
 
 button.icon-button.trash {
-  color: #9c6058
+  color: var(--secondary-300);
 }
 
 @media (hover: hover) {
   button.icon-button.trash:hover {
-    color: var(--danger);
+    color: var(--secondary-500);
   }
 }
 
 button.icon-button.trash:active {
-  color: var(--danger);
+  color: var(--alert);
+}
+
+.theme-toggle .theme-icon {
+  display: none;
+}
+
+.theme-toggle .moon {
+  display: block;
+}
+
+:root[data-theme="dark"] .theme-toggle .moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .sun {
+  display: block;
+}
+
+:root[data-theme="dark"] {
+  @media (hover: hover) {
+    .icon-button.theme-toggle:hover {
+      color: var(--accent-700);
+    }
+  }
 }
 
 .button-link {
@@ -344,7 +361,7 @@ form.recipe-form select {
 form.recipe-form input:focus,
 form.recipe-form textarea:focus,
 form.recipe-form select:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--primary);
   outline-offset: -1px;
 }
 
@@ -418,7 +435,7 @@ fieldset.step .step-actions {
 }
 
 .ingredient-status.new {
-  color: var(--accent);
+  color: var(--primary);
   font-weight: 500;
 }
 
@@ -586,9 +603,9 @@ fieldset.step .step-actions {
 }
 
 .meal-tabs .tab.active {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
 }
 
 .meal-tabs .tab-mult {
@@ -598,7 +615,7 @@ fieldset.step .step-actions {
 }
 
 .incomplete-summary {
-  color: var(--danger);
+  color: var(--alert);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -624,7 +641,7 @@ ul.ingredient-rows {
 }
 
 .ingredient-row-card.incomplete {
-  border-left: 4px solid var(--danger);
+  border-left: 4px solid var(--alert);
 }
 
 .ingredient-row-grid {
@@ -673,7 +690,7 @@ ul.ingredient-rows {
 }
 
 .field-label .warn-tag {
-  color: var(--danger);
+  color: var(--alert);
   font-weight: 500;
 }
 
@@ -690,7 +707,7 @@ ul.ingredient-rows {
 }
 
 .saved-tag {
-  color: var(--accent);
+  color: var(--primary);
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -804,7 +821,7 @@ ul.shopping-items {
   width: 1.5rem;
   height: 1.5rem;
   flex: 0 0 auto;
-  accent-color: var(--accent);
+  accent-color: var(--primary);
   cursor: pointer;
 }
 
@@ -820,7 +837,7 @@ ul.shopping-items {
 .shopping-row-qty {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .shopping-row.checked .shopping-row-qty {
@@ -848,7 +865,7 @@ ul.shopping-items {
 .shopping-row-delete:hover,
 .shopping-row-delete:active {
   background: var(--surface-2);
-  color: var(--danger);
+  color: var(--alert);
 }
 
 /* Add-item bar at the bottom of the list. Sticky on mobile so users can add
@@ -885,7 +902,7 @@ form.shopping-add select {
 
 form.shopping-add input:focus,
 form.shopping-add select:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--primary);
   outline-offset: -1px;
 }
 
@@ -929,6 +946,7 @@ form.shopping-add select:focus {
     flex: 0 0 auto;
   }
 }
+
 /* ----- Step duration field (recipe form) ----- */
 
 .step-duration {
@@ -941,11 +959,11 @@ form.shopping-add select:focus {
 }
 
 .duration-input.invalid {
-  border-color: var(--danger);
+  border-color: var(--alert);
 }
 
 .duration-error {
-  color: var(--danger);
+  color: var(--alert);
   font-size: 0.85rem;
   margin-left: 0.5rem;
 }
@@ -968,7 +986,7 @@ form.shopping-add select:focus {
 }
 
 .step-timer-start:hover {
-  color: var(--accent);
+  color: var(--primary);
   border-color: var(--border-strong);
 }
 
@@ -1070,7 +1088,7 @@ main#content {
 }
 
 .timer-row.expired {
-  color: var(--danger);
+  color: var(--alert);
 }
 
 /* Only pulse while the timer is actively alerting. After Silence the row
@@ -1080,8 +1098,15 @@ main#content {
 }
 
 @keyframes timer-pulse {
-  0%, 100% { background: var(--surface-2); }
-  50% { background: rgba(176, 65, 65, 0.18); }
+
+  0%,
+  100% {
+    background: var(--surface-2);
+  }
+
+  50% {
+    background: var(--secondary-800);
+  }
 }
 
 .timer-actions {
@@ -1102,15 +1127,15 @@ main#content {
 
 .timer-action:hover {
   border-color: var(--border-strong);
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .timer-action.silence {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
 }
 
 .timer-action.dismiss {
-  color: var(--danger);
+  color: var(--alert);
 }

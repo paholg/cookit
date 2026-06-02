@@ -4,7 +4,8 @@ use {
     ui::navbar::Navbar,
     views::{
         IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
+        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, ThemeToggle,
+        TimerBar,
     },
 };
 
@@ -46,9 +47,28 @@ enum Route {
     ShoppingListDetail { id: ShoppingListId },
 }
 
+const COLOR_CSS: Asset = asset!("/assets/color.css");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const ERROR_BANNER_JS: Asset = asset!("/assets/error-banner.js");
 const FAVICON: Asset = asset!("/assets/favicon.svg");
+
+/// Sets `<html data-theme>` before first paint so the palette in `color.css`
+/// (`:root[data-theme="…"]`) is defined immediately and there's no flash of
+/// unstyled colors. Uses the saved choice if present, otherwise the OS
+/// preference. Runs inline in `<head>` so it executes before the body renders.
+const THEME_SEED_JS: &str = r#"
+(function () {
+    try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+    } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+    }
+})();
+"#;
 
 fn main() {
     #[cfg(not(feature = "server"))]
@@ -101,7 +121,10 @@ fn App() -> Element {
     });
 
     rsx! {
+        // Runs before paint to set the theme attribute the palette keys off of.
+        document::Script { {THEME_SEED_JS} }
         document::Link { rel: "icon", r#type: "image/svg+xml", href: FAVICON }
+        document::Link { rel: "stylesheet", href: COLOR_CSS }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
         // Loaded first so the listener is installed before any other JS runs.
@@ -127,6 +150,7 @@ fn AppNavbar() -> Element {
                 Link { to: Route::IngredientList {}, "Ingredients" }
             }
             AuthControls {}
+            ThemeToggle {}
         }
         main { id: "content", Outlet::<Route> {} }
         TimerBar {}

@@ -16,7 +16,7 @@ pub fn parse_duration(text: &str) -> Result<i64, String> {
     }
 
     let d = SignedDuration::from_str(trimmed)
-        .map_err(|_| format!("`{trimmed}` is not a duration (try `30s`, `5m`, `1h 30m`)"))?;
+        .map_err(|_| format!("{trimmed} is not a duration (try 30s, 5m, 1h 30m)"))?;
 
     let secs = d.as_secs();
     if secs <= 0 {

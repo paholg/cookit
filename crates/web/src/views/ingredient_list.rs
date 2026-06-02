@@ -42,7 +42,7 @@ impl RowDraft {
 
     /// An ingredient still missing density or grocery section needs attention.
     fn is_incomplete(&self) -> bool {
-        parse_optional_density(&self.density).is_none() || self.section.is_none()
+        self.section.is_none()
     }
 
     fn to_payload(&self) -> Result<IngredientUpdate, String> {
@@ -66,13 +66,7 @@ impl RowDraft {
     }
 }
 
-fn parse_optional_density(s: &str) -> Option<f64> {
-    let t = s.trim();
-    if t.is_empty() { None } else { t.parse().ok() }
-}
-
 async fn autosave_delay() {
-    #[cfg(feature = "web")]
     gloo_timers::future::TimeoutFuture::new(500).await;
 }
 
@@ -206,9 +200,6 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                 label {
                     span { class: "field-label",
                         "Density (g/ml)"
-                        if incomplete && parse_optional_density(&row.density).is_none() {
-                            span { class: "warn-tag", " ⚠" }
-                        }
                     }
                     input {
                         r#type: "text",
