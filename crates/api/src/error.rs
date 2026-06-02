@@ -30,12 +30,10 @@ impl Error {
 
 impl From<Error> for ServerFnError {
     fn from(value: Error) -> Self {
-        match value {
-            _ => ServerFnError::ServerError {
-                message: value.to_string(),
-                code: value.code(),
-                details: None,
-            },
+        ServerFnError::ServerError {
+            message: value.to_string(),
+            code: value.code(),
+            details: None,
         }
     }
 }

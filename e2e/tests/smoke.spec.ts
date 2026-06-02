@@ -1,12 +1,19 @@
 import { test, expect } from "@playwright/test";
 
 // These run against a live `dx serve` (started automatically by the Playwright
-// config) backed by the dev Postgres database. Each test that creates data
-// deletes it again so the suite is safe to re-run.
+// config) backed by the dedicated `cookit_e2e` database. The `setup` project
+// logs in first and saves the session cookie, so every test here runs as the
+// seeded admin. Tests that create data delete it again so they're re-runnable.
 
 test("home renders the recipe list", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Recipes" })).toBeVisible();
+});
+
+test("starts authenticated as the seeded admin", async ({ page }) => {
+  await page.goto("/");
+  // The "Log out" control is only present when a session is active.
+  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 });
 
 test("primary navigation reaches every section", async ({ page }) => {
@@ -27,7 +34,11 @@ test("primary navigation reaches every section", async ({ page }) => {
 test("create then delete a recipe", async ({ page }) => {
   const name = `E2E Recipe ${Date.now()}`;
 
-  await page.goto("/recipes/new");
+  // `networkidle` lets the wasm client finish downloading; the textarea below
+  // lives in a `ClientOnly` wrapper that only renders once hydration has run,
+  // so waiting for it confirms the form's event handlers are wired up before
+  // we submit (otherwise the click falls through to a native form GET).
+  await page.goto("/recipes/new", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "New recipe" })).toBeVisible();
 
   await page.locator('[data-focus-key="recipe-name"]').fill(name);
@@ -47,8 +58,11 @@ test("create then delete a recipe", async ({ page }) => {
 test("create then delete an empty shopping list", async ({ page }) => {
   const name = `E2E List ${Date.now()}`;
 
-  await page.goto("/shopping-lists/new");
-  await page.getByPlaceholder("List name").fill(name);
+  await page.goto("/shopping-lists/new", { waitUntil: "networkidle" });
+  const input = page.getByPlaceholder("List name");
+  await input.fill(name);
+  // Confirm hydration took (controlled input echoes the signal) before submit.
+  await expect(input).toHaveValue(name);
   await page.getByRole("button", { name: "Create" }).click();
 
   await expect(page.getByRole("heading", { name })).toBeVisible();

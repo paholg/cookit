@@ -2,9 +2,11 @@ use {
     super::format::format_quantity,
     crate::views::WakeLockToggle,
     api::{
-        ShoppingListItemInput, ShoppingListItemView, add_shopping_list_item, delete_shopping_list_item,
-        get_shopping_list, grocery_section::GrocerySection, id::ShoppingListId,
-        id::ShoppingListItemId, set_shopping_list_item_checked,
+        ShoppingListItemInput, ShoppingListItemView, add_shopping_list_item,
+        delete_shopping_list_item, get_shopping_list,
+        grocery_section::GrocerySection,
+        id::{ShoppingListId, ShoppingListItemId},
+        set_shopping_list_item_checked,
     },
     dioxus::prelude::*,
     std::collections::HashMap,
@@ -257,16 +259,15 @@ fn AddItemForm(list_id: ShoppingListId, on_added: EventHandler<()>) -> Element {
 
         submitting.set(true);
         error.set(None);
-        let res = add_shopping_list_item(
-            list_id,
-            ShoppingListItemInput {
-                text: name.read().clone(),
-                quantity: qty.read().clone(),
-                unit: unit.read().clone(),
-            },
-        )
-        .await;
+
+        let input = ShoppingListItemInput {
+            text: name.read().clone(),
+            quantity: qty.read().clone(),
+            unit: unit.read().clone(),
+        };
+        let res = add_shopping_list_item(list_id, input).await;
         submitting.set(false);
+
         match res {
             Ok(_) => {
                 name.set(String::new());

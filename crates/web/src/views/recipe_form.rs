@@ -72,7 +72,8 @@ fn focus_field(key: String) {
     spawn(async move {
         let safe = key.replace('"', "");
         let _ = document::eval(&format!(
-            "requestAnimationFrame(() => {{ const el = document.querySelector('[data-focus-key=\"{safe}\"]'); if (el) el.focus(); }})"
+            "requestAnimationFrame(() => {{ const el = \
+             document.querySelector('[data-focus-key=\"{safe}\"]'); if (el) el.focus(); }})"
         ))
         .await;
     });
@@ -86,7 +87,9 @@ fn autogrow_textarea(key: String) {
     spawn(async move {
         let safe = key.replace('"', "");
         let _ = document::eval(&format!(
-            "requestAnimationFrame(() => {{ const el = document.querySelector('[data-autogrow=\"{safe}\"]'); if (el) {{ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
+            "requestAnimationFrame(() => {{ const el = \
+             document.querySelector('[data-autogrow=\"{safe}\"]'); if (el) {{ el.style.height = \
+             'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
         ))
         .await;
     });

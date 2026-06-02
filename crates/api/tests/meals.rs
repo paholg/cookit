@@ -112,7 +112,10 @@ async fn blank_recipe_rows_are_dropped() {
 
     let detail = upsert_meal(builder).await.expect("upsert");
     assert_eq!(detail.recipes.len(), 1, "blank row dropped");
-    assert_eq!(detail.recipes[0].meal_recipe.multiplier, 1.0, "empty multiplier defaults to 1");
+    assert_eq!(
+        detail.recipes[0].meal_recipe.multiplier, 1.0,
+        "empty multiplier defaults to 1"
+    );
 
     delete_meal(detail.meal.slug).await.expect("cleanup meal");
     delete_recipe(recipe_slug).await.expect("cleanup recipe");

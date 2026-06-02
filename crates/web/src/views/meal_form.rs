@@ -209,9 +209,19 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
 }
 
 #[component]
-fn MealRecipeRow(row_id: MealRecipeDraftId, draft: Signal<MealBuilder>, recipes: Vec<Recipe>) -> Element {
+fn MealRecipeRow(
+    row_id: MealRecipeDraftId,
+    draft: Signal<MealBuilder>,
+    recipes: Vec<Recipe>,
+) -> Element {
     let mut draft = draft;
-    let Some(row) = draft.read().recipes.iter().find(|r| r.id == row_id).cloned() else {
+    let Some(row) = draft
+        .read()
+        .recipes
+        .iter()
+        .find(|r| r.id == row_id)
+        .cloned()
+    else {
         return rsx! {};
     };
 

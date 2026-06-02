@@ -1,9 +1,5 @@
 use {
-    api::{
-        id::ShoppingListId,
-        routes::me,
-        session::CurrentUser,
-    },
+    api::{id::ShoppingListId, login_as_first, logout, routes::me, session::CurrentUser},
     dioxus::prelude::*,
     ui::navbar::Navbar,
     views::{
@@ -136,32 +132,46 @@ fn AppNavbar() -> Element {
 
 #[component]
 fn AuthControls() -> Element {
-    let user = use_context::<CurrentUserCtx>();
+    let mut user = use_context::<CurrentUserCtx>();
 
     let inner = match user.read().as_ref() {
         Some(u) => {
             let name = u.name.clone();
             rsx! {
                 span { class: "auth-user", "{name}" }
-                form {
-                    method: "post",
-                    action: "/auth/logout",
-                    class: "auth-logout",
-                    button { r#type: "submit", class: "linkish", "Log out" }
+                button {
+                    r#type: "button",
+                    class: "linkish auth-logout",
+                    onclick: move |_| {
+                        spawn(async move {
+                            if logout().await.is_ok() {
+                                user.set(None);
+                            }
+                        });
+                    },
+                    "Log out"
                 }
             }
         }
-        None => login_controls(),
+        // No real login UI yet: log in as the first user (see `login_as_first`).
+        None => rsx! {
+            button {
+                r#type: "button",
+                class: "linkish auth-login",
+                onclick: move |_| {
+                    spawn(async move {
+                        if let Ok(current) = login_as_first().await {
+                            user.set(Some(current));
+                        }
+                    });
+                },
+                "Log in"
+            }
+        },
     };
 
     rsx! {
         div { class: "auth-controls", {inner} }
-    }
-}
-
-fn login_controls() -> Element {
-    rsx! {
-        a { href: "/auth/login", class: "auth-login", "Log in" }
     }
 }
 

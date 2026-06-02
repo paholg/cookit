@@ -12,5 +12,5 @@ static CONFIG: LazyLock<Config> =
     LazyLock::new(|| Figment::new().merge(Env::raw()).extract().unwrap());
 
 pub fn config() -> &'static Config {
-    &*CONFIG
+    &CONFIG
 }

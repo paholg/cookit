@@ -5,7 +5,6 @@ use {
     },
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "server")]
 use {
     crate::{
@@ -230,10 +229,7 @@ pub async fn set_item_checked(
 
 /// Remove a single item.
 #[cfg(feature = "server")]
-pub async fn delete_item(
-    session: &mut Session,
-    item_id: ShoppingListItemId,
-) -> anyhow::Result<()> {
+pub async fn delete_item(session: &mut Session, item_id: ShoppingListItemId) -> anyhow::Result<()> {
     diesel::delete(
         shopping_list_items::table
             .filter(shopping_list_items::id.eq(item_id))
@@ -321,11 +317,7 @@ struct NewShoppingList<'a> {
 
 /// `base`, or `base-2`, `base-3`, … until unused within the book.
 #[cfg(feature = "server")]
-async fn unique_slug(
-    conn: &mut DbConn,
-    book_id: BookId,
-    base: &str,
-) -> anyhow::Result<String> {
+async fn unique_slug(conn: &mut DbConn, book_id: BookId, base: &str) -> anyhow::Result<String> {
     let mut candidate = base.to_string();
     let mut n: u32 = 2;
 

@@ -14,7 +14,7 @@ use {
 pub type DbPool = Pool<AsyncPgConnection>;
 pub type DbConn = Object<AsyncPgConnection>;
 
-static POOL: LazyLock<Pool<AsyncPgConnection>> = LazyLock::new(|| build_pool());
+static POOL: LazyLock<Pool<AsyncPgConnection>> = LazyLock::new(build_pool);
 
 pub async fn get_conn() -> crate::Result<DbConn> {
     let conn = POOL.get().await.context(DatabasePoolSnafu)?;
@@ -25,7 +25,6 @@ pub async fn get_conn() -> crate::Result<DbConn> {
 fn build_pool() -> Pool<AsyncPgConnection> {
     let url = &config::config().database_url;
     let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(url.to_string());
-    let pool = Pool::builder(config).build().unwrap();
 
-    pool
+    Pool::builder(config).build().unwrap()
 }

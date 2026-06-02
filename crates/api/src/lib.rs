@@ -8,7 +8,9 @@ pub mod routes;
 pub mod session;
 pub mod unit;
 
-// Server-only modules: pull in axum/figment, which don't build for wasm.
+// Server-only modules: pull in axum/figment/cookie, which don't build for wasm.
+#[cfg(feature = "server")]
+pub mod auth;
 #[cfg(feature = "server")]
 pub mod config;
 #[cfg(feature = "server")]
@@ -16,7 +18,6 @@ pub mod middleware;
 
 #[cfg(feature = "server")]
 pub use middleware::log_server_errors;
-
 pub use {
     db::models::{
         ingredient::{Ingredient, IngredientUpdate},

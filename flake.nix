@@ -85,11 +85,17 @@
               cargo-dist
               cargo-edit
               cargo-nextest
+              diesel-cli
               just
               libpq
               litecli
+              nodejs_22
               openssl
               pkg-config
+              # Chromium build for the Playwright e2e suite, exposed via
+              # PLAYWRIGHT_BROWSERS_PATH below. The `@playwright/test` version in
+              # e2e/package.json must match this driver's version.
+              playwright-driver
               rust-bin.nightly.latest.rustfmt
               sqlite
               sqlx-cli
@@ -149,6 +155,11 @@
           };
           devShells.default = pkgs.mkShell {
             packages = devPackages;
+
+            # Point Playwright at the nix-provided Chromium instead of having it
+            # download its own (which fails on NixOS' patched loader anyway).
+            PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
           };
         }
       );

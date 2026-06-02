@@ -127,7 +127,9 @@ async fn ingredient_update_round_trips() {
 
     // Update it.
     use api::{
-        IngredientUpdate, grocery_section::GrocerySection, helpers::Name, helpers::PositiveFloat,
+        IngredientUpdate,
+        grocery_section::GrocerySection,
+        helpers::{Name, PositiveFloat},
     };
     let update = IngredientUpdate {
         name: Name::parse(&ingredient_name).unwrap(),

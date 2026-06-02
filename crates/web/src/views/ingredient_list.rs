@@ -142,11 +142,7 @@ pub fn IngredientList() -> Element {
             }
         }
     });
-    let incomplete_count = rows
-        .read()
-        .iter()
-        .filter(|r| r.is_incomplete())
-        .count();
+    let incomplete_count = rows.read().iter().filter(|r| r.is_incomplete()).count();
     rsx! {
         document::Title { "CookIt!" }
         header { class: "page-header",

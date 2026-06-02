@@ -4,11 +4,11 @@
 
 use {
     api::{
-        MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder, RecipeStepIngredientBuilder,
-        ShoppingListItemInput, add_shopping_list_item, create_shopping_list,
-        create_shopping_list_from_meal, delete_meal, delete_recipe, delete_shopping_list,
-        delete_shopping_list_item, get_shopping_list, id::DraftId, list_shopping_lists,
-        set_shopping_list_item_checked, upsert_meal, upsert_recipe,
+        MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder,
+        RecipeStepIngredientBuilder, ShoppingListItemInput, add_shopping_list_item,
+        create_shopping_list, create_shopping_list_from_meal, delete_meal, delete_recipe,
+        delete_shopping_list, delete_shopping_list_item, get_shopping_list, id::DraftId,
+        list_shopping_lists, set_shopping_list_item_checked, upsert_meal, upsert_recipe,
     },
     std::time::{SystemTime, UNIX_EPOCH},
 };
@@ -44,10 +44,7 @@ async fn shopping_list_from_meal_aggregates_and_edits() {
             id: DraftId::New(0),
             instruction: "Combine".to_string(),
             duration_text: String::new(),
-            ingredients: vec![
-                ing(&flour, "2", "cup"),
-                ing(&sugar, "1", "cup"),
-            ],
+            ingredients: vec![ing(&flour, "2", "cup"), ing(&sugar, "1", "cup")],
         }],
     };
     let recipe_slug = upsert_recipe(recipe).await.expect("recipe").recipe.slug;
@@ -111,7 +108,9 @@ async fn shopping_list_from_meal_aggregates_and_edits() {
         .find(|i| i.text.as_deref() == Some("Paper towels"))
         .expect("towels present")
         .id;
-    delete_shopping_list_item(towel_id).await.expect("delete item");
+    delete_shopping_list_item(towel_id)
+        .await
+        .expect("delete item");
     let detail = get_shopping_list(list_id).await.expect("get list 4");
     assert_eq!(detail.items.len(), 2);
 

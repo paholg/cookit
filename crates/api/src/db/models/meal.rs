@@ -108,7 +108,10 @@ impl MealDetail {
                 .get(&meal_recipe.recipe_id)
                 .ok_or_else(|| anyhow!("recipe {:?} not found", meal_recipe.recipe_id))?;
             let recipe = RecipeDetail::get(session, slug).await?;
-            recipes_out.push(MealRecipeDetail { meal_recipe, recipe });
+            recipes_out.push(MealRecipeDetail {
+                meal_recipe,
+                recipe,
+            });
         }
 
         Ok(MealDetail {
