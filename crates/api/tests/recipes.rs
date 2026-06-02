@@ -1,24 +1,12 @@
-//! Integration tests for the recipe and ingredient flows, exercised through the
-//! server-side route handlers against the real database. They create rows with
-//! unique names and delete them at the end, so they're safe to re-run.
-#![cfg(feature = "server")]
-
 use {
+    crate::test_support::{TestBook, unique},
     api::{
         RecipeBuilder, RecipeStepBuilder, RecipeStepIngredientBuilder, delete_recipe, get_recipe,
         id::DraftId, list_ingredients, list_recipes, update_ingredient, upsert_recipe,
     },
-    std::time::{SystemTime, UNIX_EPOCH},
 };
 
-/// A name unique enough to avoid colliding with other rows or test runs.
-fn unique(prefix: &str) -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    format!("{prefix} {nanos}")
-}
+mod test_support;
 
 fn ingredient_row(name: &str, quantity: &str, unit: &str) -> RecipeStepIngredientBuilder {
     RecipeStepIngredientBuilder {
@@ -31,6 +19,8 @@ fn ingredient_row(name: &str, quantity: &str, unit: &str) -> RecipeStepIngredien
 
 #[tokio::test]
 async fn recipe_upsert_get_edit_delete() {
+    TestBook::new().await;
+
     let name = unique("Test Recipe");
     let ingredient_name = unique("test-flour");
 
@@ -99,6 +89,8 @@ async fn recipe_upsert_get_edit_delete() {
 
 #[tokio::test]
 async fn ingredient_update_round_trips() {
+    TestBook::new().await;
+
     // Seed an ingredient by creating a throwaway recipe that references it.
     let ingredient_name = unique("test-sugar");
     let builder = RecipeBuilder {

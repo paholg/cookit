@@ -55,8 +55,5 @@ export default defineConfig({
     // rather than a silent hang.
     stdout: "pipe",
     stderr: "pipe",
-    env: {
-      DATABASE_URL: databaseUrl(),
-    },
   },
 });

@@ -5,7 +5,7 @@
 // up, and we want that surfaced loudly rather than silently pointing the suite
 // (which creates, seeds, and wipes its database) at some default.
 export function databaseUrl(): string {
-  const url = process.env.DATABASE_TEST_URL;
+  const url = process.env.DATABASE_URL;
 
   if (!url) {
     throw new Error(

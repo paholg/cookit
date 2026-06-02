@@ -13,7 +13,6 @@ services:
     environment:
       COLORTERM: truecolor
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/cookit_dev"
-      DATABASE_TEST_URL: "postgres://postgres:postgres@postgres:5432/cookit_test"
       WORKSPACE_DIR: ${WORKSPACE_DIR}
     depends_on:
       - postgres

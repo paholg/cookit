@@ -179,7 +179,6 @@
 
             shellHook = ''
               export DATABASE_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_dev"
-              export DATABASE_TEST_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_test"
             '';
           };
         }

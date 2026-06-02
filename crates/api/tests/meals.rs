@@ -1,23 +1,12 @@
-//! Integration tests for the meal flow, exercised through the server-side route
-//! handlers against the real database. Each test creates a recipe to reference,
-//! then cleans up after itself.
-#![cfg(feature = "server")]
-
 use {
+    crate::test_support::{TestBook, unique},
     api::{
         MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder, delete_meal,
         delete_recipe, get_meal, id::DraftId, list_meals, upsert_meal, upsert_recipe,
     },
-    std::time::{SystemTime, UNIX_EPOCH},
 };
 
-fn unique(prefix: &str) -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    format!("{prefix} {nanos}")
-}
+mod test_support;
 
 /// Create a bare recipe and return its slug.
 async fn make_recipe() -> String {
@@ -41,6 +30,8 @@ async fn make_recipe() -> String {
 
 #[tokio::test]
 async fn meal_upsert_get_edit_delete() {
+    TestBook::new().await;
+
     let recipe_slug = make_recipe().await;
     let name = unique("Test Meal");
 
@@ -91,6 +82,8 @@ async fn meal_upsert_get_edit_delete() {
 
 #[tokio::test]
 async fn blank_recipe_rows_are_dropped() {
+    TestBook::new().await;
+
     let recipe_slug = make_recipe().await;
 
     let builder = MealBuilder {

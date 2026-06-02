@@ -1,8 +1,5 @@
-//! Integration tests for the shopping-list flow, exercised through the
-//! server-side route handlers against the real database.
-#![cfg(feature = "server")]
-
 use {
+    crate::test_support::{TestBook, unique},
     api::{
         MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder,
         RecipeStepIngredientBuilder, ShoppingListItemInput, add_shopping_list_item,
@@ -10,16 +7,9 @@ use {
         delete_shopping_list, delete_shopping_list_item, get_shopping_list, id::DraftId,
         list_shopping_lists, set_shopping_list_item_checked, upsert_meal, upsert_recipe,
     },
-    std::time::{SystemTime, UNIX_EPOCH},
 };
 
-fn unique(prefix: &str) -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    format!("{prefix} {nanos}")
-}
+mod test_support;
 
 fn ing(name: &str, qty: &str, unit: &str) -> RecipeStepIngredientBuilder {
     RecipeStepIngredientBuilder {
@@ -32,6 +22,8 @@ fn ing(name: &str, qty: &str, unit: &str) -> RecipeStepIngredientBuilder {
 
 #[tokio::test]
 async fn shopping_list_from_meal_aggregates_and_edits() {
+    TestBook::new().await;
+
     let flour = unique("agg-flour");
     let sugar = unique("agg-sugar");
 
@@ -122,6 +114,7 @@ async fn shopping_list_from_meal_aggregates_and_edits() {
 
 #[tokio::test]
 async fn empty_shopping_list_create_and_delete() {
+    TestBook::new().await;
     let name = unique("Empty List");
     let id = create_shopping_list(name.clone()).await.expect("create");
 

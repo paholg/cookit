@@ -8,8 +8,13 @@ pub struct Config {
     pub database_url: Url,
 }
 
-static CONFIG: LazyLock<Config> =
-    LazyLock::new(|| Figment::new().merge(Env::raw()).extract().unwrap());
+impl Config {
+    fn new() -> Self {
+        Figment::new().merge(Env::raw()).extract().unwrap()
+    }
+}
+
+static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::new());
 
 pub fn config() -> &'static Config {
     &CONFIG
