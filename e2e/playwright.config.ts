@@ -1,6 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
-import { databaseUrl } from "./db-url";
 import { freePort } from "./free-port";
 
 const PORT = (() => {
@@ -26,24 +25,33 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "on-first-retry",
   },
-  // Create + migrate + seed the test DB before everything; wipe it after.
-  globalSetup: "./global-setup.ts",
-  globalTeardown: "./global-teardown.ts",
   projects: [
-    // Logs in as the seeded user_role and saves the session cookie.
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // Creates an isolated test user/book/role via /api/dev/setup, logs in, and
+    // saves the session cookie. Its `teardown` deletes that data once every
+    // dependent project has finished (the web server is still up at that point).
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+      teardown: "cleanup",
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["setup"],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /(auth\.setup|cleanup\.teardown)\.ts/,
     },
+    // Deletes the test user/book via /api/dev/teardown.
+    { name: "cleanup", testMatch: /cleanup\.teardown\.ts/ },
   ],
   webServer: {
+    // `--features development` exposes the /api/dev/* endpoints the setup and
+    // cleanup projects use to create and delete their test data. Migrations run
+    // automatically on server start, so there's no diesel/cargo step.
+    //
     // Disable live reloading: e2e runs a fixed build, not an interactive dev
     // session. (`--hot-patch` is a bare flag that already defaults to off and
     // isn't affected by dx CLI settings, so we just don't pass it.)
-    command: `dx serve -p web --addr 127.0.0.1 --port ${PORT} --hot-reload false`,
+    command: `dx serve -p web --features development --addr 127.0.0.1 --port ${PORT} --hot-reload false`,
     cwd: "..",
     url: BASE_URL,
     // Each run binds a fresh OS-assigned port, so there's never an existing

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
 # Node.js, for the Playwright end-to-end tests.
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
@@ -19,11 +19,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && chsh -s /usr/bin/zsh vscode
 
-# Pre-install the Playwright Chromium build and its OS dependencies into a
-# world-readable location so the vscode user can run the e2e suite without a
-# separate browser download. Keep this version in sync with e2e/package.json.
+# Install playwright browsers using version from package-lock.json.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx --yes playwright@1.49.1 install --with-deps chromium \
+ARG PLAYWRIGHT_VERSION
+RUN npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
     && chmod -R a+rX /ms-playwright
 
 USER vscode

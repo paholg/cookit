@@ -1,17 +1,8 @@
-//! Database seeding.
-//!
-//! - `seed` (no args): seed the dev database with one admin user + book, plus a
-//!   starter set of ingredients, recipes, and meals.
-//! - `seed e2e-setup`: wipe everything, seed one admin user + book, and print
-//!   `USER_ROLE_ID=<id>` for the e2e suite to log in as. No sample content, so
-//!   the e2e suite starts from a known-empty book.
-//! - `seed e2e-teardown`: wipe everything, leaving an empty (migrated) database.
-
 use api::{
     Ingredient, IngredientUpdate, MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder,
     RecipeStepIngredientBuilder,
     db::{
-        conn::{DbConn, get_conn},
+        conn::get_conn,
         models::{
             book::BookNew,
             user::UserNew,
@@ -22,7 +13,7 @@ use api::{
     },
     grocery_section::GrocerySection,
     helpers::{Name, PositiveFloat},
-    id::{BookId, DraftId, UserId, UserRoleId},
+    id::{BookId, DraftId, UserId},
     session::Session,
 };
 
@@ -30,83 +21,41 @@ use api::{
 async fn main() -> eyre::Result<()> {
     let mut conn = get_conn().await?;
 
-    match std::env::args().nth(1).as_deref() {
-        None => {
-            seed(&mut conn).await?;
-
-            // Sample content goes through the same builders the app uses, so it
-            // needs a `Session`. Outside any HTTP request it resolves to the
-            // first user/book — exactly the admin/book we just seeded.
-            let mut session = Session::from_request()
-                .await
-                .map_err(|e| eyre::eyre!("load session: {e}"))?
-                .ok_or_else(|| eyre::eyre!("no session after seeding admin user/book"))?;
-            seed_content(&mut session).await?;
-        }
-        Some("e2e-setup") => {
-            wipe(&mut conn).await?;
-            let (user_role_id, book_slug) = seed(&mut conn).await?;
-            // Parsed by the e2e global setup.
-            println!("USER_ROLE_ID={user_role_id}");
-            println!("BOOK_SLUG={book_slug}");
-        }
-        Some("e2e-teardown") => {
-            wipe(&mut conn).await?;
-        }
-        Some(other) => {
-            eyre::bail!("unknown seed command: {other:?} (expected e2e-setup or e2e-teardown)");
-        }
-    }
-
-    Ok(())
-}
-
-/// Insert one admin user and a book they own. Returns the new `user_role` id and
-/// the book slug.
-async fn seed(conn: &mut DbConn) -> eyre::Result<(UserRoleId, String)> {
     let user_id: UserId = UserNew {
         email: "paho@paholg.com",
         name: "Admin User",
     }
     .insert_into(users::table)
     .returning(users::id)
-    .get_result(conn)
+    .get_result(&mut conn)
     .await?;
 
-    let book_slug = "example";
     let book_id: BookId = BookNew {
         name: "Example Book",
-        slug: book_slug,
+        slug: "example",
         owner_id: user_id,
     }
     .insert_into(books::table)
     .returning(books::id)
-    .get_result(conn)
+    .get_result(&mut conn)
     .await?;
 
-    let user_role_id: UserRoleId = UserRoleNew {
+    let role_id = UserRoleNew {
         book_id,
         user_id,
         role: Role::Admin,
     }
     .insert_into(user_roles::table)
     .returning(user_roles::id)
-    .get_result(conn)
+    .get_result(&mut conn)
     .await?;
 
-    Ok((user_role_id, book_slug.to_string()))
-}
+    let mut session = Session::load_for_role(conn, role_id)
+        .await
+        .unwrap()
+        .unwrap();
 
-/// Empty every domain table. `CASCADE` clears child rows; the parent list covers
-/// all tables so nothing survives.
-async fn wipe(conn: &mut DbConn) -> eyre::Result<()> {
-    diesel::sql_query(
-        "TRUNCATE users, books, user_roles, recipes, recipe_steps, recipe_step_ingredients, \
-         ingredients, meals, meal_recipes, shopping_lists, shopping_list_items RESTART IDENTITY \
-         CASCADE",
-    )
-    .execute(conn)
-    .await?;
+    seed_content(&mut session).await?;
 
     Ok(())
 }
@@ -225,7 +174,10 @@ async fn seed_content(session: &mut Session) -> eyre::Result<()> {
                 step(
                     "Sear the sliced chicken in oil over high heat.",
                     "6m",
-                    vec![ing("Chicken Breast", "1", "lb"), ing("Olive Oil", "2", "tbsp")],
+                    vec![
+                        ing("Chicken Breast", "1", "lb"),
+                        ing("Olive Oil", "2", "tbsp"),
+                    ],
                 ),
                 step(
                     "Add the vegetables and garlic and stir-fry until crisp-tender.",
@@ -336,7 +288,9 @@ async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
         };
 
         let density_g_per_ml = match density {
-            Some(d) => Some(PositiveFloat::parse(d).map_err(|e| eyre::eyre!("{name} density: {e}"))?),
+            Some(d) => {
+                Some(PositiveFloat::parse(d).map_err(|e| eyre::eyre!("{name} density: {e}"))?)
+            }
             None => None,
         };
 

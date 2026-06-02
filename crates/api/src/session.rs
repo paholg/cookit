@@ -114,7 +114,10 @@ impl Session {
         })
     }
 
-    async fn load_for_role(mut conn: DbConn, role_id: UserRoleId) -> anyhow::Result<Option<Self>> {
+    pub async fn load_for_role(
+        mut conn: DbConn,
+        role_id: UserRoleId,
+    ) -> anyhow::Result<Option<Self>> {
         let role: Option<UserRole> = user_roles::table
             .find(role_id)
             .first(&mut conn)

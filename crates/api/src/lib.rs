@@ -14,6 +14,8 @@ pub mod auth;
 #[cfg(feature = "server")]
 pub mod config;
 #[cfg(feature = "server")]
+pub mod dev;
+#[cfg(feature = "server")]
 pub mod middleware;
 
 #[cfg(feature = "server")]

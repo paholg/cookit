@@ -11,6 +11,11 @@ echo "WORKSPACE_DIR=$(basename "$(pwd)")" >> .devcontainer/.env
 DIOXUS_VERSION=$(grep -A1 '^name = "dioxus"$' Cargo.lock | grep '^version' | head -1 | cut -d'"' -f2)
 echo "DIOXUS_VERSION=\"$DIOXUS_VERSION\"" >> .devcontainer/.env
 
+# Pin the baked-in Playwright browser to the version resolved in the e2e
+# lockfile, so the image's Chromium always matches @playwright/test.
+PLAYWRIGHT_VERSION=$(jq -r '.packages["node_modules/@playwright/test"].version' e2e/package-lock.json)
+echo "PLAYWRIGHT_VERSION=\"$PLAYWRIGHT_VERSION\"" >> .devcontainer/.env
+
 # If gh is available, capture a token so `cargo binstall` requests are
 # authenticated.
 if command -v gh >/dev/null 2>&1; then

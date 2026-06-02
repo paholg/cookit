@@ -25,3 +25,5 @@ web-time = "1"
 default = []
 server = ["api/server", "dioxus/server"]
 web = ["api/web", "dioxus/web"]
+# Pulls in the /api/dev/* test-data endpoints (used by the e2e suite).
+development = ["api/development"]

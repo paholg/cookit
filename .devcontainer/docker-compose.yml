@@ -4,6 +4,7 @@ services:
       context: .
       args:
         DIOXUS_VERSION: ${DIOXUS_VERSION}
+        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION}
       secrets:
         - github_token
     init: true

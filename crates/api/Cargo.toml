@@ -45,3 +45,6 @@ server = [
   "jiff-diesel/postgres",
 ]
 web = []
+# Exposes the unauthenticated /api/dev/* test-data endpoints. Off by default so
+# they never ship in a production build; enabled for the e2e suite.
+development = []

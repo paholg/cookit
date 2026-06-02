@@ -13,10 +13,18 @@ use {
     dioxus::prelude::*,
 };
 
+#[cfg(feature = "development")]
+use crate::id::{BookId, UserId};
+
 // Server-only: handler bodies use the DB session and the shopping-list ops,
 // which don't exist on the wasm client.
 #[cfg(feature = "server")]
 use crate::{db::models::shopping_list, session::Session};
+
+// The /api/dev/* handlers run their DB ops directly (no session), so they need
+// the connection pool and the test-data helpers — both server-only.
+#[cfg(all(feature = "server", feature = "development"))]
+use crate::{db::conn::get_conn, dev};
 
 #[get("/api/me")]
 pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {
@@ -191,5 +199,43 @@ pub async fn set_shopping_list_item_checked(
 pub async fn delete_shopping_list_item(item_id: ShoppingListItemId) -> Result<(), ServerFnError> {
     let mut session = Session::require().await?;
     shopping_list::delete_item(&mut session, item_id).await?;
+    Ok(())
+}
+
+/// The ids of the throwaway admin user/book/role created by [`dev_setup`]. The
+/// e2e suite logs in with `user_role_id` and hands `user_id`/`book_id` back to
+/// [`dev_teardown`].
+#[cfg(feature = "development")]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DevTestData {
+    pub user_id: UserId,
+    pub book_id: BookId,
+    pub user_role_id: UserRoleId,
+}
+
+/// Create an isolated admin user + book + role for an e2e run. Unauthenticated
+/// on purpose — it mints the very user the suite logs in as. Only compiled with
+/// the `development` feature, so it never ships in production.
+#[cfg(feature = "development")]
+#[post("/api/dev/setup")]
+pub async fn dev_setup() -> Result<DevTestData, ServerFnError> {
+    let mut conn = get_conn().await?;
+    let (user_id, book_id, user_role_id) = dev::create_test_book(&mut conn).await?;
+
+    Ok(DevTestData {
+        user_id,
+        book_id,
+        user_role_id,
+    })
+}
+
+/// Delete the user + book created by [`dev_setup`]; cascades clean up the role
+/// and all book-scoped rows.
+#[cfg(feature = "development")]
+#[post("/api/dev/teardown")]
+pub async fn dev_teardown(user_id: UserId, book_id: BookId) -> Result<(), ServerFnError> {
+    let mut conn = get_conn().await?;
+    dev::delete_test_book(&mut conn, user_id, book_id).await?;
+
     Ok(())
 }

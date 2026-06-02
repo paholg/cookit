@@ -23,9 +23,7 @@ build *args:
 test *args:
     cargo nextest run --workspace --all-targets --no-fail-fast {{args}}
 
-# Browser end-to-end tests. Manages its own `cookit_e2e` database (created,
-# seeded, and wiped by the Playwright global setup/teardown) and starts its own
-# `dx serve`, so it's independent of any running dev server.
+# Browser end-to-end tests.
 test-e2e *args:
     cd e2e && npm ci && npx playwright test {{args}}
 
