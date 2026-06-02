@@ -9,7 +9,7 @@ pub enum Error {
     Forbidden,
 
     #[cfg(feature = "server")]
-    #[snafu(display("Database exhausted"))]
+    #[snafu(display("Database exhausted: {source}"))]
     DatabasePool {
         source: diesel_async::pooled_connection::deadpool::PoolError,
     },

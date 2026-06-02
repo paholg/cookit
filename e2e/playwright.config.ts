@@ -3,9 +3,16 @@ import path from "node:path";
 import { databaseUrl } from "./db-url";
 import { freePort } from "./free-port";
 
-// An OS-assigned port so the e2e server never collides with a dev `dx serve` on
-// 8080 (which points at the dev database) or with another e2e run.
-const PORT = freePort();
+const PORT = (() => {
+  const existing = process.env.E2E_PORT;
+  if (existing) {
+    return Number.parseInt(existing, 10);
+  }
+
+  const port = freePort();
+  process.env.E2E_PORT = String(port);
+  return port;
+})();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const STORAGE_STATE = path.join(__dirname, ".auth", "state.json");
