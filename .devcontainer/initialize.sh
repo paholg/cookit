@@ -6,3 +6,8 @@ echo "CLAUDE_CODE_CACHE_BUST=\"$CLAUDE_CODE_CACHE_BUST\"" >> .devcontainer/.env
 
 echo "WORKSPACE_DIR=$(basename "$(pwd)")" >> .devcontainer/.env
 
+# Pin dioxus-cli in the image to the dioxus version resolved in Cargo.lock, so
+# the `dx` CLI stays in lockstep with the library.
+DIOXUS_VERSION=$(grep -A1 '^name = "dioxus"$' Cargo.lock | grep '^version' | head -1 | cut -d'"' -f2)
+echo "DIOXUS_VERSION=\"$DIOXUS_VERSION\"" >> .devcontainer/.env
+

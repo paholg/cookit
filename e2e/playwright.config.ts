@@ -1,16 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
+import { databaseUrl } from "./db-url";
+import { freePort } from "./free-port";
 
-// A dedicated port so the e2e server never collides with (or gets reused in
-// place of) a dev `dx serve` on 8080 that points at the dev database.
-const PORT = 8123;
+// An OS-assigned port so the e2e server never collides with a dev `dx serve` on
+// 8080 (which points at the dev database) or with another e2e run.
+const PORT = freePort();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-
-// Dedicated test database — the suite creates, seeds, and wipes it, so it never
-// touches dev data. `global-setup.ts` and the seed binary read the same var.
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgres://postgres:postgres@postgres:5432/cookit_e2e";
 
 const STORAGE_STATE = path.join(__dirname, ".auth", "state.json");
 
@@ -37,15 +33,23 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `dx serve -p web --addr 127.0.0.1 --port ${PORT}`,
+    // Disable live reloading: e2e runs a fixed build, not an interactive dev
+    // session. (`--hot-patch` is a bare flag that already defaults to off and
+    // isn't affected by dx CLI settings, so we just don't pass it.)
+    command: `dx serve -p web --addr 127.0.0.1 --port ${PORT} --hot-reload false`,
     cwd: "..",
     url: BASE_URL,
-    // Safe to reuse: this port only ever hosts an e2e server bound to the test
-    // DB. The first build compiles the wasm client and can take minutes.
-    reuseExistingServer: true,
+    // Each run binds a fresh OS-assigned port, so there's never an existing
+    // server to reuse — always start our own. The first build compiles the wasm
+    // client and can take minutes.
+    reuseExistingServer: false,
     timeout: 600_000,
+    // Stream the build/serve output so a slow first compile looks like progress
+    // rather than a silent hang.
+    stdout: "pipe",
+    stderr: "pipe",
     env: {
-      DATABASE_URL: TEST_DATABASE_URL,
+      DATABASE_URL: databaseUrl(),
     },
   },
 });

@@ -56,14 +56,12 @@
               name = "source";
             };
 
-          # Extract wasm-bindgen version from Cargo.lock so we don't need to
-          # keep nipkgs and Cargo.lock exactly in sync, even for dependents.
+          # Extract wasm-bindgen and dioxus-cli from Cargo.lock so we don't have
+          # to worry about version drift.
+          lockFile = builtins.fromTOML (builtins.readFile ./Cargo.lock);
           wasmBindgenVersion =
-            let
-              lockFile = builtins.fromTOML (builtins.readFile ./Cargo.lock);
-              wasmBindgen = builtins.head (builtins.filter (p: p.name == "wasm-bindgen") lockFile.package);
-            in
-            wasmBindgen.version;
+            (builtins.head (builtins.filter (p: p.name == "wasm-bindgen") lockFile.package)).version;
+          dioxusVersion = (builtins.head (builtins.filter (p: p.name == "dioxus") lockFile.package)).version;
 
           wasmBindgenCli = pkgs.rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
@@ -79,6 +77,30 @@
             ];
           };
 
+          dioxusCli = pkgs.dioxus-cli.overrideAttrs (
+            old:
+            let
+              src = pkgs.fetchCrate {
+                pname = "dioxus-cli";
+                version = dioxusVersion;
+                hash = "sha256-tLMtUlohSJt3okdJh+ARweQNGmzj/vYiNl8iZhDbSAc=";
+              };
+            in
+            {
+              version = dioxusVersion;
+              inherit src;
+              # Regenerate the vendored deps from the new source rather than
+              # overriding the old derivation, which drops the recursive
+              # output-hash mode and fails with an "output path ... should be a
+              # non-executable regular file" error.
+              cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+                inherit src;
+                name = "dioxus-cli-${dioxusVersion}-vendor";
+                hash = "sha256-h5wkxHP8ehZLHqcUsro08/dpqSPnPuBbZuUGG8i4nBc=";
+              };
+            }
+          );
+
           devPackages =
             with pkgs;
             [
@@ -89,19 +111,19 @@
               just
               libpq
               litecli
-              nodejs_22
+              nodejs_latest
               openssl
               pkg-config
-              # Chromium build for the Playwright e2e suite, exposed via
-              # PLAYWRIGHT_BROWSERS_PATH below. The `@playwright/test` version in
-              # e2e/package.json must match this driver's version.
-              playwright-driver
               rust-bin.nightly.latest.rustfmt
               sqlite
               sqlx-cli
               tombi
             ]
-            ++ [ rustDev ];
+            ++ [
+              rustDev
+              dioxusCli
+              wasmBindgenCli
+            ];
 
           commonArgs = {
             inherit src;
@@ -129,8 +151,7 @@
               inherit cargoArtifacts;
               nativeBuildInputs = commonArgs.nativeBuildInputs ++ [
                 pkgs.binaryen
-                pkgs.dioxus-cli
-                pkgs.sqlx-cli
+                dioxusCli
                 rustMinimal
                 wasmBindgenCli
               ];
@@ -156,10 +177,10 @@
           devShells.default = pkgs.mkShell {
             packages = devPackages;
 
-            # Point Playwright at the nix-provided Chromium instead of having it
-            # download its own (which fails on NixOS' patched loader anyway).
-            PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
-            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+            shellHook = ''
+              export DATABASE_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_dev"
+              export DATABASE_TEST_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_test"
+            '';
           };
         }
       );

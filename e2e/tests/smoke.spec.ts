@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 // These run against a live `dx serve` (started automatically by the Playwright
-// config) backed by the dedicated `cookit_e2e` database. The `setup` project
+// config) backed by the dedicated `DATABASE_TEST_URL` database. The `setup` project
 // logs in first and saves the session cookie, so every test here runs as the
 // seeded admin. Tests that create data delete it again so they're re-runnable.
 

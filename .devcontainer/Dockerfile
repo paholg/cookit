@@ -54,9 +54,11 @@ RUN cargo binstall --no-confirm \
     cargo-edit \
     cargo-nextest \
     diesel_cli \
-    dioxus-cli \
     just \
     && true
+
+ARG DIOXUS_VERSION
+RUN cargo binstall --no-confirm dioxus-cli@${DIOXUS_VERSION}
 
 COPY --chown=vscode:vscode zshrc /home/vscode/.zshrc
 

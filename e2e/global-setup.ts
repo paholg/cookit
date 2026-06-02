@@ -1,10 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgres://postgres:postgres@postgres:5432/cookit_e2e";
+import { databaseUrl } from "./db-url";
 
 const repoRoot = path.join(__dirname, "..");
 const authDir = path.join(__dirname, ".auth");
@@ -13,7 +10,7 @@ const authDir = path.join(__dirname, ".auth");
 // admin user/book/role. The seed prints `USER_ROLE_ID=<id>`, which we hand to
 // `auth.setup.ts` to log in with.
 export default async function globalSetup() {
-  const env = { ...process.env, DATABASE_URL: TEST_DATABASE_URL };
+  const env = { ...process.env, DATABASE_URL: databaseUrl() };
 
   // Idempotent: creates the DB if missing and runs migrations. `--locked-schema`
   // guards against accidentally regenerating the committed schema.rs.
