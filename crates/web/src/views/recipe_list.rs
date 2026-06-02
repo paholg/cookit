@@ -14,7 +14,7 @@ pub fn RecipeList() -> Element {
         header { class: "page-header",
             h1 { "Recipes" }
             if is_admin {
-                Link { to: Route::RecipeNew {}, class: "button", "+ New recipe" }
+                Link { to: Route::RecipeNew {}, class: "button primary", "+ New recipe" }
             }
         }
         match recipes.cloned() {

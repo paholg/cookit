@@ -233,7 +233,7 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
         }
 
         form {
-            class: "recipe-form",
+            class: "app-form",
             onsubmit: submit,
             onkeydown: on_form_keydown,
 
@@ -299,7 +299,7 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
 
             div { class: "form-actions",
                 if let RecipeFormMode::Edit { recipe_key } = mode.clone() {
-                    Link { to: Route::RecipeDetail { recipe_key }, class: "button-link", "Cancel" }
+                    Link { to: Route::RecipeDetail { recipe_key }, class: "button secondary", "Cancel" }
                 }
                 button {
                     r#type: "submit",

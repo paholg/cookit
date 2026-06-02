@@ -151,7 +151,7 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
             }
         }
 
-        form { class: "recipe-form", onsubmit: submit,
+        form { class: "app-form", onsubmit: submit,
             label {
                 "Name"
                 input {
@@ -189,7 +189,7 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
                 if let MealFormMode::Edit { meal_key } = mode.clone() {
                     Link {
                         to: Route::MealDetail { meal_key, tab: None },
-                        class: "button-link",
+                        class: "button secondary",
                         "Cancel"
                     }
                 }

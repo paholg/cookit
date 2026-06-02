@@ -50,7 +50,7 @@ pub fn ShoppingListNew() -> Element {
             h1 { "New shopping list" }
         }
 
-        form { class: "meal-form", onsubmit: submit,
+        form { class: "app-form", onsubmit: submit,
 
             fieldset {
                 legend { "Generate from a meal" }
@@ -96,7 +96,7 @@ pub fn ShoppingListNew() -> Element {
                 p { class: "error", "{e}" }
             }
 
-            button { r#type: "submit", class: "button", disabled: submitting(),
+            button { r#type: "submit", class: "primary", disabled: submitting(),
                 if submitting() {
                     "Creating..."
                 } else {

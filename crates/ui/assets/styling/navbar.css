@@ -33,3 +33,21 @@
   align-items: center;
   gap: 1.25rem;
 }
+
+/* The log in/out controls are buttons (they trigger an action, not navigation)
+   but should read as plain links alongside the rest of the navbar. Reset the
+   global button chrome so they match the surrounding `a` elements. */
+#navbar button.linkish {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#navbar button.linkish:hover {
+  text-decoration: underline;
+}

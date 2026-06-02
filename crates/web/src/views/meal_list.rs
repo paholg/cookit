@@ -12,7 +12,7 @@ pub fn MealList() -> Element {
         document::Title { "CookIt!" }
         header { class: "page-header",
             h1 { "Meals" }
-            Link { to: Route::MealNew {}, class: "button", "+ New meal" }
+            Link { to: Route::MealNew {}, class: "button primary", "+ New meal" }
         }
 
         match meals.cloned() {

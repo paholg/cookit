@@ -11,6 +11,7 @@
   --primary: var(--primary-600);
   --primary-hover: var(--primary-800);
   --on-primary: var(--text-50);
+  --accent: var(--accent-600);
   --alert: var(--secondary-600);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 
@@ -158,9 +159,9 @@ ul.recipe-list li>.row-error {
   margin-bottom: 1.5rem;
 }
 
+/* Default button is "secondary" */
 button,
-.button,
-.button-link {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -176,7 +177,7 @@ button,
 }
 
 button.primary,
-.button {
+.button.primary {
   background: var(--primary);
   color: var(--on-primary);
   border-color: var(--primary);
@@ -184,27 +185,12 @@ button.primary,
 }
 
 button.primary:hover,
-.button:hover,
+.button.primary:hover,
 button.primary:active,
-.button:active {
+.button.primary:active {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
   text-decoration: none;
-}
-
-button.secondary {
-  background: var(--surface);
-}
-
-button.danger {
-  color: var(--alert);
-  border-color: var(--alert);
-  background: var(--surface);
-}
-
-button.small {
-  min-height: 32px;
-  padding: 0.25rem 0.5rem;
 }
 
 button:disabled {
@@ -212,17 +198,34 @@ button:disabled {
   cursor: not-allowed;
 }
 
+input,
+textarea,
 select {
-  display: inline-flex;
-  align-items: center;
   min-height: var(--tap);
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--border-strong);
+  padding: 0.5rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--fg);
   font: inherit;
+}
+
+select {
   cursor: pointer;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 button.icon-button {
@@ -314,16 +317,6 @@ button.icon-button.trash:active {
   }
 }
 
-.button-link {
-  color: var(--fg);
-}
-
-.button-link:hover,
-.button-link:active {
-  background: var(--surface-2);
-  text-decoration: none;
-}
-
 .form-actions {
   display: flex;
   gap: var(--gap);
@@ -332,13 +325,13 @@ button.icon-button.trash:active {
   margin-top: 0.5rem;
 }
 
-form.recipe-form {
+form.app-form {
   display: flex;
   flex-direction: column;
   gap: var(--gap);
 }
 
-form.recipe-form label {
+form.app-form label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -346,36 +339,12 @@ form.recipe-form label {
   color: var(--muted);
 }
 
-form.recipe-form input,
-form.recipe-form textarea,
-form.recipe-form select {
-  min-height: var(--tap);
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: inherit;
-  background: var(--surface);
-  color: var(--fg);
-}
-
-form.recipe-form input:focus,
-form.recipe-form textarea:focus,
-form.recipe-form select:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: -1px;
-}
-
-form.recipe-form textarea {
+form.app-form textarea {
   resize: none;
   overflow: hidden;
   field-sizing: content;
   width: 100%;
   box-sizing: border-box;
-}
-
-form.recipe-form input:disabled {
-  background: var(--surface-2);
-  color: var(--muted);
 }
 
 fieldset.step {
@@ -665,21 +634,6 @@ ul.ingredient-rows {
   color: var(--muted);
 }
 
-.ingredient-row-grid input[type="text"] {
-  min-height: var(--tap);
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: inherit;
-  background: var(--surface);
-  color: var(--fg);
-}
-
-.ingredient-row-grid input[type="text"]:disabled {
-  background: var(--surface-2);
-  color: var(--muted);
-}
-
 .ingredient-row-grid .checkbox-label {
   flex-direction: row;
   align-items: center;
@@ -889,23 +843,6 @@ form.shopping-add {
   gap: 0.5rem;
 }
 
-form.shopping-add input,
-form.shopping-add select {
-  min-height: var(--tap);
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: inherit;
-  background: var(--surface);
-  color: var(--fg);
-}
-
-form.shopping-add input:focus,
-form.shopping-add select:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: -1px;
-}
-
 .shopping-add-qty-row {
   display: grid;
   grid-template-columns: 5rem 1fr 1fr;
@@ -917,18 +854,12 @@ form.shopping-add select:focus {
   font-variant-numeric: tabular-nums;
 }
 
-.shopping-add-unit:disabled {
-  background: var(--surface-2);
-  color: var(--muted);
-}
-
 .shopping-add-actions {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
 }
 
-.shopping-add-actions .button,
 .shopping-add-actions button {
   flex: 1;
 }
@@ -941,7 +872,6 @@ form.shopping-add select:focus {
     border: 1px solid var(--border);
   }
 
-  .shopping-add-actions .button,
   .shopping-add-actions button {
     flex: 0 0 auto;
   }

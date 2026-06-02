@@ -13,7 +13,7 @@ pub fn ShoppingListList() -> Element {
         document::Title { "Shopping" }
         header { class: "page-header",
             h1 { "Shopping lists" }
-            Link { to: Route::ShoppingListNew {}, class: "button", "+ New list" }
+            Link { to: Route::ShoppingListNew {}, class: "button primary", "+ New list" }
         }
 
         match lists.cloned() {

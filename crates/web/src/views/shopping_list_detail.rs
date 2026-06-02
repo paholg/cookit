@@ -284,7 +284,7 @@ fn AddItemForm(list_id: ShoppingListId, on_added: EventHandler<()>) -> Element {
             div { class: "shopping-add-bar",
                 button {
                     r#type: "button",
-                    class: "button shopping-add-toggle",
+                    class: "primary shopping-add-toggle",
                     onclick: move |_| expanded.set(true),
                     "+ Add item"
                 }
@@ -332,7 +332,7 @@ fn AddItemForm(list_id: ShoppingListId, on_added: EventHandler<()>) -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "button",
+                        class: "primary",
                         disabled: submitting(),
                         if submitting() {
                             "Adding..."
