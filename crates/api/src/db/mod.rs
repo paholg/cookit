@@ -4,6 +4,8 @@ pub mod models;
 #[cfg(feature = "server")]
 pub mod conn;
 #[cfg(feature = "server")]
+pub mod migrate;
+#[cfg(feature = "server")]
 pub mod prelude;
 #[cfg(feature = "server")]
 pub mod schema;
