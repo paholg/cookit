@@ -1,5 +1,7 @@
 use {
-    serde::{Deserialize, Serialize},
+    crate::error::ParseIdSnafu,
+    serde::{Deserialize, Serialize, de},
+    snafu::OptionExt,
     std::{
         fmt::{self, Write},
         hash::{Hash, Hasher},
@@ -35,19 +37,18 @@ impl<T> Id<T> {
     }
 }
 
-impl<T> Serialize for Id<T> {
+impl<T: TablePrefix> Serialize for Id<T> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.id.serialize(s)
+        self.to_string().serialize(s)
     }
 }
 
-impl<'de, T> Deserialize<'de> for Id<T> {
+impl<'de, T: TablePrefix> Deserialize<'de> for Id<T> {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let uuid = Uuid::deserialize(d)?;
-        Ok(Self {
-            id: uuid,
-            _marker: PhantomData,
-        })
+        let s = <&str>::deserialize(d)?;
+
+        s.parse()
+            .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &"a uuid with a prefix"))
     }
 }
 
@@ -65,7 +66,7 @@ macro_rules! table_id {
         pub struct $struct;
 
         impl TablePrefix for $struct {
-            const TABLE_PREFIX: &'static str = stringify!(prefix);
+            const TABLE_PREFIX: &'static str = stringify!($prefix);
         }
 
         pub type $id = Id<$struct>;
@@ -110,9 +111,11 @@ impl<T> PartialEq for Id<T> {
 }
 impl<T> Eq for Id<T> {}
 
-impl<T> fmt::Display for Id<T> {
+impl<T: TablePrefix> fmt::Display for Id<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        self.id.fmt(f)
+        f.write_str(T::TABLE_PREFIX)?;
+        f.write_char('_')?;
+        self.id.simple().fmt(f)
     }
 }
 
@@ -120,16 +123,23 @@ impl<T: TablePrefix> fmt::Debug for Id<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(T::TABLE_PREFIX)?;
         f.write_char('_')?;
-        self.id.fmt(f)
+        self.id.simple().fmt(f)
     }
 }
 
-impl<T> std::str::FromStr for Id<T> {
-    type Err = uuid::Error;
+impl<T: TablePrefix> std::str::FromStr for Id<T> {
+    type Err = crate::Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let uuid_str = s.find('_').map(|i| &s[i + 1..]).unwrap_or(s);
+        let uuid_str = s
+            .strip_prefix(T::TABLE_PREFIX)
+            .and_then(|s| s.strip_prefix('_'))
+            .with_context(|| ParseIdSnafu { id: s.to_string() })?;
+
         Ok(Self {
-            id: Uuid::parse_str(uuid_str)?,
+            id: Uuid::try_parse(uuid_str)
+                .ok()
+                .with_context(|| ParseIdSnafu { id: s.to_string() })?,
             _marker: PhantomData,
         })
     }
@@ -181,18 +191,13 @@ where
 /// the server uses to decide insert (`New`) vs. update (`Persisted`) during an
 /// upsert.
 #[derive(Serialize, Deserialize)]
-// `untagged` distinguishes the variants on the wire by shape — a `Persisted`
-// id serializes as the uuid (a JSON string), a `New` id as a JSON number.
-// (Self-describing formats only; fine for JSON, would break under postcard.)
-// `bound = ""` drops the spurious `T: Serialize`/`Deserialize` bounds serde
-// would otherwise add — `T` is only a `PhantomData` marker.
 #[serde(untagged, bound = "")]
-pub enum DraftId<T> {
+pub enum DraftId<T: TablePrefix> {
     Persisted(Id<T>),
     New(i64),
 }
 
-impl<T> DraftId<T> {
+impl<T: TablePrefix> DraftId<T> {
     /// The next provisional id for a form, one past the highest `New` id already
     /// present. Deterministic given the same set of rows, so it produces the
     /// same value during SSR and hydration.
@@ -218,29 +223,27 @@ impl<T> DraftId<T> {
     }
 }
 
-impl<T> Default for DraftId<T> {
+impl<T: TablePrefix> Default for DraftId<T> {
     fn default() -> Self {
         Self::New(0)
     }
 }
 
-impl<T> From<Id<T>> for DraftId<T> {
+impl<T: TablePrefix> From<Id<T>> for DraftId<T> {
     fn from(id: Id<T>) -> Self {
         Self::Persisted(id)
     }
 }
 
-// Hand-written, like `Id<T>`'s impls, to avoid the spurious `T: Trait` bounds
-// the derives would add for the `PhantomData` marker.
-impl<T> Clone for DraftId<T> {
+impl<T: TablePrefix> Clone for DraftId<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T> Copy for DraftId<T> {}
+impl<T: TablePrefix> Copy for DraftId<T> {}
 
-impl<T> PartialEq for DraftId<T> {
+impl<T: TablePrefix> PartialEq for DraftId<T> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (DraftId::Persisted(a), DraftId::Persisted(b)) => a == b,
@@ -250,9 +253,9 @@ impl<T> PartialEq for DraftId<T> {
     }
 }
 
-impl<T> Eq for DraftId<T> {}
+impl<T: TablePrefix> Eq for DraftId<T> {}
 
-impl<T> Hash for DraftId<T> {
+impl<T: TablePrefix> Hash for DraftId<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             DraftId::Persisted(id) => (0u8, id).hash(state),
@@ -261,7 +264,7 @@ impl<T> Hash for DraftId<T> {
     }
 }
 
-impl<T> fmt::Display for DraftId<T> {
+impl<T: TablePrefix> fmt::Display for DraftId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DraftId::Persisted(id) => write!(f, "p-{id}"),
@@ -270,7 +273,7 @@ impl<T> fmt::Display for DraftId<T> {
     }
 }
 
-impl<T> fmt::Debug for DraftId<T> {
+impl<T: TablePrefix> fmt::Debug for DraftId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DraftId::Persisted(id) => write!(f, "Persisted({id})"),

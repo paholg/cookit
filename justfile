@@ -3,6 +3,9 @@ set dotenv-load := true
 serve *args:
     dx serve -p web {{args}}
 
+seed:
+    cargo run --bin seed
+
 db-setup:
     diesel setup
 

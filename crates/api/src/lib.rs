@@ -33,6 +33,6 @@ pub use {
         shopping_list::{ShoppingList, ShoppingListDetail},
         shopping_list_item::{ShoppingListItem, ShoppingListItemInput, ShoppingListItemView},
     },
-    error::Result,
+    error::{Error, Result},
     routes::*,
 };

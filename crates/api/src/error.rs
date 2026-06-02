@@ -5,6 +5,7 @@ use {dioxus::prelude::ServerFnError, snafu::prelude::*};
 pub enum Error {
     #[snafu(display("Validation error: {msg}"))]
     Validation { msg: String },
+
     #[snafu(display("Forbidden"))]
     Forbidden,
 
@@ -13,6 +14,9 @@ pub enum Error {
     DatabasePool {
         source: diesel_async::pooled_connection::deadpool::PoolError,
     },
+
+    #[snafu(display("Failed to parse id: {id}"))]
+    ParseId { id: String },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,6 +28,7 @@ impl Error {
             Error::Forbidden => 403,
             #[cfg(feature = "server")]
             Error::DatabasePool { source: _ } => 503,
+            Error::ParseId { id: _ } => 422,
         }
     }
 }
