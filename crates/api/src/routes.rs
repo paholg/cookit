@@ -15,16 +15,14 @@ use {
 
 #[cfg(feature = "development")]
 use crate::id::{BookId, UserId};
-
-// Server-only: handler bodies use the DB session and the shopping-list ops,
-// which don't exist on the wasm client.
-#[cfg(feature = "server")]
-use crate::{db::models::shopping_list, session::Session};
-
 // The /api/dev/* handlers run their DB ops directly (no session), so they need
 // the connection pool and the test-data helpers — both server-only.
 #[cfg(all(feature = "server", feature = "development"))]
 use crate::{db::conn::get_conn, dev};
+// Server-only: handler bodies use the DB session and the shopping-list ops,
+// which don't exist on the wasm client.
+#[cfg(feature = "server")]
+use crate::{db::models::shopping_list, session::Session};
 
 #[get("/api/me")]
 pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {

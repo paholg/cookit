@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1"
 api = { workspace = true }
+async-trait = { workspace = true }
 console_error_panic_hook = "0.1"
 dioxus = { workspace = true, features = ["fullstack", "router"] }
 gloo-storage = "0.4"
@@ -23,7 +24,7 @@ web-time = "1"
 
 [features]
 default = []
-server = ["api/server", "dioxus/server"]
-web = ["api/web", "dioxus/web"]
 # Pulls in the /api/dev/* test-data endpoints (used by the e2e suite).
 development = ["api/development"]
+server = ["api/server", "dioxus/server"]
+web = ["api/web", "dioxus/web"]

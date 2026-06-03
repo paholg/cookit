@@ -30,5 +30,3 @@ mod shopping_list_detail;
 pub use shopping_list_detail::ShoppingListDetail;
 mod timer_bar;
 pub use timer_bar::TimerBar;
-mod wake_toggle;
-pub use wake_toggle::WakeLockToggle;

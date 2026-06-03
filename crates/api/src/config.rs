@@ -14,7 +14,7 @@ impl Config {
     }
 }
 
-static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::new());
+static CONFIG: LazyLock<Config> = LazyLock::new(Config::new);
 
 pub fn config() -> &'static Config {
     &CONFIG

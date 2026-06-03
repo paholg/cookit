@@ -1,6 +1,5 @@
 use {
     super::format::format_quantity,
-    crate::views::WakeLockToggle,
     api::{
         ShoppingListItemInput, ShoppingListItemView, add_shopping_list_item,
         delete_shopping_list_item, get_shopping_list,
@@ -11,7 +10,7 @@ use {
     dioxus::prelude::*,
     std::collections::HashMap,
     strum::IntoEnumIterator,
-    ui::icons::TrashIcon,
+    ui::{WakeLockToggle, icons::TrashIcon},
 };
 
 #[component]
