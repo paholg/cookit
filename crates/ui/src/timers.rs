@@ -30,7 +30,7 @@ pub struct RunningTimer {
     pub step_number: i64,
     pub total_seconds: i64,
     pub started_at_ms: i64,
-    /// Set once the user dismisses the post-expiry beep. The row stays visible
+    /// Set once the user dismisses the post-expiry bell. The row stays visible
     /// (so they can see how far overdue they are) but no longer rings.
     pub silenced: bool,
     /// Seconds added by the `+1m` / `+5m` buttons. Kept separate from

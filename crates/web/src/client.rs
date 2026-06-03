@@ -55,12 +55,16 @@ impl ui::Client for WebClient {
         eval(include_str!("js/audio-primer.js"));
     }
 
-    fn start_beep(&self) {
-        eval(include_str!("js/beep-on.js"));
-    }
+    fn play_bell(&self) {
+        // Hand the bundled mp3's URL to the JS as a JSON literal so it can't
+        // break out of the string.
+        let url =
+            serde_json::to_string(&ui::BELL.to_string()).unwrap_or_else(|_| "\"\"".to_string());
 
-    fn stop_beep(&self) {
-        eval(include_str!("js/beep-off.js"));
+        eval(&format!(
+            "const BELL_URL = {url};\n{}",
+            include_str!("js/play-bell.js")
+        ));
     }
 
     async fn confirm(&self, message: &str) -> bool {

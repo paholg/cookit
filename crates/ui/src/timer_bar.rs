@@ -10,7 +10,10 @@ use {
     },
     api::duration::format_countdown,
     dioxus::prelude::*,
+    std::collections::HashSet,
 };
+
+const BELL_PERIOD_MS: i64 = 30_000;
 
 #[component]
 pub fn TimerBar() -> Element {
@@ -34,30 +37,36 @@ pub fn TimerBar() -> Element {
     let now = timers::now_ms();
     let snapshot = timers_ctx.read().clone();
 
-    // Drive the beep from an effect so it runs client-side only (never during
-    // SSR). Crucially, the effect must *read tracked signals that change* so
-    // Dioxus re-runs it — capturing a plain `bool` would only register a new
-    // closure on each render but never re-execute. We therefore recompute
-    // `ringing_now` inside the effect from `tick` + `timers_ctx`, both of
-    // which are signal reads.
-    let mut was_ringing = use_signal(|| false);
-    use_effect(move || {
-        // Tracked reads: tick (so we re-evaluate on every 1Hz bump) and
-        // timers_ctx (so silence/dismiss/add-time take effect immediately).
-        let _ = tick();
-        let now = timers::now_ms();
-        let ringing_now = timers_ctx
-            .read()
-            .iter()
-            .any(|t| !t.silenced && t.is_expired(now));
+    // All reads go through `peek`, so this future is never torn down and
+    // restarted by signal changes; it's spawned once and loops for the
+    // component's lifetime, which lets the bell bookkeeping live as plain
+    // task-local state rather than signals.
+    use_future(move || async move {
+        let mut ringing_ids = HashSet::<u64>::new();
+        let mut last_bell_ms: Option<i64> = None;
 
-        if ringing_now != was_ringing() {
-            if ringing_now {
-                client().start_beep();
+        loop {
+            let now = timers::now_ms();
+            let current: HashSet<u64> = timers_ctx
+                .peek()
+                .iter()
+                .filter(|t| !t.silenced && t.is_expired(now))
+                .map(|t| t.id)
+                .collect();
+
+            if current.is_empty() {
+                last_bell_ms = None;
             } else {
-                client().stop_beep();
+                let new_expiry = current.iter().any(|id| !ringing_ids.contains(id));
+                let nag_due = last_bell_ms.is_none_or(|t| now - t >= BELL_PERIOD_MS);
+                if new_expiry || nag_due {
+                    client().play_bell();
+                    last_bell_ms = Some(now);
+                }
             }
-            was_ringing.set(ringing_now);
+
+            ringing_ids = current;
+            client().sleep(1000).await;
         }
     });
 

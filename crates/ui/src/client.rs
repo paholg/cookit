@@ -1,4 +1,6 @@
-use {async_trait::async_trait, std::sync::OnceLock};
+use {async_trait::async_trait, dioxus::prelude::*, std::sync::OnceLock};
+
+pub const BELL: Asset = asset!("/assets/bell.mp3");
 
 #[async_trait(?Send)]
 pub trait Client: Send + Sync + std::fmt::Debug {
@@ -26,17 +28,14 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// it, since `tokio::time` isn't available on wasm.
     async fn sleep(&self, ms: u32);
 
-    /// Prime the audio path inside a user gesture so a later timer-expiry beep
+    /// Prime the audio path inside a user gesture so a later timer-expiry bell
     /// is actually audible (browsers suspend audio created outside a gesture).
     /// No-op on platforms without that restriction.
     fn prime_audio(&self);
 
-    /// Start the repeating timer-expiry beep. Idempotent: calling it while
-    /// already beeping does nothing.
-    fn start_beep(&self);
-
-    /// Stop the timer-expiry beep. Idempotent.
-    fn stop_beep(&self);
+    /// Play the timer-expiry bell once. The timer bar repeats this on its own
+    /// cadence while a timer is ringing; the client just plays a single tone.
+    fn play_bell(&self);
 
     /// Ask the user to confirm a destructive action, returning `true` if they
     /// accept. Used to guard deletes.

@@ -85,7 +85,7 @@ pub fn App() -> Element {
     // Hydrate from storage once, after the first client render. SSR sees an
     // empty bar (no DOM diff trouble) and the real list paints right after.
     // Also prime the audio path so the WebAudio context gets resumed inside
-    // every user gesture — required for the expired-timer beep to be audible.
+    // every user gesture — required for the expired-timer bell to be audible.
     use_effect(move || {
         client().prime_audio();
         let loaded = crate::timers::load_from_storage();
