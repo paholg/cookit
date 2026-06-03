@@ -1,10 +1,9 @@
 use {
     super::{duration::format_duration, format::format_quantity},
-    crate::timers::{self, RunningTimersCtx},
     api::{RecipeDetail, RecipeStepIngredientDetail},
     dioxus::prelude::*,
     pulldown_cmark::{Options, Parser, html},
-    ui::icons::HourglassIcon,
+    ui::{RunningTimersCtx, icons::HourglassIcon, timers},
 };
 
 #[component]

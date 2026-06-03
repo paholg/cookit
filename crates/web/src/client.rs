@@ -1,4 +1,10 @@
-use {async_trait::async_trait, dioxus::document::eval};
+use {
+    async_trait::async_trait,
+    dioxus::document::eval,
+    gloo_storage::{LocalStorage, Storage},
+    gloo_timers::future::TimeoutFuture,
+    web_time::{SystemTime, UNIX_EPOCH},
+};
 
 #[derive(Debug)]
 pub struct WebClient;
@@ -24,6 +30,37 @@ impl ui::Client for WebClient {
             Ok(true) => Some(Box::new(WebWakeLock)),
             _ => None,
         }
+    }
+
+    fn now_ms(&self) -> i64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
+    }
+
+    fn storage_get(&self, key: &str) -> Option<String> {
+        LocalStorage::raw().get_item(key).ok().flatten()
+    }
+
+    fn storage_set(&self, key: &str, value: &str) {
+        let _ = LocalStorage::raw().set_item(key, value);
+    }
+
+    async fn sleep(&self, ms: u32) {
+        TimeoutFuture::new(ms).await;
+    }
+
+    fn prime_audio(&self) {
+        eval(include_str!("js/audio-primer.js"));
+    }
+
+    fn start_beep(&self) {
+        eval(include_str!("js/beep-on.js"));
+    }
+
+    fn stop_beep(&self) {
+        eval(include_str!("js/beep-off.js"));
     }
 }
 

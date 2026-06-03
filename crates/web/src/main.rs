@@ -1,20 +1,17 @@
 use {
     api::{id::ShoppingListId, login_as_first, logout, routes::me, session::CurrentUser},
     dioxus::prelude::*,
-    ui::{ThemeToggle, navbar::Navbar},
+    ui::{RunningTimersCtx, ThemeToggle, TimerBar, navbar::Navbar},
     views::{
         IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
+        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
     },
 };
 
 mod client;
 // FIXME
 // pub mod local_storage;
-pub mod timers;
 mod views;
-
-pub use timers::RunningTimersCtx;
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
@@ -116,8 +113,8 @@ fn App() -> Element {
     // Also attach the audio primer so the WebAudio context gets resumed inside
     // every user gesture — required for the expired-timer beep to be audible.
     use_effect(move || {
-        document::eval(timers::ATTACH_AUDIO_PRIMER_JS);
-        let loaded = timers::load_from_storage();
+        ui::client().prime_audio();
+        let loaded = ui::timers::load_from_storage();
         if !loaded.is_empty() {
             timers.set(loaded);
         }

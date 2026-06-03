@@ -4,51 +4,13 @@
 //! for that specific timer; siblings stay compact.
 
 use {
-    super::duration::format_countdown,
-    crate::timers::{self, RunningTimersCtx},
+    crate::{
+        client::client,
+        timers::{self, RunningTimersCtx},
+    },
+    api::duration::format_countdown,
     dioxus::prelude::*,
-    gloo_timers::future::TimeoutFuture,
 };
-
-/// Beep keeps running until every expired timer is silenced (or removed).
-/// Reuses the shared `__cookitAudioCtx` that the Start-timer click primed
-/// (see `timers::ENSURE_AUDIO_JS`) — creating a fresh AudioContext here
-/// would be subject to autoplay policy and produce silence in Firefox.
-const BEEP_ON_JS: &str = r#"
-try {
-    const ctx = window.__cookitAudioCtx;
-    if (ctx && !window.__cookitBeep) {
-        if (ctx.state === 'suspended') { ctx.resume(); }
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.frequency.value = 400;
-        gain.gain.value = 0.0;
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        const tick = () => {
-            const t = ctx.currentTime;
-            gain.gain.cancelScheduledValues(t);
-            gain.gain.setValueAtTime(0.25, t + 0.01);
-            gain.gain.setValueAtTime(0.0, t + 0.26);
-            window.__cookitBeepTimeout = setTimeout(tick, 500);
-        };
-        tick();
-        window.__cookitBeep = { osc, gain };
-    }
-} catch (e) {}
-"#;
-
-const BEEP_OFF_JS: &str = r#"
-if (window.__cookitBeepTimeout) {
-    clearTimeout(window.__cookitBeepTimeout);
-    window.__cookitBeepTimeout = null;
-}
-if (window.__cookitBeep) {
-    try { window.__cookitBeep.osc.stop(); } catch (e) {}
-    try { window.__cookitBeep.gain.disconnect(); } catch (e) {}
-    window.__cookitBeep = null;
-}
-"#;
 
 #[component]
 pub fn TimerBar() -> Element {
@@ -56,10 +18,11 @@ pub fn TimerBar() -> Element {
     let mut expanded_ids = use_signal(Vec::<u64>::new);
     let mut tick = use_signal(|| 0u64);
 
-    // 1 Hz re-render. gloo-timers works on wasm where tokio::time doesn't.
+    // 1 Hz re-render. The platform `sleep` works on wasm where `tokio::time`
+    // doesn't.
     use_future(move || async move {
         loop {
-            TimeoutFuture::new(1000).await;
+            client().sleep(1000).await;
             tick.with_mut(|t| *t = t.wrapping_add(1));
         }
     });
@@ -89,7 +52,11 @@ pub fn TimerBar() -> Element {
             .any(|t| !t.silenced && t.is_expired(now));
 
         if ringing_now != was_ringing() {
-            document::eval(if ringing_now { BEEP_ON_JS } else { BEEP_OFF_JS });
+            if ringing_now {
+                client().start_beep();
+            } else {
+                client().stop_beep();
+            }
             was_ringing.set(ringing_now);
         }
     });
