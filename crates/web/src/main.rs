@@ -1,14 +1,14 @@
 use {
     api::{id::ShoppingListId, login_as_first, logout, routes::me, session::CurrentUser},
     dioxus::prelude::*,
-    ui::navbar::Navbar,
+    ui::{ThemeToggle, navbar::Navbar},
     views::{
         IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, ThemeToggle,
-        TimerBar,
+        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew, TimerBar,
     },
 };
 
+mod client;
 // FIXME
 // pub mod local_storage;
 pub mod timers;
@@ -71,6 +71,9 @@ const THEME_SEED_JS: &str = r#"
 "#;
 
 fn main() {
+    // Register the platform client.
+    ui::initialize_client(Box::new(client::WebClient));
+
     #[cfg(not(feature = "server"))]
     {
         // Route wasm Rust panics to `console.error` with a real stack trace.

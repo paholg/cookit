@@ -32,5 +32,3 @@ mod timer_bar;
 pub use timer_bar::TimerBar;
 mod wake_toggle;
 pub use wake_toggle::WakeLockToggle;
-mod theme_toggle;
-pub use theme_toggle::ThemeToggle;
