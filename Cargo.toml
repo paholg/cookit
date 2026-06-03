@@ -5,7 +5,10 @@ members = ["crates/api", "crates/seed", "crates/ui", "crates/web"]
 [workspace.dependencies]
 api = { path = "crates/api", default-features = false }
 async-trait = "0.1"
-diesel = { version = "2.3", features = ["postgres", "postgres_backend", "uuid"] }
+diesel = {
+  version = "2.3",
+  features = ["postgres", "postgres_backend", "uuid"]
+}
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dioxus = { version = "0.7.9" }
 jiff = { version = "0.2", features = ["serde"] }

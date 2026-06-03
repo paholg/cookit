@@ -33,6 +33,7 @@ test-e2e *args:
 up:
     nix flake update
     cargo upgrade -i
+    cd e2e && npm update
 
 fix:
     cargo clippy --workspace --all-targets --all-features --allow-staged --fix

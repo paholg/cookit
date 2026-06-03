@@ -41,6 +41,12 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         --component rust-analyzer --component rust-src \
         --target wasm32-unknown-unknown
 
+# Nightly rustfmt (our rustfmt.toml relies on unstable features). Point the
+# rustfmt/cargo-fmt proxies at nightly so `cargo fmt` uses it by default.
+RUN rustup toolchain install nightly --profile minimal --component rustfmt --no-self-update \
+    && ln -sf "$(rustup which --toolchain nightly rustfmt)" /home/vscode/.cargo/bin/rustfmt \
+    && ln -sf "$(rustup which --toolchain nightly cargo-fmt)" /home/vscode/.cargo/bin/cargo-fmt
+
 
 # tombi
 RUN curl -fsSL https://tombi-toml.github.io/tombi/install.sh | sh
