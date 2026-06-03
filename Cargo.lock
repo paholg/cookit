@@ -4547,17 +4547,14 @@ dependencies = [
 name = "web"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "api",
  "async-trait",
  "console_error_panic_hook",
  "dioxus",
  "gloo-storage",
  "gloo-timers 0.4.0",
- "serde",
  "serde_json",
  "ui",
- "uuid",
  "web-time",
 ]
 

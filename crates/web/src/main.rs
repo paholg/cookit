@@ -1,6 +1,4 @@
 mod client;
-// FIXME
-// pub mod local_storage;
 
 fn main() {
     // Register the platform client. Everything else lives in `ui`.

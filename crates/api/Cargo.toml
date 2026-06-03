@@ -30,10 +30,12 @@ uuid.workspace = true
 [dev-dependencies]
 tokio.workspace = true
 
+# uuid needs an explicit randomness backend when compiled for wasm.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { workspace = true, features = ["js"] }
+
 [features]
 default = ["server", "web"]
-# Exposes the unauthenticated /api/dev/* test-data endpoints. Off by default so
-# they never ship in a production build; enabled for the e2e suite.
 development = []
 server = [
   "dep:axum",
