@@ -1,10 +1,12 @@
 pub mod client;
 pub mod client_only;
+pub mod format;
 pub mod icons;
 pub mod navbar;
 pub mod theme_toggle;
 pub mod timer_bar;
 pub mod timers;
+pub mod views;
 pub mod wake_toggle;
 
 pub use {
@@ -13,5 +15,6 @@ pub use {
     theme_toggle::ThemeToggle,
     timer_bar::TimerBar,
     timers::RunningTimersCtx,
+    views::{IngredientList, RecipeView, ShoppingListDetail},
     wake_toggle::WakeLockToggle,
 };

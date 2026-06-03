@@ -1,9 +1,9 @@
 use {
-    crate::{Route, views::RecipeView},
+    crate::Route,
     api::{create_shopping_list_from_meal, get_meal},
     dioxus::prelude::*,
     ui::{
-        WakeLockToggle,
+        RecipeView, WakeLockToggle,
         icons::{EditIcon, ListIcon},
     },
 };

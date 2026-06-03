@@ -1,9 +1,8 @@
 use {
-    super::{duration::format_duration, format::format_quantity},
-    api::{RecipeDetail, RecipeStepIngredientDetail},
+    crate::{RunningTimersCtx, format::format_quantity, icons::HourglassIcon, timers},
+    api::{RecipeDetail, RecipeStepIngredientDetail, duration::format_duration},
     dioxus::prelude::*,
     pulldown_cmark::{Options, Parser, html},
-    ui::{RunningTimersCtx, icons::HourglassIcon, timers},
 };
 
 #[component]

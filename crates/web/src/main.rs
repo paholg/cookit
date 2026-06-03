@@ -1,10 +1,12 @@
 use {
     api::{id::ShoppingListId, login_as_first, logout, routes::me, session::CurrentUser},
     dioxus::prelude::*,
-    ui::{RunningTimersCtx, ThemeToggle, TimerBar, navbar::Navbar},
+    ui::{
+        IngredientList, RunningTimersCtx, ShoppingListDetail, ThemeToggle, TimerBar, navbar::Navbar,
+    },
     views::{
-        IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-        RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
+        MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew,
+        ShoppingListList, ShoppingListNew,
     },
 };
 

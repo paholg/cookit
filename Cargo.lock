@@ -4243,8 +4243,10 @@ dependencies = [
  "api",
  "async-trait",
  "dioxus",
+ "pulldown-cmark",
  "serde",
  "serde_json",
+ "strum",
 ]
 
 [[package]]
@@ -4553,7 +4555,6 @@ dependencies = [
  "gloo-storage",
  "gloo-timers 0.4.0",
  "jiff",
- "pulldown-cmark",
  "serde",
  "serde_json",
  "strum",

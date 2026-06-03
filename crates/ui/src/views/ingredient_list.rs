@@ -1,4 +1,5 @@
 use {
+    crate::{ClientOnly, client::client},
     api::{
         Ingredient, IngredientUpdate,
         grocery_section::GrocerySection,
@@ -8,7 +9,6 @@ use {
     },
     dioxus::prelude::*,
     std::str::FromStr,
-    ui::ClientOnly,
 };
 
 #[derive(Clone, PartialEq)]
@@ -67,7 +67,7 @@ impl RowDraft {
 }
 
 async fn autosave_delay() {
-    gloo_timers::future::TimeoutFuture::new(500).await;
+    client().sleep(500).await;
 }
 
 fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
