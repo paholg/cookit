@@ -1,8 +1,7 @@
 use {
-    crate::Route,
+    crate::{Route, client::client, icons::TrashIcon},
     api::{ShoppingList, delete_shopping_list, list_shopping_lists},
     dioxus::prelude::*,
-    ui::icons::TrashIcon,
 };
 
 #[component]
@@ -58,12 +57,9 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
                     title: "Delete shopping list",
                     disabled: deleting(),
                     onclick: move |_| async move {
-                        let confirmed = document::eval(
-                                "return confirm('Delete this shopping list? This cannot be undone.')",
-                            )
-                            .join::<bool>()
-                            .await
-                            .unwrap_or(false);
+                        let confirmed = client()
+                            .confirm("Delete this shopping list? This cannot be undone.")
+                            .await;
                         if !confirmed {
                             return;
                         }

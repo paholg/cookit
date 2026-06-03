@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 api = { workspace = true }
 async-trait = { workspace = true }
-dioxus = { workspace = true }
+dioxus = { workspace = true, features = ["router"] }
 pulldown-cmark = { version = "0.13", default-features = false, features = [
   "html"
 ] }

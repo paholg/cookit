@@ -1,11 +1,11 @@
 use {
-    crate::Route,
-    api::{create_shopping_list_from_meal, get_meal},
-    dioxus::prelude::*,
-    ui::{
-        RecipeView, WakeLockToggle,
+    crate::{
+        RecipeView, Route, WakeLockToggle,
+        client::client,
         icons::{EditIcon, ListIcon},
     },
+    api::{create_shopping_list_from_meal, get_meal},
+    dioxus::prelude::*,
 };
 
 #[component]
@@ -19,18 +19,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
     use_effect(move || {
         let ready = meal.read().as_ref().map(|r| r.is_ok()).unwrap_or(false);
         if ready {
-            document::eval(
-                r#"
-                requestAnimationFrame(() => {
-                    const h = window.location.hash;
-                    if (!h) return;
-                    try {
-                        const el = document.querySelector(h);
-                        if (el) el.scrollIntoView({ block: 'start' });
-                    } catch (e) {}
-                });
-                "#,
-            );
+            client().scroll_to_hash();
         }
     });
 

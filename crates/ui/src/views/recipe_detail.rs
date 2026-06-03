@@ -1,8 +1,7 @@
 use {
-    crate::{CurrentUserCtx, Route},
+    crate::{CurrentUserCtx, RecipeView, Route, WakeLockToggle, icons::EditIcon},
     api::get_recipe,
     dioxus::prelude::*,
-    ui::{RecipeView, WakeLockToggle, icons::EditIcon},
 };
 
 #[component]

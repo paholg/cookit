@@ -1,8 +1,7 @@
 use {
-    crate::Route,
+    crate::{ClientOnly, Route},
     api::{create_shopping_list, create_shopping_list_from_meal, list_meals},
     dioxus::prelude::*,
-    ui::ClientOnly,
 };
 
 #[component]

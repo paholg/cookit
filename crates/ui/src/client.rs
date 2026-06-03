@@ -37,6 +37,25 @@ pub trait Client: Send + Sync + std::fmt::Debug {
 
     /// Stop the timer-expiry beep. Idempotent.
     fn stop_beep(&self);
+
+    /// Ask the user to confirm a destructive action, returning `true` if they
+    /// accept. Used to guard deletes.
+    async fn confirm(&self, message: &str) -> bool;
+
+    /// Move keyboard focus to the element tagged with the given focus key.
+    /// Deferred to the next frame so it works for elements added in the same
+    /// tick. No-op on platforms without a focusable view.
+    fn focus_field(&self, key: &str);
+
+    /// Resize the autogrow textarea tagged with the given key to fit its
+    /// content. A shim for browsers without CSS `field-sizing: content`; a
+    /// no-op where the platform sizes inputs itself.
+    fn autogrow_textarea(&self, key: &str);
+
+    /// Scroll the element named by the current location hash into view, if any.
+    /// Lets a `#step-N` deep link land on the right step. No-op where there's
+    /// no URL hash.
+    fn scroll_to_hash(&self);
 }
 
 /// A held screen wake lock. Dropping it releases the lock.

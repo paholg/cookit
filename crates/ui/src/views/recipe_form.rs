@@ -1,8 +1,12 @@
 use {
-    super::duration::{format_duration, parse_duration},
-    crate::Route,
+    crate::{
+        ClientOnly, Route,
+        client::client,
+        icons::{InsertAboveIcon, TrashIcon},
+    },
     api::{
         RecipeBuilder, RecipeStepBuilder, RecipeStepIngredientBuilder, delete_recipe,
+        duration::{format_duration, parse_duration},
         id::{DraftId, RecipeStepDraftId, RecipeStepIngredientDraftId},
         list_ingredients,
         unit::{Mass, Volume},
@@ -11,10 +15,6 @@ use {
     dioxus::prelude::*,
     std::collections::HashMap,
     strum::IntoEnumIterator,
-    ui::{
-        ClientOnly,
-        icons::{InsertAboveIcon, TrashIcon},
-    },
 };
 
 fn step_key(id: RecipeStepDraftId) -> String {
@@ -66,33 +66,14 @@ fn push_new_ingredient(
     Some(id)
 }
 
-/// Focus the element with the matching `data-focus-key`. Deferred via
-/// `requestAnimationFrame` so it works for elements added in the same tick.
+/// Focus the element with the matching `data-focus-key`.
 fn focus_field(key: String) {
-    spawn(async move {
-        let safe = key.replace('"', "");
-        let _ = document::eval(&format!(
-            "requestAnimationFrame(() => {{ const el = \
-             document.querySelector('[data-focus-key=\"{safe}\"]'); if (el) el.focus(); }})"
-        ))
-        .await;
-    });
+    client().focus_field(&key);
 }
 
-// Firefox <152 doesn't support CSS `field-sizing: content`, so size the textarea
-// from JS. Once Firefox 152+ is widespread, the CSS rule alone is sufficient and
-// this can be removed. Queries `data-autogrow` (separate from `data-focus-key`)
-// so the focus target and the autogrow target can be different elements.
+/// Resize the matching `data-autogrow` textarea to fit its content.
 fn autogrow_textarea(key: String) {
-    spawn(async move {
-        let safe = key.replace('"', "");
-        let _ = document::eval(&format!(
-            "requestAnimationFrame(() => {{ const el = \
-             document.querySelector('[data-autogrow=\"{safe}\"]'); if (el) {{ el.style.height = \
-             'auto'; el.style.height = el.scrollHeight + 'px'; }} }})"
-        ))
-        .await;
-    });
+    client().autogrow_textarea(&key);
 }
 
 #[derive(Clone, PartialEq)]
@@ -206,12 +187,9 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
                         if deleting() { return; }
                         let recipe_key = recipe_key.clone();
                         spawn(async move {
-                            let confirmed = document::eval(
-                                "return confirm('Delete this recipe? This cannot be undone.')",
-                            )
-                                .join::<bool>()
-                                .await
-                                .unwrap_or(false);
+                            let confirmed = client()
+                                .confirm("Delete this recipe? This cannot be undone.")
+                                .await;
                             if !confirmed { return; }
 
                             deleting.set(true);

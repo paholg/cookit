@@ -1,5 +1,5 @@
 use {
-    crate::Route,
+    crate::{ClientOnly, Route, client::client, icons::TrashIcon},
     api::{
         MealBuilder, MealRecipeBuilder, Recipe, delete_meal,
         id::{DraftId, MealRecipeDraftId},
@@ -7,7 +7,6 @@ use {
     },
     dioxus::prelude::*,
     std::collections::HashSet,
-    ui::{ClientOnly, icons::TrashIcon},
 };
 
 fn row_key(id: MealRecipeDraftId) -> String {
@@ -125,12 +124,9 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
                         if deleting() { return; }
                         let meal_key = meal_key.clone();
                         spawn(async move {
-                            let confirmed = document::eval(
-                                "return confirm('Delete this meal? This cannot be undone.')",
-                            )
-                                .join::<bool>()
-                                .await
-                                .unwrap_or(false);
+                            let confirmed = client()
+                                .confirm("Delete this meal? This cannot be undone.")
+                                .await;
                             if !confirmed { return; }
 
                             deleting.set(true);
