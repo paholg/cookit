@@ -11,7 +11,7 @@
   --primary: var(--primary-600);
   --primary-hover: var(--primary-800);
   --on-primary: var(--text-50);
-  --accent: var(--accent-600);
+  --accent: var(--primary-800);
   --alert: var(--secondary-600);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 

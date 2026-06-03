@@ -45,10 +45,10 @@ impl<T: TablePrefix> Serialize for Id<T> {
 
 impl<'de, T: TablePrefix> Deserialize<'de> for Id<T> {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let s = <&str>::deserialize(d)?;
+        let s = String::deserialize(d)?;
 
         s.parse()
-            .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &"a uuid with a prefix"))
+            .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(&s), &"a uuid with a prefix"))
     }
 }
 
