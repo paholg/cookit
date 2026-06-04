@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+# Regenerates crates/ui/assets/color.css from radix-ui's color palettes.
+#
+#   script/download-colors slate crimson blue teal amber
+#
+# For each palette we pull both the light and dark CSS from the radix CDN and
+# concatenate them.
+
+require "open-uri"
+
+CDN = "https://cdn.jsdelivr.net/npm/@radix-ui/colors@latest"
+OUT = File.expand_path("../crates/ui/assets/color.css", __dir__)
+
+HEADER = <<~CSS
+  /*
+    DO NOT EDIT
+
+    This is a generated file. See script/download-colors.
+  */
+CSS
+
+def fetch(name)
+  URI.open("#{CDN}/#{name}.css", &:read)
+rescue OpenURI::HTTPError => e
+  abort "error: failed to fetch #{name}.css from radix CDN: #{e.message}"
+end
+
+# Radix scopes its dark palette to `.dark, .dark-theme` classes, but we drive
+# the theme off a `data-theme` attribute on <html>. We rewrite the dark selector
+# to match. Light stays on `:root` (radix's default), which the rewritten
+# `:root[data-theme="dark"]` overrides on specificity.
+# `\s*` rather than a literal space so this matches whether the selector is on
+# one line (as the CDN serves it) or split across two by a formatter.
+DARK_SELECTOR = /^([ \t]*)\.dark,\s*\.dark-theme\s*\{/.freeze
+
+abort "usage: script/download-colors <palette>..." if ARGV.empty?
+
+css = +HEADER
+ARGV.each do |color|
+  warn "fetching #{color}..."
+  css << "\n\n" << fetch(color) << "\n\n" << fetch("#{color}-dark")
+end
+
+# Assert we rewrote something: if radix ever changes their selector format the
+# rewrite silently no-ops and dark mode breaks, so fail loudly instead.
+count = css.scan(DARK_SELECTOR).size
+
+css.gsub!(DARK_SELECTOR, '\1:root[data-theme="dark"] {')
+
+File.write(OUT, css)
+warn "wrote #{count} dark selector(s) to #{OUT}"
+
+abort "error: no '.dark, .dark-theme' selectors to rewrite — has radix's CSS format changed?" if count.zero?

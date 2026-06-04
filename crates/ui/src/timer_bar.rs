@@ -116,32 +116,29 @@ pub fn TimerBar() -> Element {
                                             if ringing {
                                                 button {
                                                     r#type: "button",
-                                                    class: "timer-action silence",
+                                                    class: "primary",
                                                     onclick: move |_| silence(&mut timers_ctx, id),
                                                     "Silence"
                                                 }
                                             }
                                             button {
                                                 r#type: "button",
-                                                class: "timer-action",
                                                 onclick: move |_| add_seconds(&mut timers_ctx, id, 60),
                                                 "+1m"
                                             }
                                             button {
                                                 r#type: "button",
-                                                class: "timer-action",
                                                 onclick: move |_| add_seconds(&mut timers_ctx, id, 300),
                                                 "+5m"
                                             }
                                             button {
                                                 r#type: "button",
-                                                class: "timer-action",
                                                 onclick: move |_| add_seconds(&mut timers_ctx, id, 600),
                                                 "+10m"
                                             }
                                             button {
                                                 r#type: "button",
-                                                class: "timer-action dismiss",
+                                                class: "dismiss",
                                                 onclick: move |_| {
                                                     dismiss(&mut timers_ctx, id);
                                                     // Don't leave a stale id in the expanded set.

@@ -6,6 +6,9 @@ serve *args:
 seed:
     cargo run --bin seed
 
+download-colors:
+    ./script/download-colors mauve cyan mint amber ruby
+
 db-setup:
     diesel setup
 

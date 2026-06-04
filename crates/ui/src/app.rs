@@ -114,7 +114,7 @@ fn AppNavbar() -> Element {
 
     rsx! {
         Navbar {
-            Link { to: Route::RecipeList {}, "CookIt" }
+            Link { to: Route::RecipeList {}, "CookIt!" }
             Link { to: Route::RecipeList {}, "Recipes" }
             // Meals are available to everyone; unauthenticated users get a
             // localStorage-backed view via `api::meals`.

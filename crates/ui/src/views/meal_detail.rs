@@ -105,7 +105,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                                 button {
                                     key: "{mr.recipe.recipe.id}",
                                     r#type: "button",
-                                    class: if i == current { "tab active" } else { "tab" },
+                                    class: if i == current { "primary" } else { "" },
                                     onclick: {
                                         let recipe_slug = mr.recipe.recipe.slug.clone();
                                         let meal_key = meal_key.clone();

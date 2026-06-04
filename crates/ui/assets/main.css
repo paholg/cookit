@@ -1,33 +1,76 @@
 :root {
   color-scheme: light dark;
 
-  --bg: var(--background-50);
-  --fg: var(--text-950);
-  --muted: var(--text-700);
-  --surface: var(--background-100);
-  --surface-2: var(--background-200);
-  --border: var(--text-300);
-  --border-strong: var(--text-400);
-  --primary: var(--primary-600);
-  --primary-hover: var(--primary-800);
-  --on-primary: var(--text-50);
-  --accent: var(--primary-800);
-  --alert: var(--secondary-600);
+  /*
+    We use radix-ui colors (the raw scales live in color.css). See their
+    guidance on what each step in a scale means:
+    https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
+  */
+
+  /* Backgrounds  */
+  --bg: var(--mauve-1);
+  --bg-subtle: var(--mauve-2);
+  --bg-el: var(--mauve-3);
+  --bg-el-hover: var(--mauve-4);
+  --bg-el-active: var(--mauve-5);
+
+  /* Borders  */
+  --border-subtle: var(--mauve-6);
+  --border-interactive-subtle: var(--mauve-7);
+  --border-interactive-strong: var(--mauve-8);
+
+  /* Text  */
+  --fg-muted: var(--mauve-11);
+  --fg: var(--mauve-12);
+
+  /* Primary actions */
+  --primary: var(--cyan-9);
+  --primary-hover: var(--cyan-10);
+  --on-primary: #fff;
+
+  /* Secondary accent */
+  --accent-bg: var(--mint-3);
+  --accent-bg-hover: var(--mint-4);
+  --accent-bg-active: var(--mint-5);
+  --accent-border: var(--mint-7);
+  --accent: var(--mint-9);
+  --accent-hover: var(--mint-10);
+  --accent-text: var(--mint-11);
+  --on-accent: #000;
+
+  /* Alerts */
+  --alert: var(--ruby-11);
+  --alert-solid: var(--ruby-9);
+  --alert-bg: var(--ruby-5);
+
+  /* Keep-awake bulb */
+  --lightbulb: var(--amber-9);
+  --lightbulb-hover: var(--amber-10);
+  --lightbulb-text: var(--amber-11);
+
+  /* Keyboard focus ring */
+  --focus-ring: var(--cyan-8);
+
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.18);
+  --shadow-bar: 0 -2px 6px rgba(0, 0, 0, 0.08);
 
   --radius: 6px;
   --gap: 0.75rem;
   --tap: 44px;
+  --transition: 120ms ease;
+
+  /* Press feedback for solid buttons */
+  --press-filter: brightness(0.92) saturate(1.1);
 }
 
-/* Keep native controls (scrollbars, form widgets) in step with the chosen
-   theme, since it's driven by an attribute rather than the OS setting. */
 :root[data-theme="light"] {
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --press-filter: brightness(1.08);
 }
 
 * {
@@ -40,7 +83,10 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 16px;
   line-height: 1.4;
 }
@@ -64,7 +110,7 @@ h2 {
 h3 {
   font-size: 1rem;
   margin: 0.75rem 0 0.25rem;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 a {
@@ -72,8 +118,29 @@ a {
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
+/* ---------- Interaction primitives ---------- */
+
+/* One keyboard-focus treatment for everything interactive. Pointer clicks
+   don't trigger :focus-visible, so the ring stays out of the way for mouse and
+   touch users and only shows up for keyboard navigation. */
+a:focus-visible,
+button:focus-visible,
+.button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0ms !important;
+  }
 }
 
 .page-header {
@@ -85,13 +152,25 @@ a:hover {
   flex-wrap: wrap;
 }
 
+/* ---------- Card surface ----------
+   One raised-panel look (subtle fill + border + radius + shadow), declared once
+   and shared by every boxed surface. Each member keeps only its own
+   padding/layout; the popovers override the shadow/border for a lifted look. */
+.empty,
+.error,
+ul.recipe-list li,
+fieldset,
+.ingredient-row-card,
+.shopping-row {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-interactive-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
 .empty,
 .error {
   padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
 .error {
@@ -106,11 +185,18 @@ ul.recipe-list {
 }
 
 ul.recipe-list li {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   margin-bottom: 0.5rem;
-  box-shadow: var(--shadow);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition);
+}
+
+/* The whole row is a link; give it a hover lift like any other control. */
+@media (hover: hover) {
+  ul.recipe-list li:hover {
+    background: var(--bg-el);
+    border-color: var(--border-interactive-strong);
+  }
 }
 
 ul.recipe-list li a {
@@ -126,7 +212,7 @@ ul.recipe-list li .meal-row-main {
   align-items: stretch;
 }
 
-ul.recipe-list li .meal-row-main>a {
+ul.recipe-list li .meal-row-main > a {
   flex: 1;
 }
 
@@ -137,29 +223,18 @@ ul.recipe-list li .meal-row-main .row-actions {
   padding-right: 0.75rem;
 }
 
-ul.recipe-list li .meal-row-main .row-actions>a,
-ul.recipe-list li .meal-row-main .row-actions>button {
+ul.recipe-list li .meal-row-main .row-actions > a,
+ul.recipe-list li .meal-row-main .row-actions > button {
   display: inline-flex;
   padding: 0.4rem 0.8rem;
   min-height: 36px;
   font-weight: normal;
 }
 
-ul.recipe-list li>.row-error {
-  margin: 0 1rem 0.75rem;
-}
-
-.hero {
-  text-align: center;
-  padding: 3rem 1rem;
-}
-
-.hero p {
-  color: var(--muted);
-  margin-bottom: 1.5rem;
-}
-
-/* Default button is "secondary" */
+/* Buttons. The bare button is a neutral "soft" control, and .secondary shares
+   that neutral tone (it's a semantic marker, not a colored variant). .primary
+   is the flat cyan accent: transparent until you hover it. Hover/active step
+   the surface one tint deeper, guarded so they don't stick after a touch tap. */
 button,
 .button {
   display: inline-flex;
@@ -167,13 +242,32 @@ button,
   justify-content: center;
   min-height: var(--tap);
   padding: 0.6rem 1rem;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-interactive-subtle);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--bg-el);
   color: var(--fg);
   font: inherit;
   cursor: pointer;
   text-decoration: none;
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  .button:hover {
+    background: var(--bg-el-hover);
+    text-decoration: none;
+  }
+}
+
+/* Neutral/soft press: one surface step deeper (slate 3 → 4 → 5), like radix's
+   soft variants. The solid .primary presses with a filter instead — see below. */
+button:not(:disabled):active,
+.button:active {
+  background: var(--bg-el-active);
 }
 
 button.primary,
@@ -184,15 +278,25 @@ button.primary,
   font-weight: 500;
 }
 
-button.primary:hover,
-.button.primary:hover,
-button.primary:active,
+@media (hover: hover) {
+  button.primary:not(:disabled):hover,
+  .button.primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+  }
+}
+
+/* Solid press, as radix does it: keep the hover fill and layer on the
+   theme-aware press filter (darken+saturate in light, brighten in dark). */
+button.primary:not(:disabled):active,
 .button.primary:active {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
-  text-decoration: none;
+  filter: var(--press-filter);
 }
 
+/* .secondary intentionally adds no color — it falls through to the neutral
+   button styling above. The --accent-* (mint) ramp is reserved for accents. */
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -203,29 +307,45 @@ textarea,
 select {
   min-height: var(--tap);
   padding: 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-interactive-subtle);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--bg-subtle);
   color: var(--fg);
   font: inherit;
+  transition:
+    border-color var(--transition),
+    outline-color var(--transition);
 }
 
 select {
   cursor: pointer;
 }
 
+@media (hover: hover) {
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: var(--border-interactive-strong);
+  }
+}
+
+/* Text fields show focus even on click — you want to see which field is active
+   — so :focus, not :focus-visible. The border takes the accent; the softer
+   focus-ring is drawn inside the edge so the layout doesn't shift. */
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -1px;
+  border-color: var(--primary);
 }
 
 input:disabled,
 textarea:disabled,
 select:disabled {
-  background: var(--surface-2);
-  color: var(--muted);
+  background: var(--bg-el);
+  color: var(--fg-muted);
+  cursor: not-allowed;
 }
 
 button.icon-button {
@@ -234,21 +354,19 @@ button.icon-button {
   padding: 0;
   border-color: transparent;
   background: transparent;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 @media (hover: hover) {
-  button.icon-button:hover {
+  button.icon-button:not(:disabled):hover {
     color: var(--primary);
-    border-color: var(--border-strong);
-    background: var(--surface);
+    background: var(--bg-el-hover);
   }
 }
 
-button.icon-button:active {
+button.icon-button:not(:disabled):active {
   color: var(--primary);
-  border-color: var(--border-strong);
-  background: var(--surface);
+  background: var(--bg-el-active);
 }
 
 button.icon-button svg {
@@ -262,30 +380,30 @@ button.icon-button svg {
 }
 
 button.icon-button.wake-toggle.on {
-  color: var(--accent-600);
+  color: var(--lightbulb-text);
 }
 
 button.icon-button.wake-toggle.on svg path {
-  fill: var(--accent-300);
+  fill: var(--lightbulb);
 }
 
 @media (hover: hover) {
   button.icon-button.wake-toggle:hover {
-    color: var(--accent-500);
+    color: var(--lightbulb);
   }
 
   button.icon-button.wake-toggle.on:hover {
-    color: var(--accent-800);
+    color: var(--lightbulb-text);
   }
 }
 
 button.icon-button.trash {
-  color: var(--secondary-300);
+  color: var(--alert-solid);
 }
 
 @media (hover: hover) {
   button.icon-button.trash:hover {
-    color: var(--secondary-500);
+    color: var(--alert);
   }
 }
 
@@ -312,7 +430,7 @@ button.icon-button.trash:active {
 :root[data-theme="dark"] {
   @media (hover: hover) {
     .icon-button.theme-toggle:hover {
-      color: var(--accent-700);
+      color: var(--lightbulb);
     }
   }
 }
@@ -336,7 +454,7 @@ form.app-form label {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 form.app-form textarea {
@@ -347,23 +465,21 @@ form.app-form textarea {
   box-sizing: border-box;
 }
 
-fieldset.step {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+/* Every fieldset is a labelled grouping: card surface (above) + stacked layout.
+   The recipe-step fieldset adds nothing but its child hooks below. */
+fieldset {
   padding: 0.75rem;
-  background: var(--surface);
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  box-shadow: var(--shadow);
 }
 
-fieldset.step legend {
+legend {
   padding: 0 0.5rem;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
-fieldset.step legend.step-legend {
+legend.step-legend {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,7 +488,7 @@ fieldset.step legend.step-legend {
   box-sizing: border-box;
 }
 
-fieldset.step .step-actions {
+.step-actions {
   display: flex;
   gap: 0.25rem;
 }
@@ -400,7 +516,7 @@ fieldset.step .step-actions {
 }
 
 .ingredient-status.existing {
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .ingredient-status.new {
@@ -412,7 +528,7 @@ fieldset.step .step-actions {
   position: relative;
 }
 
-.autocomplete>input {
+.autocomplete > input {
   width: 100%;
 }
 
@@ -425,10 +541,10 @@ fieldset.step .step-actions {
   margin: 2px 0 0;
   padding: 0;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-interactive-strong);
   border-radius: var(--radius);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-pop);
   max-height: 240px;
   overflow-y: auto;
 }
@@ -438,89 +554,96 @@ fieldset.step .step-actions {
   cursor: pointer;
   line-height: 1.3;
   color: var(--fg);
+  transition: background-color var(--transition);
 }
 
+@media (hover: hover) {
+  .autocomplete-popup li:hover {
+    background: var(--bg-el);
+  }
+}
+
+/* The keyboard-highlighted item — one surface step stronger than hover. */
 .autocomplete-popup li.active {
-  background: var(--surface-2);
+  background: var(--bg-el-active);
 }
 
 .kbd-hint {
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 0.85em;
   margin-left: 0.4rem;
   font-weight: normal;
 }
 
 .recipe .source {
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 0.9rem;
   margin-bottom: 1rem;
 }
 
-.recipe table.recipe-steps {
+.recipe-steps {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.recipe table.recipe-steps tr:nth-child(odd) {
-  background: var(--surface);
+.recipe-steps tr:nth-child(odd) {
+  background: var(--bg-subtle);
 }
 
-.recipe table.recipe-steps tr:nth-child(even) {
-  background: var(--surface-2);
+.recipe-steps tr:nth-child(even) {
+  background: var(--bg-el);
 }
 
-.recipe table.recipe-steps td {
+.recipe-steps td {
   padding: 0.75rem;
   vertical-align: top;
 }
 
-.recipe table.recipe-steps td.instruction {
+.recipe-steps td.instruction {
   width: 60%;
 }
 
-.recipe table.recipe-steps td.ingredients {
+.recipe-steps td.ingredients {
   width: 40%;
-  color: var(--muted);
-  border-left: 1px solid var(--border);
+  color: var(--fg-muted);
   font-size: 0.95rem;
 }
 
-.recipe table.recipe-steps td.ingredients .ingredient-block+.ingredient-block {
+.recipe-steps td.ingredients .ingredient-block + .ingredient-block {
   margin-top: 0.5rem;
 }
 
-.recipe table.recipe-steps td.instruction .instruction-block> :first-child {
+.recipe-steps td.instruction .instruction-block > :first-child {
   margin-top: 0;
 }
 
-.recipe table.recipe-steps td.instruction .instruction-block> :last-child {
+.recipe-steps td.instruction .instruction-block > :last-child {
   margin-bottom: 0;
 }
 
-.recipe table.recipe-steps td.instruction .instruction-block+.instruction-block {
+.recipe-steps td.instruction .instruction-block + .instruction-block {
   margin-top: 0.5rem;
 }
 
-.recipe table.recipe-steps td.instruction p {
+.recipe-steps td.instruction p {
   margin: 0.5rem 0;
 }
 
-.recipe table.recipe-steps td.instruction ul,
-.recipe table.recipe-steps td.instruction ol {
+.recipe-steps td.instruction ul,
+.recipe-steps td.instruction ol {
   margin: 0.5rem 0;
   padding-left: 1.25rem;
 }
 
-.recipe table.recipe-steps td.instruction code {
+.recipe-steps td.instruction code {
   background: var(--bg);
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
   font-size: 0.9em;
 }
 
-.recipe table.recipe-steps td.instruction pre {
+.recipe-steps td.instruction pre {
   background: var(--bg);
   padding: 0.5rem;
   border-radius: var(--radius);
@@ -528,17 +651,16 @@ fieldset.step .step-actions {
 }
 
 @media (max-width: 600px) {
-
-  .recipe table.recipe-steps,
-  .recipe table.recipe-steps tbody,
-  .recipe table.recipe-steps tr,
-  .recipe table.recipe-steps td {
+  .recipe-steps,
+  .recipe-steps tbody,
+  .recipe-steps tr,
+  .recipe-steps td {
     width: 100%;
   }
 
-  .recipe table.recipe-steps td.ingredients {
+  .recipe-steps td.ingredients {
     border-left: none;
-    border-top: 1px dashed var(--border);
+    border-top: 1px dashed var(--border-subtle);
     padding-top: 0.5rem;
   }
 }
@@ -559,22 +681,11 @@ fieldset.step .step-actions {
   padding-bottom: 0.25rem;
 }
 
-.meal-tabs .tab {
-  min-height: var(--tap);
+/* Tabs are plain buttons; they inherit the neutral control look and the
+   active one carries `.primary`. Only the tab-specific size delta lives here. */
+.meal-tabs button {
   padding: 0.5rem 0.9rem;
-  background: var(--surface);
-  color: var(--fg);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  cursor: pointer;
   white-space: nowrap;
-  font: inherit;
-}
-
-.meal-tabs .tab.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
 }
 
 .meal-tabs .tab-mult {
@@ -599,11 +710,7 @@ ul.ingredient-rows {
 }
 
 .ingredient-row-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   padding: 0.75rem;
-  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -631,7 +738,7 @@ ul.ingredient-rows {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .ingredient-row-grid .checkbox-label {
@@ -690,10 +797,10 @@ ul.ingredient-rows {
 
 .shopping-count {
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 0.95rem;
   padding: 0.25rem 0.6rem;
-  background: var(--surface-2);
+  background: var(--bg-el);
   border-radius: 999px;
 }
 
@@ -712,7 +819,7 @@ ul.ingredient-rows {
   padding: 0.5rem 0.25rem;
   margin: 0;
   background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .shopping-section-header h2 {
@@ -720,13 +827,13 @@ ul.ingredient-rows {
   font-size: 1.05rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .shopping-section-count {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 ul.shopping-items {
@@ -738,21 +845,17 @@ ul.shopping-items {
 .shopping-row {
   display: flex;
   align-items: stretch;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   margin-top: 0.4rem;
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
 .shopping-row.checked {
-  background: var(--surface-2);
+  background: var(--bg-el);
 }
 
 .shopping-row.checked .shopping-row-text {
   text-decoration: line-through;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .shopping-row-tap {
@@ -768,6 +871,13 @@ ul.shopping-items {
   /* Prevent iOS double-tap zoom turning the toggle into a slow gesture. */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition);
+}
+
+@media (hover: hover) {
+  .shopping-row-tap:hover {
+    background: var(--bg-el);
+  }
 }
 
 .shopping-checkbox {
@@ -795,7 +905,7 @@ ul.shopping-items {
 }
 
 .shopping-row.checked .shopping-row-qty {
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .shopping-row-name {
@@ -809,16 +919,19 @@ ul.shopping-items {
   width: 44px;
   min-height: 56px;
   border: none;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-subtle);
   border-radius: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 1.1rem;
+  transition:
+    background-color var(--transition),
+    color var(--transition);
 }
 
 .shopping-row-delete:hover,
 .shopping-row-delete:active {
-  background: var(--surface-2);
+  background: var(--bg-el-hover);
   color: var(--alert);
 }
 
@@ -830,7 +943,7 @@ ul.shopping-items {
   margin: 1rem -1rem 0;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
   background: var(--bg);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .shopping-add-toggle {
@@ -869,7 +982,7 @@ form.shopping-add {
     margin-left: 0;
     margin-right: 0;
     border-radius: var(--radius);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-interactive-subtle);
   }
 
   .shopping-add-actions button {
@@ -900,24 +1013,20 @@ form.shopping-add {
 
 /* ----- Start-timer button on a recipe step ----- */
 
+/* A plain button (neutral look inherited); only the compact size and the
+   on-hover accent color are step-timer specific. */
 .step-timer-start {
-  display: inline-flex;
-  align-items: center;
   gap: 0.4rem;
   margin-top: 0.5rem;
   padding: 0.35rem 0.6rem;
   min-height: 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--fg);
-  cursor: pointer;
   font-variant-numeric: tabular-nums;
 }
 
-.step-timer-start:hover {
-  color: var(--primary);
-  border-color: var(--border-strong);
+@media (hover: hover) {
+  .step-timer-start:hover {
+    color: var(--primary);
+  }
 }
 
 .step-timer-duration {
@@ -931,9 +1040,9 @@ form.shopping-add {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border-strong);
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-interactive-strong);
+  box-shadow: var(--shadow-bar);
   z-index: 100;
   padding: 0.3rem 0.5rem;
   /* `visible` so an open timer's popover can float above the bar. */
@@ -962,8 +1071,15 @@ main#content {
   position: relative;
   padding: 0.2rem 0.5rem;
   border-radius: var(--radius);
-  background: var(--surface-2);
+  background: var(--bg-el);
   cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+@media (hover: hover) {
+  .timer-row:not(.ringing):hover {
+    background: var(--bg-el-hover);
+  }
 }
 
 .timer-row-main {
@@ -982,17 +1098,17 @@ main#content {
   gap: 0.45rem;
   min-width: 11rem;
   padding: 0.55rem 0.65rem;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-interactive-strong);
   border-radius: var(--radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-pop);
   z-index: 101;
   white-space: nowrap;
   color: var(--fg);
 }
 
 .timer-popover-step {
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 0.85rem;
 }
 
@@ -1005,7 +1121,7 @@ main#content {
 }
 
 .timer-step {
-  color: var(--muted);
+  color: var(--fg-muted);
   font-size: 0.85rem;
   white-space: nowrap;
 }
@@ -1021,21 +1137,18 @@ main#content {
   color: var(--alert);
 }
 
-/* Only pulse while the timer is actively alerting. After Silence the row
-   stays red (it's still overdue) but stops asking for attention. */
 .timer-row.ringing {
   animation: timer-pulse 1s ease-in-out infinite;
 }
 
 @keyframes timer-pulse {
-
   0%,
   100% {
-    background: var(--surface-2);
+    background: var(--bg-el);
   }
 
   50% {
-    background: var(--secondary-800);
+    background: var(--alert-bg);
   }
 }
 
@@ -1045,27 +1158,55 @@ main#content {
   gap: 0.3rem;
 }
 
-.timer-action {
+.timer-actions button {
   min-height: 32px;
   padding: 0.25rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  cursor: pointer;
   font-size: 0.85rem;
 }
 
-.timer-action:hover {
-  border-color: var(--border-strong);
-  color: var(--primary);
-}
-
-.timer-action.silence {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
-}
-
-.timer-action.dismiss {
+.timer-actions button.dismiss {
   color: var(--alert);
+}
+
+@media (hover: hover) {
+  .timer-actions button.dismiss:hover {
+    background: var(--alert-bg);
+    border-color: var(--alert);
+  }
+}
+
+#navbar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: scroll;
+}
+
+#navbar a {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 500;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+#navbar a:first-child {
+  color: var(--accent-text);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+#navbar a:hover {
+  text-decoration: underline;
+}
+
+#navbar .auth-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
 }
