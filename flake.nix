@@ -131,7 +131,12 @@
             version = "0.1.0";
             strictDeps = true;
             nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = [ pkgs.openssl ];
+            # libpq: diesel's `postgres` feature links pq-sys (-lpq) even though
+            # the runtime path uses diesel-async/tokio-postgres.
+            buildInputs = [
+              pkgs.libpq
+              pkgs.openssl
+            ];
           };
 
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -168,9 +173,54 @@
             }
           );
 
+          # Production OCI image. Layered so the (large, slow-changing) runtime
+          # closure stays cached across rebuilds while only the app layer churns.
+          dockerImage = pkgs.dockerTools.buildLayeredImage {
+            name = "cookit";
+            tag = "latest";
+
+            # `fakeNss` gives us /etc/passwd + /etc/group so we can run as a
+            # non-root user; `cacert` provides CA roots for any outbound TLS.
+            contents = [
+              pkgs.cacert
+              pkgs.dockerTools.fakeNss
+            ];
+
+            # The server needs a writable /tmp; nothing else mutates the rootfs.
+            extraCommands = ''
+              mkdir -p tmp
+              chmod 1777 tmp
+            '';
+
+            config = {
+              # Full path: the server locates `public/` next to its own exe, so
+              # it must run from $out/bin regardless of PATH or working dir.
+              Cmd = [ "${package}/bin/web" ];
+
+              # Drop root: 65534 is `nobody` from fakeNss. Port 8080 and startup
+              # migrations need no privileges.
+              User = "65534:65534";
+
+              Env = [
+                # Bind all interfaces; the default 127.0.0.1 is unreachable from
+                # outside the container.
+                "IP=0.0.0.0"
+                "PORT=8080"
+                "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+              ];
+
+              ExposedPorts = {
+                "8080/tcp" = { };
+              };
+            };
+          };
+
         in
         {
-          packages.default = package;
+          packages = {
+            default = package;
+            docker = dockerImage;
+          };
           checks = {
             inherit cookit-tests;
           };
@@ -189,8 +239,6 @@
       nixosModules.default =
         { lib, pkgs, ... }:
         {
-          imports = [ ./nix/module.nix ];
-
           services.cookit.package = lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
     };

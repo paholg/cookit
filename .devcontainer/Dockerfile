@@ -49,6 +49,7 @@ RUN rustup toolchain install nightly --profile minimal --component rustfmt --no-
 
 
 # tombi
+ARG BUST
 RUN curl -fsSL https://tombi-toml.github.io/tombi/install.sh | sh
 
 # Set token for cargo-binstall to prevent rate-limiting.
