@@ -1,7 +1,7 @@
 set dotenv-load := true
 
 serve *args:
-    dx serve -p web --features development {{args}}
+    dx serve -p web --features development --port 8080 {{args}}
 
 seed:
     cargo run --bin seed

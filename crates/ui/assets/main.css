@@ -94,7 +94,7 @@ body {
 #content {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1rem 0rem;
+  padding: 1rem 0.5rem;
 }
 
 h1 {
