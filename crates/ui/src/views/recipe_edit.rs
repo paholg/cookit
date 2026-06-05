@@ -1,6 +1,6 @@
 use {
     crate::views::recipe_form::{RecipeForm, RecipeFormMode},
-    api::{RecipeBuilder, get_recipe},
+    api::{APP_NAME, RecipeBuilder, get_recipe},
     dioxus::prelude::*,
 };
 
@@ -28,7 +28,7 @@ pub fn RecipeEdit(recipe_key: String) -> Element {
     };
 
     rsx! {
-        document::Title { "CookIt!" }
+        document::Title { "{APP_NAME}" }
         {body}
     }
 }

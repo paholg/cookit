@@ -36,3 +36,9 @@ pub use {
     error::{Error, Result},
     routes::*,
 };
+
+#[cfg(feature = "development")]
+pub const APP_NAME: &str = "[dev] CookIt!";
+
+#[cfg(not(feature = "development"))]
+pub const APP_NAME: &str = "CookIt!";

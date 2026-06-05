@@ -4,7 +4,7 @@ use {
         client::client,
         icons::{EditIcon, ListIcon},
     },
-    api::{create_shopping_list_from_meal, get_meal},
+    api::{APP_NAME, create_shopping_list_from_meal, get_meal},
     dioxus::prelude::*,
 };
 
@@ -30,7 +30,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
         .cloned()
         .and_then(|m| m.ok())
         .map(|d| d.meal.name)
-        .unwrap_or_else(|| "CookIt!".to_string());
+        .unwrap_or_else(|| APP_NAME.to_string());
 
     let body = match meal.cloned() {
         Some(Ok(detail)) => {

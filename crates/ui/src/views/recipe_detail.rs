@@ -1,6 +1,6 @@
 use {
     crate::{CurrentUserCtx, RecipeView, Route, WakeLockToggle, icons::EditIcon},
-    api::get_recipe,
+    api::{APP_NAME, get_recipe},
     dioxus::prelude::*,
 };
 
@@ -15,7 +15,7 @@ pub fn RecipeDetail(recipe_key: String) -> Element {
         .cloned()
         .and_then(|r| r.ok())
         .map(|d| d.recipe.name)
-        .unwrap_or_else(|| "CookIt!".to_string());
+        .unwrap_or_else(|| APP_NAME.to_string());
 
     let user = use_context::<CurrentUserCtx>();
     let is_admin = user.read().clone().is_some_and(|u| u.is_admin());

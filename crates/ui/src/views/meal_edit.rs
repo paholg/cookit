@@ -1,6 +1,6 @@
 use {
     crate::views::meal_form::{MealForm, MealFormMode},
-    api::{MealBuilder, get_meal},
+    api::{APP_NAME, MealBuilder, get_meal},
     dioxus::prelude::*,
 };
 
@@ -29,7 +29,7 @@ pub fn MealEdit(meal_key: String) -> Element {
     };
 
     rsx! {
-        document::Title { "CookIt!" }
+        document::Title { "{APP_NAME}" }
         {body}
     }
 }

@@ -1,7 +1,7 @@
 use {
     crate::{ClientOnly, client::client},
     api::{
-        Ingredient, IngredientUpdate,
+        APP_NAME, Ingredient, IngredientUpdate,
         grocery_section::GrocerySection,
         helpers::{Name, PositiveFloat},
         id::IngredientId,
@@ -138,7 +138,7 @@ pub fn IngredientList() -> Element {
     });
     let incomplete_count = rows.read().iter().filter(|r| r.is_incomplete()).count();
     rsx! {
-        document::Title { "CookIt!" }
+        document::Title { "{APP_NAME}" }
         header { class: "page-header",
             h1 { "Ingredients" }
             if incomplete_count > 0 {
