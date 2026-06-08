@@ -1,3 +1,5 @@
+#!/usr/bin/env zsh
+
 # History
 HISTFILE=$HOME/.zsh_history
 HISTSIZE=100000
@@ -27,15 +29,7 @@ for f in /usr/share/doc/fzf/examples/key-bindings.zsh /usr/share/doc/fzf/example
     [ -f "$f" ] && source "$f"
 done
 
-command -v atuin >/dev/null && eval "$(atuin init zsh)"
+eval "$(atuin init zsh --disable-up-arrow)"
 
 # syntax-highlighting must be sourced last
 source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
-# Aliases
-alias ls='ls --color=auto'
-alias ll='ls -lh'
-alias la='ls -lah'
-alias grep='grep --color=auto'
-
-export EDITOR=${EDITOR:-vim}
