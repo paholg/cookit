@@ -18,10 +18,7 @@ use crate::db::{
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "server",
-    derive(HasQuery, Identifiable, AsChangeset, Associations)
-)]
+#[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Recipe)))]
@@ -34,6 +31,8 @@ pub struct RecipeStep {
     pub position: i32,
     pub text: String,
     pub duration_s: Option<i32>,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -25,6 +25,8 @@ pub struct Ingredient {
     pub name: Name,
     pub density_g_per_ml: Option<PositiveFloat>,
     pub grocery_section: Option<GrocerySection>,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 /// Columns for creating a bare ingredient (just a name); density and grocery

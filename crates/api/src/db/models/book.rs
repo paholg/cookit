@@ -20,6 +20,8 @@ pub struct Book {
     pub name: String,
     pub slug: String,
     pub owner_id: UserId,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 #[derive(Debug)]

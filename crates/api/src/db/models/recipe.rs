@@ -45,6 +45,8 @@ pub struct Recipe {
     pub source: String,
     pub description: String,
     pub notes: String,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 #[cfg(feature = "server")]

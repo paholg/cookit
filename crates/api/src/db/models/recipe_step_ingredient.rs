@@ -21,10 +21,7 @@ use {
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "server",
-    derive(HasQuery, Identifiable, AsChangeset, Associations)
-)]
+#[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(RecipeStep, foreign_key = step_id)))]
@@ -40,6 +37,8 @@ pub struct RecipeStepIngredient {
     pub unit_kind: Option<String>,
     pub unit: Option<String>,
     pub ingredient_id: IngredientId,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 /// Writable columns of `recipe_step_ingredients`. `treat_none_as_null` makes a

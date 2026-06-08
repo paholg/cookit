@@ -13,6 +13,7 @@ diesel::table! {
         name -> Text,
         slug -> Text,
         owner_id -> Uuid,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -24,6 +25,7 @@ diesel::table! {
         name -> Text,
         density_g_per_ml -> Nullable<Float8>,
         grocery_section -> Nullable<Text>,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -36,6 +38,7 @@ diesel::table! {
         recipe_id -> Uuid,
         multiplier -> Float8,
         position -> Int4,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -46,6 +49,7 @@ diesel::table! {
         updated_at -> Timestamptz,
         slug -> Text,
         name -> Text,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -60,6 +64,7 @@ diesel::table! {
         unit_kind -> Nullable<Text>,
         unit -> Nullable<Text>,
         ingredient_id -> Uuid,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -72,6 +77,7 @@ diesel::table! {
         position -> Int4,
         text -> Text,
         duration_s -> Nullable<Int4>,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -85,6 +91,7 @@ diesel::table! {
         source -> Text,
         description -> Text,
         notes -> Text,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -101,6 +108,7 @@ diesel::table! {
         ingredient_id -> Nullable<Uuid>,
         text -> Nullable<Text>,
         checked -> Bool,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -111,6 +119,7 @@ diesel::table! {
         updated_at -> Timestamptz,
         slug -> Text,
         name -> Text,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -124,6 +133,7 @@ diesel::table! {
         updated_at -> Timestamptz,
         user_id -> Uuid,
         role -> Role,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -133,6 +143,7 @@ diesel::table! {
         updated_at -> Timestamptz,
         name -> Text,
         email -> Text,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 

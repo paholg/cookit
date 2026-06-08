@@ -19,10 +19,7 @@ use crate::db::{
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "server",
-    derive(HasQuery, Identifiable, AsChangeset, Associations)
-)]
+#[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(ShoppingList)))]
@@ -40,6 +37,8 @@ pub struct ShoppingListItem {
     pub ingredient_id: Option<IngredientId>,
     pub text: Option<String>,
     pub checked: bool,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 /// One shopping-list item flattened for display: the ingredient's name and

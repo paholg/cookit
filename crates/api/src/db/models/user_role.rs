@@ -33,6 +33,8 @@ pub struct UserRole {
     pub updated_at: jiff::Timestamp,
     pub user_id: UserId,
     pub role: Role,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 #[derive(Debug)]

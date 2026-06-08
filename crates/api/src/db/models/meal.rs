@@ -25,10 +25,7 @@ use {
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "server",
-    derive(HasQuery, Identifiable, AsChangeset, Associations)
-)]
+#[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 pub struct Meal {
@@ -38,6 +35,8 @@ pub struct Meal {
     pub updated_at: jiff::Timestamp,
     pub slug: String,
     pub name: String,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
+    pub deleted_at: Option<jiff::Timestamp>,
 }
 
 #[cfg(feature = "server")]
