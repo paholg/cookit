@@ -4,7 +4,7 @@
   "service": "cookit",
   "workspaceFolder": "/workspace",
   "initializeCommand": ".devcontainer/initialize.sh",
-  "postCreateCommand": "diesel database setup",
+  "postCreateCommand": ".devcontainer/post_create.sh",
   "forwardPorts": [
     8080
   ],

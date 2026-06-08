@@ -24,6 +24,10 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
+    // Use the full Chromium (new headless mode), not `chrome-headless-shell`.
+    // The Nix-pinned shell (revision 1217) mis-renders flex items.
+    // Should be fixed by version 1223.
+    channel: "chromium",
   },
   projects: [
     // Creates an isolated test user/book/role via /api/dev/setup, logs in, and

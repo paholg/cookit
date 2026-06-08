@@ -13,8 +13,12 @@ autoload -Uz compinit && compinit -C
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' '+l:|=* r:|=*'
 
-# Cargo env
-[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+# nix + direnv
+source "$HOME/.nix-profile/etc/profile.d/nix.sh"
+eval "$(direnv hook zsh)"
+
+# Also load direnv eagerly, for the userEnvProbe.
+eval "$(direnv export zsh)"
 
 # Plugins
 source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh

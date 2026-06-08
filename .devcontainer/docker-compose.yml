@@ -2,17 +2,17 @@ services:
   cookit:
     build:
       context: .
-      args:
-        DIOXUS_VERSION: ${DIOXUS_VERSION}
-        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION}
-      secrets:
-        - github_token
     init: true
     command: sleep infinity
     volumes:
       - ..:/workspace:cached
+
+      # Synced settings from host:
       - ~/.claude:/home/vscode/.claude
       - ~/.claude.json:/home/vscode/.claude.json
+
+      # Cache volumes:
+      - nix-store:/nix
       - cargo-registry:/home/vscode/.cargo/registry
       - cargo-git:/home/vscode/.cargo/git
       - sccache:/home/vscode/.cache/sccache
@@ -43,12 +43,11 @@ services:
       start_period: 30s
       start_interval: 1s
 
-secrets:
-  github_token:
-    file: ${GITHUB_TOKEN_FILE:-/dev/null}
-
 volumes:
   pg_data:
+  nix-store:
+    name: cookit-nix-store
+    external: true
   cargo-registry:
     name: cookit-cargo-registry
     external: true

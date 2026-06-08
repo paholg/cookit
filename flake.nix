@@ -25,6 +25,7 @@
           overlays = [ (import rust-overlay) ];
           pkgs = import nixpkgs {
             inherit system overlays;
+            config.allowUnfree = true;
           };
 
           rustMinimal = pkgs.rust-bin.stable.latest.minimal.override {
@@ -40,14 +41,12 @@
 
           craneLib = (crane.mkLib pkgs).overrideToolchain rustMinimal;
 
-          # Keep migrations (sqlx::migrate!), .sqlx (offline data), and
-          # assets (asset! macro) alongside the cargo sources.
           src =
             let
               extraFilter =
                 path: _type:
-                builtins.match ".*/(migrations|\\.sqlx|assets)(/.*)?" path != null
-                || builtins.match ".*\\.(sql|css|js|png|svg|ico)$" path != null;
+                builtins.match ".*/migrations(/.*)?" path != null
+                || builtins.match ".*/crates/ui/assets(/.*)?" path != null;
               cargoFilter = craneLib.filterCargoSources;
             in
             pkgs.lib.cleanSourceWith {
@@ -104,10 +103,13 @@
           devPackages =
             with pkgs;
             [
+              atuin
               cargo-dist
               cargo-edit
               cargo-nextest
+              claude-code
               diesel-cli
+              fzf
               just
               libpq
               litecli
@@ -115,8 +117,8 @@
               openssl
               pkg-config
               rust-bin.nightly.latest.rustfmt
+              sccache
               sqlite
-              sqlx-cli
               tombi
             ]
             ++ [
@@ -228,7 +230,17 @@
             packages = devPackages;
 
             shellHook = ''
-              export DATABASE_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_dev"
+              # On the host, derive DATABASE_URL from the devconcurrent proxy. Inside
+              # the devcontainer, compose already exports the right value (and
+              # devconcurrent is absent), so only set it when unset.
+              if [ -z "''${DATABASE_URL:-}" ] && command -v devconcurrent >/dev/null; then
+                export DATABASE_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_dev"
+              fi
+
+              # Pin Playwright to the nix-provided browsers so e2e never downloads them.
+              export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+              export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+              export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
             '';
           };
         }
