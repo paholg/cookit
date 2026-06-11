@@ -1,28 +1,27 @@
+#[cfg(feature = "development")]
+use db::id::{BookId, UserId};
+// Server-only: handler bodies run sessions and queries against the database,
+// which don't exist on the wasm client.
+#[cfg(feature = "server")]
+use server::{auth, ingredient, meal, recipe, session::Session, shopping_list};
+// The /api/dev/* handlers run their DB ops directly (no session), so they need
+// the connection pool and the test-data helpers — both server-only.
+#[cfg(all(feature = "server", feature = "development"))]
+use server::{conn::get_conn, dev};
 use {
-    crate::{
-        db::models::{
+    db::{
+        id::{IngredientId, ShoppingListId, ShoppingListItemId, UserRoleId},
+        models::{
             ingredient::{Ingredient, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail},
             recipe::{Recipe, RecipeBuilder, RecipeDetail},
             shopping_list::{ShoppingList, ShoppingListDetail},
             shopping_list_item::ShoppingListItemInput,
+            user::CurrentUser,
         },
-        id::{IngredientId, ShoppingListId, ShoppingListItemId, UserRoleId},
-        session::CurrentUser,
     },
     dioxus::prelude::*,
 };
-
-#[cfg(feature = "development")]
-use crate::id::{BookId, UserId};
-// The /api/dev/* handlers run their DB ops directly (no session), so they need
-// the connection pool and the test-data helpers — both server-only.
-#[cfg(all(feature = "server", feature = "development"))]
-use crate::{db::conn::get_conn, dev};
-// Server-only: handler bodies use the DB session and the shopping-list ops,
-// which don't exist on the wasm client.
-#[cfg(feature = "server")]
-use crate::{db::models::shopping_list, session::Session};
 
 #[get("/api/me")]
 pub async fn me() -> Result<Option<CurrentUser>, ServerFnError> {
@@ -48,28 +47,28 @@ pub async fn login_as_first() -> Result<CurrentUser, ServerFnError> {
 
 #[post("/api/auth/logout")]
 pub async fn logout() -> Result<(), ServerFnError> {
-    crate::auth::clear_session_cookie();
+    auth::clear_session_cookie();
     Ok(())
 }
 
 #[get("/api/recipes")]
 pub async fn list_recipes() -> Result<Vec<Recipe>, ServerFnError> {
     let mut session = Session::require().await?;
-    let list = Recipe::list_all(&mut session).await?;
+    let list = recipe::list_all(&mut session).await?;
     Ok(list)
 }
 
 #[get("/api/recipes/:slug")]
 pub async fn get_recipe(slug: String) -> Result<RecipeDetail, ServerFnError> {
     let mut session = Session::require().await?;
-    let recipe = RecipeDetail::get(&mut session, &slug).await?;
+    let recipe = recipe::get(&mut session, &slug).await?;
     Ok(recipe)
 }
 
 #[get("/api/ingredients")]
 pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
     let mut session = Session::require().await?;
-    let ingredients = Ingredient::list_all(&mut session).await?;
+    let ingredients = ingredient::list_all(&mut session).await?;
     Ok(ingredients)
 }
 
@@ -80,7 +79,7 @@ pub async fn update_ingredient(
 ) -> Result<Ingredient, ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
-    let ingredient = input.apply(id, &mut session).await?;
+    let ingredient = ingredient::apply(input, id, &mut session).await?;
 
     Ok(ingredient)
 }
@@ -92,7 +91,7 @@ pub async fn update_ingredient(
 pub async fn upsert_recipe(input: RecipeBuilder) -> Result<RecipeDetail, ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
-    let detail = input.upsert(&mut session).await?;
+    let detail = recipe::upsert(input, &mut session).await?;
     Ok(detail)
 }
 
@@ -100,21 +99,21 @@ pub async fn upsert_recipe(input: RecipeBuilder) -> Result<RecipeDetail, ServerF
 pub async fn delete_recipe(slug: String) -> Result<(), ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
-    Recipe::delete(&mut session, &slug).await?;
+    recipe::delete(&mut session, &slug).await?;
     Ok(())
 }
 
 #[get("/api/meals")]
 pub async fn list_meals() -> Result<Vec<Meal>, ServerFnError> {
     let mut session = Session::require().await?;
-    let list = Meal::list_all(&mut session).await?;
+    let list = meal::list_all(&mut session).await?;
     Ok(list)
 }
 
 #[get("/api/meals/:slug")]
 pub async fn get_meal(slug: String) -> Result<MealDetail, ServerFnError> {
     let mut session = Session::require().await?;
-    let meal = MealDetail::get(&mut session, &slug).await?;
+    let meal = meal::get(&mut session, &slug).await?;
     Ok(meal)
 }
 
@@ -123,28 +122,28 @@ pub async fn get_meal(slug: String) -> Result<MealDetail, ServerFnError> {
 #[post("/api/meals/upsert")]
 pub async fn upsert_meal(input: MealBuilder) -> Result<MealDetail, ServerFnError> {
     let mut session = Session::require().await?;
-    let detail = input.upsert(&mut session).await?;
+    let detail = meal::upsert(input, &mut session).await?;
     Ok(detail)
 }
 
 #[post("/api/meals/:slug/delete")]
 pub async fn delete_meal(slug: String) -> Result<(), ServerFnError> {
     let mut session = Session::require().await?;
-    Meal::delete(&mut session, &slug).await?;
+    meal::delete(&mut session, &slug).await?;
     Ok(())
 }
 
 #[get("/api/shopping-lists")]
 pub async fn list_shopping_lists() -> Result<Vec<ShoppingList>, ServerFnError> {
     let mut session = Session::require().await?;
-    let list = ShoppingList::list_all(&mut session).await?;
+    let list = shopping_list::list_all(&mut session).await?;
     Ok(list)
 }
 
 #[get("/api/shopping-lists/:id")]
 pub async fn get_shopping_list(id: ShoppingListId) -> Result<ShoppingListDetail, ServerFnError> {
     let mut session = Session::require().await?;
-    let detail = ShoppingListDetail::get(&mut session, id).await?;
+    let detail = shopping_list::get(&mut session, id).await?;
     Ok(detail)
 }
 
@@ -152,7 +151,7 @@ pub async fn get_shopping_list(id: ShoppingListId) -> Result<ShoppingListDetail,
 #[post("/api/shopping-lists/create")]
 pub async fn create_shopping_list(name: String) -> Result<ShoppingListId, ServerFnError> {
     let mut session = Session::require().await?;
-    let id = ShoppingList::create(&mut session, &name).await?;
+    let id = shopping_list::create(&mut session, &name).await?;
     Ok(id)
 }
 
@@ -162,14 +161,14 @@ pub async fn create_shopping_list_from_meal(
     meal_slug: String,
 ) -> Result<ShoppingListId, ServerFnError> {
     let mut session = Session::require().await?;
-    let id = ShoppingList::create_from_meal(&mut session, &meal_slug).await?;
+    let id = shopping_list::create_from_meal(&mut session, &meal_slug).await?;
     Ok(id)
 }
 
 #[post("/api/shopping-lists/:id/delete")]
 pub async fn delete_shopping_list(id: ShoppingListId) -> Result<(), ServerFnError> {
     let mut session = Session::require().await?;
-    ShoppingList::delete(&mut session, id).await?;
+    shopping_list::delete(&mut session, id).await?;
     Ok(())
 }
 

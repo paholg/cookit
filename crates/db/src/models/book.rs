@@ -2,9 +2,11 @@ use {
     crate::id::{BookId, UserId},
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "server")]
-use crate::db::{models::user::User, prelude::*, schema::books};
+use {
+    crate::{models::user::User, schema::books},
+    diesel::prelude::*,
+};
 
 /// The unit of tenancy for CookIt.
 ///

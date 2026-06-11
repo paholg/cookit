@@ -1,7 +1,6 @@
 use {
-    crate::error::ParseIdSnafu,
     serde::{Deserialize, Serialize, de},
-    snafu::OptionExt,
+    snafu::{OptionExt, Snafu},
     std::{
         fmt::{self, Write},
         hash::{Hash, Hasher},
@@ -9,6 +8,13 @@ use {
     },
     uuid::Uuid,
 };
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
+#[snafu(display("Failed to parse id: {id}"))]
+pub struct IdParseError {
+    id: String,
+}
 
 pub trait TablePrefix {
     const TABLE_PREFIX: &'static str;
@@ -62,7 +68,7 @@ impl<T> Id<T> {
 
 macro_rules! table_id {
     () => {};
-    ($id:ident, $draft_id:ident, $struct:ident, $prefix:tt; $($tail:tt)*) => {
+    ($prefix:tt, $id:ident, $draft_id:ident, $struct:ident; $($tail:tt)*) => {
         pub struct $struct;
 
         impl TablePrefix for $struct {
@@ -77,17 +83,17 @@ macro_rules! table_id {
 }
 
 table_id! {
-    BookId, BookDraftId, BookTable, bok;
-    IngredientId, IngredientDraftId, IngredientTable, ing;
-    MealId, MealDraftId, MealTable, mel;
-    MealRecipeId, MealRecipeDraftId, MealRecipeTable, mrp;
-    RecipeStepIngredientId, RecipeStepIngredientDraftId, RecipeStepIngredientTable, rsi;
-    RecipeStepId, RecipeStepDraftId, RecipeStepTable, rst;
-    RecipeId, RecipeDraftId, RecipeTable, rec;
-    ShoppingListId, ShoppingListDraftId, ShoppingListTable, shl;
-    ShoppingListItemId, ShoppingListItemDraftId, ShoppingListItemTable, sli;
-    UserRoleId, UserRoleDraftId, UserRoleTable, url;
-    UserId, UserDraftId, UserTable, usr;
+    bok, BookId, BookDraftId, BookTable;
+    ing, IngredientId, IngredientDraftId, IngredientTable;
+    mel, MealId, MealDraftId, MealTable;
+    mrp, MealRecipeId, MealRecipeDraftId, MealRecipeTable;
+    rec, RecipeId, RecipeDraftId, RecipeTable;
+    rsi, RecipeStepIngredientId, RecipeStepIngredientDraftId, RecipeStepIngredientTable;
+    rst, RecipeStepId, RecipeStepDraftId, RecipeStepTable;
+    shl, ShoppingListId, ShoppingListDraftId, ShoppingListTable;
+    sli, ShoppingListItemId, ShoppingListItemDraftId, ShoppingListItemTable;
+    url, UserRoleId, UserRoleDraftId, UserRoleTable;
+    usr, UserId, UserDraftId, UserTable;
 }
 
 impl<T> Clone for Id<T> {
@@ -128,18 +134,18 @@ impl<T: TablePrefix> fmt::Debug for Id<T> {
 }
 
 impl<T: TablePrefix> std::str::FromStr for Id<T> {
-    type Err = crate::Error;
+    type Err = IdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uuid_str = s
             .strip_prefix(T::TABLE_PREFIX)
             .and_then(|s| s.strip_prefix('_'))
-            .with_context(|| ParseIdSnafu { id: s.to_string() })?;
+            .with_context(|| IdParseSnafu { id: s.to_string() })?;
 
         Ok(Self {
             id: Uuid::try_parse(uuid_str)
                 .ok()
-                .with_context(|| ParseIdSnafu { id: s.to_string() })?,
+                .with_context(|| IdParseSnafu { id: s.to_string() })?,
             _marker: PhantomData,
         })
     }
@@ -190,6 +196,7 @@ where
 /// can't be mixed up with a draft ingredient id. As a wire value it is the key
 /// the server uses to decide insert (`New`) vs. update (`Persisted`) during an
 /// upsert.
+// TODO: Get rid of this.
 #[derive(Serialize, Deserialize)]
 #[serde(untagged, bound = "")]
 pub enum DraftId<T: TablePrefix> {

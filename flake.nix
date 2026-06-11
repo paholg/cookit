@@ -1,5 +1,10 @@
 {
   inputs = {
+    claude-code = {
+      url = "github:sadjow/claude-code-nix";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     crane.url = "github:ipetkov/crane";
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "nixpkgs/nixos-unstable";
@@ -12,6 +17,7 @@
   outputs =
     {
       self,
+      claude-code,
       crane,
       flake-utils,
       nixpkgs,
@@ -22,7 +28,13 @@
       systemOutputs = flake-utils.lib.eachDefaultSystem (
         system:
         let
-          overlays = [ (import rust-overlay) ];
+          pkgs_overlay = system: final: prev: {
+            external.claude-code = claude-code.packages.${system}.default;
+          };
+          overlays = [
+            (pkgs_overlay system)
+            (import rust-overlay)
+          ];
           pkgs = import nixpkgs {
             inherit system overlays;
             config.allowUnfree = true;
@@ -107,7 +119,7 @@
               cargo-dist
               cargo-edit
               cargo-nextest
-              claude-code
+              external.claude-code
               diesel-cli
               fzf
               just

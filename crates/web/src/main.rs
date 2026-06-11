@@ -17,10 +17,10 @@ fn main() {
         use dioxus::server::axum::middleware;
 
         dioxus::serve(|| async {
-            api::db::migrate::run_migrations().await;
+            server::migrate::run_migrations().await;
 
             let app_router = dioxus::server::router(ui::App);
-            Ok(app_router.layer(middleware::from_fn(api::log_server_errors)))
+            Ok(app_router.layer(middleware::from_fn(server::log_server_errors)))
         })
     }
 }

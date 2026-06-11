@@ -124,3 +124,19 @@ impl std::fmt::Display for Unit {
         f.write_str(&self.label())
     }
 }
+
+/// Interpret the free-form unit text. A known mass/volume unit keeps its kind;
+/// anything else is treated as a count label. Empty means no unit.
+pub fn parse_unit(text: &str) -> Option<Unit> {
+    let t = text.trim();
+
+    if t.is_empty() {
+        None
+    } else if let Ok(m) = Mass::from_str(t) {
+        Some(Unit::Mass(m))
+    } else if let Ok(v) = Volume::from_str(t) {
+        Some(Unit::Volume(v))
+    } else {
+        Some(Unit::Count(t.to_string()))
+    }
+}

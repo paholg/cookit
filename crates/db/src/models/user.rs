@@ -1,11 +1,13 @@
+#[cfg(feature = "server")]
+use {crate::schema::users, diesel::prelude::*};
 use {
-    crate::id::UserId,
+    crate::{
+        id::{BookId, UserId},
+        models::user_role::Role,
+    },
     jiff::Timestamp,
     serde::{Deserialize, Serialize},
 };
-
-#[cfg(feature = "server")]
-use crate::db::{prelude::*, schema::users};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable))]
@@ -26,4 +28,21 @@ pub struct User {
 pub struct UserNew<'a> {
     pub email: &'a str,
     pub name: &'a str,
+}
+
+/// The logged-in user as the client sees it: identity plus the active book and
+/// role, flattened from the server-side session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrentUser {
+    pub id: UserId,
+    pub book_id: BookId,
+    pub name: String,
+    pub email: String,
+    pub role: Role,
+}
+
+impl CurrentUser {
+    pub fn is_admin(&self) -> bool {
+        self.role == Role::Admin
+    }
 }

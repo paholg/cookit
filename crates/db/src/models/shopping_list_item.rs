@@ -5,17 +5,13 @@ use {
     },
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "server")]
-use crate::db::{
-    models::{
-        book::Book,
-        ingredient::Ingredient,
-        recipe_step_ingredient::{parse_quantity, parse_unit},
-        shopping_list::ShoppingList,
+use {
+    crate::{
+        models::{book::Book, ingredient::Ingredient, shopping_list::ShoppingList},
+        schema::shopping_list_items,
     },
-    prelude::*,
-    schema::shopping_list_items,
+    diesel::prelude::*,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,47 +70,4 @@ pub struct ShoppingListItemInput {
     pub text: String,
     pub quantity: String,
     pub unit: String,
-}
-
-/// Writable columns of `shopping_list_items`.
-#[cfg(feature = "server")]
-#[derive(Insertable)]
-#[diesel(table_name = shopping_list_items)]
-pub(crate) struct ShoppingListItemRecord {
-    pub(crate) book_id: BookId,
-    pub(crate) shopping_list_id: ShoppingListId,
-    pub(crate) position: i32,
-    pub(crate) quantity: Option<f64>,
-    pub(crate) unit_kind: Option<String>,
-    pub(crate) unit: Option<String>,
-    pub(crate) ingredient_id: Option<IngredientId>,
-    pub(crate) text: Option<String>,
-}
-
-#[cfg(feature = "server")]
-impl ShoppingListItemInput {
-    /// The columns to write for a manually added item. `position` comes from the
-    /// list's current length.
-    pub(crate) fn record(
-        &self,
-        book_id: BookId,
-        shopping_list_id: ShoppingListId,
-        position: i32,
-    ) -> anyhow::Result<ShoppingListItemRecord> {
-        let text = self.text.trim();
-        anyhow::ensure!(!text.is_empty(), "item name is required");
-
-        let unit = parse_unit(&self.unit);
-
-        Ok(ShoppingListItemRecord {
-            book_id,
-            shopping_list_id,
-            position,
-            quantity: parse_quantity(&self.quantity).map_err(anyhow::Error::msg)?,
-            unit_kind: unit.as_ref().map(|u| u.kind().to_string()),
-            unit: unit.as_ref().map(|u| u.label()),
-            ingredient_id: None,
-            text: Some(text.to_string()),
-        })
-    }
 }

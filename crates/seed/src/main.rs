@@ -1,20 +1,24 @@
-use api::{
-    Ingredient, IngredientUpdate, MealBuilder, MealRecipeBuilder, RecipeBuilder, RecipeStepBuilder,
-    RecipeStepIngredientBuilder,
+use {
     db::{
-        conn::get_conn,
+        grocery_section::GrocerySection,
+        helpers::{Name, PositiveFloat},
+        id::{BookId, DraftId, UserId},
         models::{
             book::BookNew,
+            ingredient::{Ingredient, IngredientUpdate},
+            meal::MealBuilder,
+            meal_recipe::MealRecipeBuilder,
+            recipe::RecipeBuilder,
+            recipe_step::RecipeStepBuilder,
+            recipe_step_ingredient::RecipeStepIngredientBuilder,
             user::UserNew,
             user_role::{Role, UserRoleNew},
         },
-        prelude::*,
         schema::{books, user_roles, users},
     },
-    grocery_section::GrocerySection,
-    helpers::{Name, PositiveFloat},
-    id::{BookId, DraftId, UserId},
-    session::Session,
+    diesel::prelude::*,
+    diesel_async::RunQueryDsl,
+    server::{conn::get_conn, session::Session},
 };
 
 #[tokio::main]
@@ -202,8 +206,7 @@ async fn seed_content(session: &mut Session) -> eyre::Result<()> {
     let mut slugs = std::collections::HashMap::new();
     for builder in recipes {
         let name = builder.name.clone();
-        let detail = builder
-            .upsert(session)
+        let detail = server::recipe::upsert(builder, session)
             .await
             .map_err(|e| eyre::eyre!("seed recipe {name:?}: {e}"))?;
         slugs.insert(name, detail.recipe.slug);
@@ -229,8 +232,7 @@ async fn seed_content(session: &mut Session) -> eyre::Result<()> {
 
     for builder in meals {
         let name = builder.name.clone();
-        builder
-            .upsert(session)
+        server::meal::upsert(builder, session)
             .await
             .map_err(|e| eyre::eyre!("seed meal {name:?}: {e}"))?;
     }
@@ -274,12 +276,13 @@ async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
     ];
 
     // One lookup of everything in the book, then match by name.
-    let by_name: std::collections::HashMap<String, Ingredient> = Ingredient::list_all(session)
-        .await
-        .map_err(|e| eyre::eyre!("list ingredients: {e}"))?
-        .into_iter()
-        .map(|i| (i.name.as_ref().to_string(), i))
-        .collect();
+    let by_name: std::collections::HashMap<String, Ingredient> =
+        server::ingredient::list_all(session)
+            .await
+            .map_err(|e| eyre::eyre!("list ingredients: {e}"))?
+            .into_iter()
+            .map(|i| (i.name.as_ref().to_string(), i))
+            .collect();
 
     for &(name, density, section) in details {
         let Some(ingredient) = by_name.get(name) else {
@@ -300,8 +303,7 @@ async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
             grocery_section: Some(section),
         };
 
-        update
-            .apply(ingredient.id, session)
+        server::ingredient::apply(update, ingredient.id, session)
             .await
             .map_err(|e| eyre::eyre!("update ingredient {name:?}: {e}"))?;
     }

@@ -1,22 +1,23 @@
 //! Test-data helpers for the e2e suite.
 //!
-//! These back the unauthenticated `/api/dev/*` endpoints (see [`crate::routes`])
-//! and the no-arg `seed` binary. They create and tear down an isolated
+//! These back the unauthenticated `/api/dev/*` endpoints (defined in the api
+//! crate's routes) and the no-arg `seed` binary. They create and tear down an isolated
 //! admin user + book so a browser run never has to shell out to `diesel` or
 //! `cargo`.
 
-use crate::{
+use {
+    crate::conn::DbConn,
     db::{
-        conn::DbConn,
+        id::{BookId, UserId, UserRoleId},
         models::{
             book::BookNew,
             user::UserNew,
             user_role::{Role, UserRoleNew},
         },
-        prelude::*,
         schema::{books, user_roles, users},
     },
-    id::{BookId, UserId, UserRoleId},
+    diesel::prelude::*,
+    diesel_async::RunQueryDsl,
 };
 
 /// Insert an admin user, a book they own, and the matching `user_role`, all

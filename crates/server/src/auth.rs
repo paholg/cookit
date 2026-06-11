@@ -6,9 +6,9 @@
 //! able to hand-edit the cookie to act as a `user_role` in another book.
 
 use {
-    crate::id::UserRoleId,
     axum::http::{HeaderMap, HeaderValue, header},
     cookie::{Cookie, CookieJar, Key, SameSite, time::Duration},
+    db::id::UserRoleId,
     dioxus::fullstack::FullstackContext,
     serde::{Deserialize, Serialize},
     std::{

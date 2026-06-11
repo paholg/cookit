@@ -1,8 +1,15 @@
 use {
-    crate::error::ValidationSnafu,
     serde::{Deserialize, Serialize},
-    snafu::ensure,
+    snafu::{Snafu, ensure},
 };
+
+/// A user-correctable input error: the message is meant to be shown next to
+/// the offending field.
+#[derive(Debug, Snafu)]
+#[snafu(display("Validation error: {msg}"))]
+pub struct ValidationError {
+    pub msg: String,
+}
 
 /// URL-safe kebab-case slug of `name`. Lowercases ASCII letters/digits,
 /// replaces runs of everything else with a single `-`, trims leading/trailing
@@ -56,7 +63,7 @@ mod tests {
 pub struct Name(pub String);
 
 impl Name {
-    pub fn parse(s: impl AsRef<str>) -> crate::Result<Self> {
+    pub fn parse(s: impl AsRef<str>) -> Result<Self, ValidationError> {
         let s = s.as_ref().trim().to_string();
         ensure!(
             !s.is_empty(),

@@ -8,7 +8,7 @@ use {
             RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
         },
     },
-    api::{APP_NAME, id::ShoppingListId, login_as_first, logout, routes::me, session::CurrentUser},
+    api::{APP_NAME, CurrentUser, id::ShoppingListId, login_as_first, logout, routes::me},
     dioxus::prelude::*,
 };
 

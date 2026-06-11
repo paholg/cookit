@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-api = { workspace = true, features = ["server"] }
+db = { workspace = true, features = ["server"] }
 diesel.workspace = true
+diesel-async.workspace = true
 eyre = "0.6.12"
+server = { workspace = true }
 tokio.workspace = true

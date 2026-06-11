@@ -1,0 +1,28 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+diesel = { workspace = true, optional = true }
+diesel-derive-enum = { workspace = true, optional = true }
+jiff.workspace = true
+jiff-diesel = { workspace = true, optional = true }
+serde.workspace = true
+snafu.workspace = true
+strum = { version = "0.28", features = ["derive"] }
+uuid.workspace = true
+
+# uuid needs an explicit randomness backend when compiled for wasm.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { workspace = true, features = ["js"] }
+
+[features]
+default = ["server"]
+server = [
+  "dep:diesel",
+  "dep:diesel-derive-enum",
+  "dep:jiff-diesel",
+  "jiff-diesel/postgres",
+]

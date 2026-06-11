@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+cookie = { version = "0.18", features = ["signed"] }
+db = { workspace = true, features = ["server"] }
+diesel.workspace = true
+diesel-async.workspace = true
+diesel_migrations = "2.3"
+dioxus = { workspace = true, features = ["fullstack", "server"] }
+figment = { version = "0.10.19", features = ["env"] }
+jiff.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+snafu.workspace = true
+tracing = "0.1"
+url.workspace = true

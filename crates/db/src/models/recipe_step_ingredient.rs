@@ -1,23 +1,19 @@
 use {
     crate::{
-        db::models::ingredient::Ingredient,
         id::{
             BookId, IngredientId, RecipeStepId, RecipeStepIngredientDraftId, RecipeStepIngredientId,
         },
+        models::ingredient::Ingredient,
     },
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "server")]
 use {
     crate::{
-        db::{
-            models::{book::Book, recipe_step::RecipeStep},
-            prelude::*,
-            schema::recipe_step_ingredients,
-        },
-        unit::{Mass, Unit, Volume},
+        models::{book::Book, recipe_step::RecipeStep},
+        schema::recipe_step_ingredients,
     },
-    std::str::FromStr,
+    diesel::prelude::*,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -39,21 +35,6 @@ pub struct RecipeStepIngredient {
     pub ingredient_id: IngredientId,
     #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
     pub deleted_at: Option<jiff::Timestamp>,
-}
-
-/// Writable columns of `recipe_step_ingredients`. `treat_none_as_null` makes a
-/// cleared field write SQL `NULL`.
-#[cfg(feature = "server")]
-#[derive(Insertable, AsChangeset)]
-#[diesel(table_name = recipe_step_ingredients, treat_none_as_null = true)]
-pub(crate) struct RecipeStepIngredientRecord {
-    pub(crate) book_id: BookId,
-    pub(crate) step_id: RecipeStepId,
-    pub(crate) position: i32,
-    pub(crate) quantity: Option<f64>,
-    pub(crate) unit_kind: Option<String>,
-    pub(crate) unit: Option<String>,
-    pub(crate) ingredient_id: IngredientId,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -117,34 +98,9 @@ impl From<RecipeStepIngredientDetail> for RecipeStepIngredientBuilder {
     }
 }
 
-#[cfg(feature = "server")]
-impl RecipeStepIngredientBuilder {
-    /// The columns to write for this row; `ingredient_id` is resolved by the
-    /// caller, `position` comes from list order.
-    pub(crate) fn record(
-        &self,
-        book_id: BookId,
-        step_id: RecipeStepId,
-        position: i32,
-        ingredient_id: IngredientId,
-    ) -> anyhow::Result<RecipeStepIngredientRecord> {
-        let unit = parse_unit(&self.unit);
-
-        Ok(RecipeStepIngredientRecord {
-            book_id,
-            step_id,
-            position,
-            quantity: parse_quantity(&self.quantity).map_err(anyhow::Error::msg)?,
-            unit_kind: unit.as_ref().map(|u| u.kind().to_string()),
-            unit: unit.as_ref().map(|u| u.label()),
-            ingredient_id,
-        })
-    }
-}
-
 /// Parse the raw quantity field. Empty is `Ok(None)` (no quantity). Anything
 /// present must be a positive number.
-pub(crate) fn parse_quantity(text: &str) -> Result<Option<f64>, String> {
+pub fn parse_quantity(text: &str) -> Result<Option<f64>, String> {
     let t = text.trim();
     if t.is_empty() {
         return Ok(None);
@@ -159,22 +115,6 @@ pub(crate) fn parse_quantity(text: &str) -> Result<Option<f64>, String> {
     }
 
     Ok(Some(v))
-}
-
-/// Interpret the free-form unit text. A known mass/volume unit keeps its kind;
-/// anything else is treated as a count label. Empty means no unit.
-#[cfg(feature = "server")]
-pub(crate) fn parse_unit(text: &str) -> Option<Unit> {
-    let t = text.trim();
-    if t.is_empty() {
-        None
-    } else if let Ok(m) = Mass::from_str(t) {
-        Some(Unit::Mass(m))
-    } else if let Ok(v) = Volume::from_str(t) {
-        Some(Unit::Volume(v))
-    } else {
-        Some(Unit::Count(t.to_string()))
-    }
 }
 
 fn format_qty(q: f64) -> String {

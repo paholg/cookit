@@ -1,16 +1,17 @@
 use {
     crate::{
-        db::models::recipe::RecipeDetail,
         id::{BookId, MealId, MealRecipeDraftId, MealRecipeId, RecipeId},
+        models::recipe::RecipeDetail,
     },
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "server")]
-use crate::db::{
-    models::{book::Book, meal::Meal, recipe::Recipe},
-    prelude::*,
-    schema::meal_recipes,
+use {
+    crate::{
+        models::{book::Book, meal::Meal, recipe::Recipe},
+        schema::meal_recipes,
+    },
+    diesel::prelude::*,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -92,42 +93,9 @@ impl From<MealRecipeDetail> for MealRecipeBuilder {
     }
 }
 
-/// Writable columns of `meal_recipes`.
-#[cfg(feature = "server")]
-#[derive(Insertable, AsChangeset)]
-#[diesel(table_name = meal_recipes)]
-pub(crate) struct MealRecipeRecord {
-    pub(crate) book_id: BookId,
-    pub(crate) meal_id: MealId,
-    pub(crate) recipe_id: RecipeId,
-    pub(crate) multiplier: f64,
-    pub(crate) position: i32,
-}
-
-#[cfg(feature = "server")]
-impl MealRecipeBuilder {
-    /// The columns to write for this row; `recipe_id` is resolved by the caller
-    /// from `recipe_slug`, `position` comes from list order.
-    pub(crate) fn record(
-        &self,
-        book_id: BookId,
-        meal_id: MealId,
-        recipe_id: RecipeId,
-        position: i32,
-    ) -> anyhow::Result<MealRecipeRecord> {
-        Ok(MealRecipeRecord {
-            book_id,
-            meal_id,
-            recipe_id,
-            multiplier: parse_multiplier(&self.multiplier).map_err(anyhow::Error::msg)?,
-            position,
-        })
-    }
-}
-
 /// Parse the raw multiplier field. Empty defaults to `1`; anything present must
 /// be a positive number.
-pub(crate) fn parse_multiplier(text: &str) -> Result<f64, String> {
+pub fn parse_multiplier(text: &str) -> Result<f64, String> {
     let t = text.trim();
     if t.is_empty() {
         return Ok(1.0);

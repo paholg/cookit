@@ -1,5 +1,5 @@
 use {
-    crate::db::conn::get_conn,
+    crate::conn::get_conn,
     diesel_async::AsyncMigrationHarness,
     diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations},
 };

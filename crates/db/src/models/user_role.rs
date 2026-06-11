@@ -2,19 +2,20 @@ use {
     crate::id::{BookId, UserId, UserRoleId},
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "server")]
-use crate::db::{
-    models::{book::Book, user::User},
-    prelude::*,
-    schema::user_roles,
+use {
+    crate::{
+        models::{book::Book, user::User},
+        schema::user_roles,
+    },
+    diesel::prelude::*,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(diesel_derive_enum::DbEnum))]
 #[cfg_attr(
     feature = "server",
-    ExistingTypePath = "crate::db::schema::sql_types::Role"
+    ExistingTypePath = "crate::schema::sql_types::Role"
 )]
 pub enum Role {
     Admin,

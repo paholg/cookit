@@ -1,17 +1,15 @@
 use {
-    api::{
-        db::{
-            conn,
-            models::{
-                book::BookNew,
-                user::UserNew,
-                user_role::{Role, UserRoleNew},
-            },
-            prelude::*,
-            schema::{books, user_roles, users},
-        },
+    db::{
         id::{BookId, UserId, UserRoleId},
+        models::{
+            book::BookNew,
+            user::UserNew,
+            user_role::{Role, UserRoleNew},
+        },
+        schema::{books, user_roles, users},
     },
+    diesel_async::RunQueryDsl,
+    server::conn,
     std::time::{SystemTime, UNIX_EPOCH},
     uuid::Uuid,
 };

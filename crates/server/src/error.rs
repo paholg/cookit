@@ -9,14 +9,10 @@ pub enum Error {
     #[snafu(display("Forbidden"))]
     Forbidden,
 
-    #[cfg(feature = "server")]
     #[snafu(display("Database exhausted: {source}"))]
     DatabasePool {
         source: diesel_async::pooled_connection::deadpool::PoolError,
     },
-
-    #[snafu(display("Failed to parse id: {id}"))]
-    ParseId { id: String },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -26,9 +22,7 @@ impl Error {
         match self {
             Error::Validation { msg: _ } => 422,
             Error::Forbidden => 403,
-            #[cfg(feature = "server")]
             Error::DatabasePool { source: _ } => 503,
-            Error::ParseId { id: _ } => 422,
         }
     }
 }

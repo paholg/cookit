@@ -1,6 +1,9 @@
-#[cfg(feature = "server")]
-use figment::{Figment, providers::Env};
-use {serde::Deserialize, std::sync::LazyLock, url::Url};
+use {
+    figment::{Figment, providers::Env},
+    serde::Deserialize,
+    std::sync::LazyLock,
+    url::Url,
+};
 
 #[derive(Deserialize)]
 pub struct Config {

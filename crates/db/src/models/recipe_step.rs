@@ -1,20 +1,21 @@
 use {
     crate::{
-        db::models::recipe_step_ingredient::{
-            RecipeStepIngredientBuilder, RecipeStepIngredientDetail, RecipeStepIngredientError,
-        },
         duration::{format_duration, parse_duration},
         id::{BookId, RecipeId, RecipeStepDraftId, RecipeStepId, RecipeStepIngredientDraftId},
+        models::recipe_step_ingredient::{
+            RecipeStepIngredientBuilder, RecipeStepIngredientDetail, RecipeStepIngredientError,
+        },
     },
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
 };
-
 #[cfg(feature = "server")]
-use crate::db::{
-    models::{book::Book, recipe::Recipe},
-    prelude::*,
-    schema::recipe_steps,
+use {
+    crate::{
+        models::{book::Book, recipe::Recipe},
+        schema::recipe_steps,
+    },
+    diesel::prelude::*,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -102,42 +103,5 @@ impl From<RecipeStepDetail> for RecipeStepBuilder {
                 .unwrap_or_default(),
             ingredients: detail.ingredients.into_iter().map(Into::into).collect(),
         }
-    }
-}
-
-/// Writable columns of `recipe_steps`. `treat_none_as_null` makes a cleared
-/// timer write SQL `NULL`.
-#[cfg(feature = "server")]
-#[derive(Insertable, AsChangeset)]
-#[diesel(table_name = recipe_steps, treat_none_as_null = true)]
-pub(crate) struct RecipeStepRecord {
-    pub(crate) book_id: BookId,
-    pub(crate) recipe_id: RecipeId,
-    pub(crate) position: i32,
-    pub(crate) text: String,
-    pub(crate) duration_s: Option<i32>,
-}
-
-#[cfg(feature = "server")]
-impl RecipeStepBuilder {
-    /// The columns to write for this step; `position` comes from list order.
-    pub(crate) fn record(
-        &self,
-        book_id: BookId,
-        recipe_id: RecipeId,
-        position: i32,
-    ) -> anyhow::Result<RecipeStepRecord> {
-        let duration_s = match self.duration_text.trim() {
-            "" => None,
-            t => Some(parse_duration(t).map_err(anyhow::Error::msg)? as i32),
-        };
-
-        Ok(RecipeStepRecord {
-            book_id,
-            recipe_id,
-            position,
-            text: self.instruction.trim().to_string(),
-            duration_s,
-        })
     }
 }

@@ -1,29 +1,24 @@
-#[cfg(feature = "server")]
 use {
     crate::{
         auth,
-        db::{
-            conn::{DbConn, get_conn},
-            models::{book::Book, user::User, user_role::UserRole},
-            schema::{books, user_roles, users},
-        },
+        conn::{DbConn, get_conn},
         error::ForbiddenSnafu,
-        id::UserRoleId,
+    },
+    db::{
+        id::{BookId, UserRoleId},
+        models::{
+            book::Book,
+            user::{CurrentUser, User},
+            user_role::{Role, UserRole},
+        },
+        schema::{books, user_roles, users},
     },
     diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl},
     diesel_async::RunQueryDsl,
     dioxus::{fullstack::FullstackContext, prelude::ServerFnError},
     snafu::ensure,
 };
-use {
-    crate::{
-        db::models::user_role::Role,
-        id::{BookId, UserId},
-    },
-    serde::{Deserialize, Serialize},
-};
 
-#[cfg(feature = "server")]
 pub struct Session {
     conn: DbConn,
     book: Book,
@@ -31,7 +26,6 @@ pub struct Session {
     role: UserRole,
 }
 
-#[cfg(feature = "server")]
 impl Session {
     /// Resolve the session for the current request from its signed cookie.
     ///
@@ -160,20 +154,5 @@ impl Session {
     pub fn require_admin(&self) -> crate::Result<()> {
         ensure!(self.role.role == Role::Admin, ForbiddenSnafu);
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrentUser {
-    pub id: UserId,
-    pub book_id: BookId,
-    pub name: String,
-    pub email: String,
-    pub role: Role,
-}
-
-impl CurrentUser {
-    pub fn is_admin(&self) -> bool {
-        self.role == Role::Admin
     }
 }
