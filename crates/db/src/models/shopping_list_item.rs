@@ -35,6 +35,8 @@ pub struct ShoppingListItem {
     pub checked: bool,
     #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
     pub deleted_at: Option<jiff::Timestamp>,
+    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
+    pub created_at: jiff::Timestamp,
 }
 
 /// One shopping-list item flattened for display: the ingredient's name and

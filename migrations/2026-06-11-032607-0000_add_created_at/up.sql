@@ -1,0 +1,54 @@
+ALTER TABLE
+    users
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    books
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    user_roles
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    ingredients
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    recipes
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    recipe_steps
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    recipe_step_ingredients
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    meals
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    meal_recipes
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    shopping_lists
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE
+    shopping_list_items
+ADD
+    COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();

@@ -14,6 +14,7 @@ diesel::table! {
         slug -> Text,
         owner_id -> Uuid,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -26,6 +27,7 @@ diesel::table! {
         density_g_per_ml -> Nullable<Float8>,
         grocery_section -> Nullable<Text>,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -39,6 +41,7 @@ diesel::table! {
         multiplier -> Float8,
         position -> Int4,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -50,6 +53,7 @@ diesel::table! {
         slug -> Text,
         name -> Text,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -65,6 +69,7 @@ diesel::table! {
         unit -> Nullable<Text>,
         ingredient_id -> Uuid,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -78,6 +83,7 @@ diesel::table! {
         text -> Text,
         duration_s -> Nullable<Int4>,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -92,6 +98,7 @@ diesel::table! {
         description -> Text,
         notes -> Text,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -109,6 +116,7 @@ diesel::table! {
         text -> Nullable<Text>,
         checked -> Bool,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -120,6 +128,7 @@ diesel::table! {
         slug -> Text,
         name -> Text,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -134,6 +143,7 @@ diesel::table! {
         user_id -> Uuid,
         role -> Role,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -144,6 +154,7 @@ diesel::table! {
         name -> Text,
         email -> Text,
         deleted_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
