@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dump schema as clean SQL via Atlas (https://atlasgo.io).
+
+atlas schema inspect \
+  -u "$DATABASE_URL" \
+  --format '{{ sql . "  " }}' \
+  > schema.sql
+
+sleek schema.sql
+
+echo "Wrote schema"

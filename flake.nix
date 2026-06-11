@@ -115,6 +115,7 @@
           devPackages =
             with pkgs;
             [
+              atlas
               atuin
               cargo-dist
               cargo-edit
@@ -127,9 +128,12 @@
               litecli
               nodejs_latest
               openssl
+              pgcli
               pkg-config
+              postgresql_18
               rust-bin.nightly.latest.rustfmt
               sccache
+              sleek
               sqlite
               tombi
             ]

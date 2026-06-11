@@ -44,6 +44,7 @@ fix:
     # dx fmt
     cargo fmt --all
     tombi format
+    script/schema-dump
 
 lint: fmt-check clippy
 
