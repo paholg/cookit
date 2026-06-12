@@ -70,7 +70,7 @@ pub trait RpcContext: Send {
 pub trait Apply {
     type Response;
 
-    async fn apply(self, ctx: &mut dyn RpcContext) -> anyhow::Result<Self::Response>;
+    async fn apply(self, ctx: &mut dyn RpcContext) -> crate::error::Result<Self::Response>;
 }
 
 /// A response type that can be paged by `updated_at` for sync. Implemented by
@@ -81,7 +81,7 @@ pub trait ListSince: Sized {
     async fn list_since(
         ctx: &mut dyn RpcContext,
         since: Timestamp,
-    ) -> anyhow::Result<ListResponse<Self>>;
+    ) -> crate::error::Result<ListResponse<Self>>;
 }
 
 /// Uniform-signature bridge used by `enum_dispatch` to dispatch [`Operation`].
@@ -96,5 +96,5 @@ pub trait ApplyOp {
     fn apply_op(
         self,
         ctx: &mut dyn RpcContext,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<OperationResponse>> + Send + '_>>;
+    ) -> Pin<Box<dyn Future<Output = crate::error::Result<OperationResponse>> + Send + '_>>;
 }

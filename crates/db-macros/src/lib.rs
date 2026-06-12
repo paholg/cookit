@@ -136,6 +136,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             // `diesel_async`'s `.load`/`.get_result`.
             use ::diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
             use ::diesel_async::RunQueryDsl;
+            use ::snafu::OptionExt;
 
             impl ::core::convert::From<#response> for crate::rpc::OperationResponse {
                 fn from(response: #response) -> Self {
@@ -149,7 +150,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> ::anyhow::Result<#response> {
+                ) -> crate::error::Result<#response> {
                     let response = ::diesel::insert_into(crate::schema::#table::table)
                         .values(&self)
                         .returning(#response::as_returning())
@@ -166,7 +167,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> ::anyhow::Result<#response> {
+                ) -> crate::error::Result<#response> {
                     let id = self.id;
                     let book_id = ctx.book_id();
 
@@ -180,7 +181,10 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                     .get_result(ctx.conn())
                     .await
                     .optional()?
-                    .ok_or_else(|| ::anyhow::anyhow!("{} {:?} not found", #model_str, id))
+                    .context(crate::error::NotFoundSnafu {
+                        entity: #model_str,
+                        id: format!("{id:?}"),
+                    })
                 }
             }
 
@@ -190,7 +194,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> ::anyhow::Result<#response> {
+                ) -> crate::error::Result<#response> {
                     let id = self.id;
                     let book_id = ctx.book_id();
 
@@ -207,7 +211,10 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                     .get_result(ctx.conn())
                     .await
                     .optional()?
-                    .ok_or_else(|| ::anyhow::anyhow!("{} {:?} not found", #model_str, id))
+                    .context(crate::error::NotFoundSnafu {
+                        entity: #model_str,
+                        id: format!("{id:?}"),
+                    })
                 }
             }
 
@@ -215,7 +222,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 async fn list_since(
                     ctx: &mut dyn crate::rpc::RpcContext,
                     since: crate::Timestamp,
-                ) -> ::anyhow::Result<crate::rpc::ListResponse<Self>> {
+                ) -> crate::error::Result<crate::rpc::ListResponse<Self>> {
                     let book_id = ctx.book_id();
 
                     let records: ::std::vec::Vec<#response> = crate::schema::#table::table
@@ -387,7 +394,7 @@ fn apply_op_impl(op_structs: &[&Ident]) -> TokenStream2 {
                     ctx: &mut dyn crate::rpc::RpcContext,
                 ) -> ::core::pin::Pin<::std::boxed::Box<
                     dyn ::core::future::Future<
-                        Output = ::anyhow::Result<crate::rpc::OperationResponse>,
+                        Output = crate::error::Result<crate::rpc::OperationResponse>,
                     > + ::core::marker::Send + '_,
                 >> {
                     ::std::boxed::Box::pin(async move {

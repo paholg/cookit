@@ -13,6 +13,9 @@ pub enum Error {
     DatabasePool {
         source: diesel_async::pooled_connection::deadpool::PoolError,
     },
+
+    #[snafu(display("{source}"), context(false))]
+    Db { source: db::error::Error },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -23,6 +26,7 @@ impl Error {
             Error::Validation { msg: _ } => 422,
             Error::Forbidden => 403,
             Error::DatabasePool { source: _ } => 503,
+            Error::Db { source } => source.code(),
         }
     }
 }

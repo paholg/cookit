@@ -83,7 +83,10 @@ pub async fn update_ingredient(
 ) -> Result<IngredientResponse, ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
-    let ingredient = input.apply(&mut session).await?;
+    let ingredient = input
+        .apply(&mut session)
+        .await
+        .map_err(server::Error::from)?;
 
     Ok(ingredient)
 }
@@ -98,7 +101,11 @@ pub async fn apply_ops(ops: Vec<Operation>) -> Result<Vec<OperationResponse>, Se
     let mut responses = Vec::with_capacity(ops.len());
     // TODO: Do this in a transaction.
     for op in ops {
-        responses.push(op.apply_op(&mut session).await?);
+        responses.push(
+            op.apply_op(&mut session)
+                .await
+                .map_err(server::Error::from)?,
+        );
     }
 
     Ok(responses)
@@ -109,7 +116,9 @@ pub async fn list_ingredients_since(
     since: Timestamp,
 ) -> Result<ListResponse<IngredientResponse>, ServerFnError> {
     let mut session = Session::require().await?;
-    let page = IngredientResponse::list_since(&mut session, since).await?;
+    let page = IngredientResponse::list_since(&mut session, since)
+        .await
+        .map_err(server::Error::from)?;
 
     Ok(page)
 }

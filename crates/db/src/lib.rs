@@ -1,4 +1,6 @@
 pub mod duration;
+#[cfg(feature = "server")]
+pub mod error;
 pub mod grocery_section;
 pub mod helpers;
 pub mod id;

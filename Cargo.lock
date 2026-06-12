@@ -729,7 +729,6 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 name = "db"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "db-macros",
  "diesel",
  "diesel-async",
