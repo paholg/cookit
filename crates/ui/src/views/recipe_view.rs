@@ -12,8 +12,8 @@ pub fn RecipeView(
     #[props(default)] meal_key: Option<String>,
 ) -> Element {
     let timers_ctx = use_context::<RunningTimersCtx>();
-    let recipe_name = detail.recipe.name.clone();
-    let recipe_slug = detail.recipe.slug.clone();
+    let recipe_name = detail.recipe.name.to_string();
+    let recipe_slug = detail.recipe.slug.to_string();
 
     rsx! {
         section { class: "recipe",

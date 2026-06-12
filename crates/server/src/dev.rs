@@ -8,6 +8,7 @@
 use {
     crate::conn::DbConn,
     db::{
+        Email, Slug,
         id::{BookId, UserId, UserRoleId},
         models::{
             book::BookNew,
@@ -28,12 +29,12 @@ use {
 pub async fn create_test_book(conn: &mut DbConn) -> anyhow::Result<(UserId, BookId, UserRoleId)> {
     let suffix = jiff::Timestamp::now().as_nanosecond();
 
-    let email = format!("e2e-{suffix}@example.com");
-    let slug = format!("e2e-{suffix}");
+    let email = Email::try_from(format!("e2e-{suffix}@example.com"))?;
+    let slug = Slug::try_from(format!("e2e-{suffix}"))?;
 
     let user_id: UserId = UserNew {
-        email: &email,
-        name: "E2E Admin",
+        email,
+        name: "E2E Admin".try_into()?,
     }
     .insert_into(users::table)
     .returning(users::id)
@@ -41,8 +42,8 @@ pub async fn create_test_book(conn: &mut DbConn) -> anyhow::Result<(UserId, Book
     .await?;
 
     let book_id: BookId = BookNew {
-        name: "E2E Book",
-        slug: &slug,
+        name: "E2E Book".try_into()?,
+        slug,
         owner_id: user_id,
     }
     .insert_into(books::table)

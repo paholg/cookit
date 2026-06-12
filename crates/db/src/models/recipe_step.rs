@@ -1,5 +1,6 @@
 use {
     crate::{
+        Timestamp,
         duration::{format_duration, parse_duration},
         id::{BookId, RecipeId, RecipeStepDraftId, RecipeStepId, RecipeStepIngredientDraftId},
         models::recipe_step_ingredient::{
@@ -26,16 +27,13 @@ use {
 pub struct RecipeStep {
     pub id: RecipeStepId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
+    pub updated_at: Timestamp,
     pub recipe_id: RecipeId,
     pub position: i32,
     pub text: String,
     pub duration_s: Option<i32>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,5 +1,6 @@
 use {
     crate::{
+        Timestamp,
         grocery_section::GrocerySection,
         id::{BookId, IngredientId, ShoppingListId, ShoppingListItemId},
     },
@@ -23,8 +24,7 @@ use {
 pub struct ShoppingListItem {
     pub id: ShoppingListItemId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
+    pub updated_at: Timestamp,
     pub shopping_list_id: ShoppingListId,
     pub position: i32,
     pub quantity: Option<f64>,
@@ -33,10 +33,8 @@ pub struct ShoppingListItem {
     pub ingredient_id: Option<IngredientId>,
     pub text: Option<String>,
     pub checked: bool,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 /// One shopping-list item flattened for display: the ingredient's name and

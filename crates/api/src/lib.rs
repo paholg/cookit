@@ -2,7 +2,7 @@ pub mod routes;
 
 pub use {
     db::{
-        duration, grocery_section, helpers, id,
+        Name, PositiveFloat, duration, grocery_section, helpers, id,
         models::{
             ingredient::{Ingredient, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail, MealError},

@@ -1,7 +1,7 @@
 use {
     crate::{
+        Name, PositiveFloat, Timestamp,
         grocery_section::GrocerySection,
-        helpers::{Name, PositiveFloat},
         id::{BookId, IngredientId},
     },
     serde::{Deserialize, Serialize},
@@ -19,15 +19,12 @@ use {
 pub struct Ingredient {
     pub id: IngredientId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
+    pub updated_at: Timestamp,
     pub name: Name,
     pub density_g_per_ml: Option<PositiveFloat>,
     pub grocery_section: Option<GrocerySection>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

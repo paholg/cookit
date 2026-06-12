@@ -26,6 +26,7 @@ async fn make_recipe() -> String {
         .expect("create recipe")
         .recipe
         .slug
+        .to_string()
 }
 
 #[tokio::test]
@@ -47,10 +48,10 @@ async fn meal_upsert_get_edit_delete() {
 
     // Create.
     let detail = upsert_meal(builder).await.expect("upsert create");
-    assert_eq!(detail.meal.name, name);
+    assert_eq!(detail.meal.name.as_str(), name);
     assert_eq!(detail.recipes.len(), 1);
     assert_eq!(detail.recipes[0].meal_recipe.multiplier, 2.0);
-    assert_eq!(detail.recipes[0].recipe.recipe.slug, recipe_slug);
+    assert_eq!(detail.recipes[0].recipe.recipe.slug.as_str(), recipe_slug);
 
     let slug = detail.meal.slug.clone();
 
@@ -58,8 +59,8 @@ async fn meal_upsert_get_edit_delete() {
     let listed = list_meals().await.expect("list meals");
     assert!(listed.iter().any(|m| m.slug == slug));
 
-    let fetched = get_meal(slug.clone()).await.expect("get meal");
-    assert_eq!(fetched.meal.name, name);
+    let fetched = get_meal(slug.to_string()).await.expect("get meal");
+    assert_eq!(fetched.meal.name.as_str(), name);
 
     // Edit: rename and change the multiplier.
     let mut edit = MealBuilder::from(fetched);
@@ -68,12 +69,12 @@ async fn meal_upsert_get_edit_delete() {
     edit.recipes[0].multiplier = "0.5".to_string();
 
     let updated = upsert_meal(edit).await.expect("upsert edit");
-    assert_eq!(updated.meal.name, new_name);
+    assert_eq!(updated.meal.name.as_str(), new_name);
     assert_eq!(updated.meal.slug, slug, "slug is stable across edits");
     assert_eq!(updated.recipes[0].meal_recipe.multiplier, 0.5);
 
     // Delete.
-    delete_meal(slug.clone()).await.expect("delete meal");
+    delete_meal(slug.to_string()).await.expect("delete meal");
     let after = list_meals().await.expect("list after delete");
     assert!(!after.iter().any(|m| m.slug == slug));
 
@@ -110,6 +111,8 @@ async fn blank_recipe_rows_are_dropped() {
         "empty multiplier defaults to 1"
     );
 
-    delete_meal(detail.meal.slug).await.expect("cleanup meal");
+    delete_meal(detail.meal.slug.to_string())
+        .await
+        .expect("cleanup meal");
     delete_recipe(recipe_slug).await.expect("cleanup recipe");
 }

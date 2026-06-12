@@ -41,7 +41,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                     detail
                         .recipes
                         .iter()
-                        .position(|mr| mr.recipe.recipe.slug == slug)
+                        .position(|mr| mr.recipe.recipe.slug.as_str() == slug)
                 })
                 .unwrap_or(0);
 
@@ -107,7 +107,7 @@ pub fn MealDetail(meal_key: String, tab: Option<String>) -> Element {
                                     r#type: "button",
                                     class: if i == current { "primary" } else { "" },
                                     onclick: {
-                                        let recipe_slug = mr.recipe.recipe.slug.clone();
+                                        let recipe_slug = mr.recipe.recipe.slug.to_string();
                                         let meal_key = meal_key.clone();
                                         move |_| {
                                             navigator().replace(Route::MealDetail {

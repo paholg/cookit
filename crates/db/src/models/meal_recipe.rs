@@ -1,5 +1,6 @@
 use {
     crate::{
+        Timestamp,
         id::{BookId, MealId, MealRecipeDraftId, MealRecipeId, RecipeId},
         models::recipe::RecipeDetail,
     },
@@ -23,16 +24,13 @@ use {
 pub struct MealRecipe {
     pub id: MealRecipeId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
+    pub updated_at: Timestamp,
     pub meal_id: MealId,
     pub recipe_id: RecipeId,
     pub multiplier: f64,
     pub position: i32,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -89,7 +87,7 @@ impl From<MealRecipeDetail> for MealRecipeBuilder {
     fn from(detail: MealRecipeDetail) -> Self {
         Self {
             id: detail.meal_recipe.id.into(),
-            recipe_slug: detail.recipe.recipe.slug,
+            recipe_slug: detail.recipe.recipe.slug.to_string(),
             multiplier: format_mult(detail.meal_recipe.multiplier),
         }
     }

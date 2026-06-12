@@ -2,7 +2,6 @@ use {
     crate::{conn::DbConn, meal, session::Session},
     anyhow::{Context, anyhow},
     db::{
-        helpers::slugify,
         id::{BookId, IngredientId, ShoppingListId, ShoppingListItemId},
         models::{
             ingredient::Ingredient,
@@ -12,6 +11,7 @@ use {
             shopping_list_item::{ShoppingListItem, ShoppingListItemInput, ShoppingListItemView},
         },
         schema::{ingredients, shopping_list_items, shopping_lists},
+        slugify,
         unit::parse_unit,
     },
     diesel::prelude::*,

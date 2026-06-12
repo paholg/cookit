@@ -39,7 +39,12 @@ async fn shopping_list_from_meal_aggregates_and_edits() {
             ingredients: vec![ing(&flour, "2", "cup"), ing(&sugar, "1", "cup")],
         }],
     };
-    let recipe_slug = upsert_recipe(recipe).await.expect("recipe").recipe.slug;
+    let recipe_slug = upsert_recipe(recipe)
+        .await
+        .expect("recipe")
+        .recipe
+        .slug
+        .to_string();
 
     // A meal that uses it twice over (multiplier 2).
     let meal = MealBuilder {
@@ -51,7 +56,7 @@ async fn shopping_list_from_meal_aggregates_and_edits() {
             multiplier: "2".to_string(),
         }],
     };
-    let meal_slug = upsert_meal(meal).await.expect("meal").meal.slug;
+    let meal_slug = upsert_meal(meal).await.expect("meal").meal.slug.to_string();
 
     // Generate a shopping list from the meal.
     let list_id = create_shopping_list_from_meal(meal_slug.clone())
@@ -119,7 +124,7 @@ async fn empty_shopping_list_create_and_delete() {
     let id = create_shopping_list(name.clone()).await.expect("create");
 
     let listed = list_shopping_lists().await.expect("list");
-    assert!(listed.iter().any(|l| l.id == id && l.name == name));
+    assert!(listed.iter().any(|l| l.id == id && l.name.as_str() == name));
 
     let detail = get_shopping_list(id).await.expect("get");
     assert!(detail.items.is_empty());

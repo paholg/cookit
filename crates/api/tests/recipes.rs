@@ -38,7 +38,7 @@ async fn recipe_upsert_get_edit_delete() {
 
     // Create.
     let detail = upsert_recipe(builder).await.expect("upsert create");
-    assert_eq!(detail.recipe.name, name);
+    assert_eq!(detail.recipe.name.as_str(), name);
     assert_eq!(detail.recipe.source, "https://example.com");
     assert_eq!(detail.steps.len(), 1);
 
@@ -59,8 +59,8 @@ async fn recipe_upsert_get_edit_delete() {
     let listed = list_recipes().await.expect("list recipes");
     assert!(listed.iter().any(|r| r.slug == slug));
 
-    let fetched = get_recipe(slug.clone()).await.expect("get recipe");
-    assert_eq!(fetched.recipe.name, name);
+    let fetched = get_recipe(slug.to_string()).await.expect("get recipe");
+    assert_eq!(fetched.recipe.name.as_str(), name);
 
     // Edit: rename, add a second step, drop the ingredient from the first.
     let mut edit = RecipeBuilder::from(fetched);
@@ -75,14 +75,16 @@ async fn recipe_upsert_get_edit_delete() {
     });
 
     let updated = upsert_recipe(edit).await.expect("upsert edit");
-    assert_eq!(updated.recipe.name, new_name);
+    assert_eq!(updated.recipe.name.as_str(), new_name);
     assert_eq!(updated.recipe.slug, slug, "slug is stable across edits");
     assert_eq!(updated.steps.len(), 2);
     assert!(updated.steps[0].ingredients.is_empty());
     assert_eq!(updated.steps[1].step.text, "Bake");
 
     // Delete.
-    delete_recipe(slug.clone()).await.expect("delete recipe");
+    delete_recipe(slug.to_string())
+        .await
+        .expect("delete recipe");
     let after = list_recipes().await.expect("list after delete");
     assert!(!after.iter().any(|r| r.slug == slug));
 }
@@ -118,22 +120,23 @@ async fn ingredient_update_round_trips() {
     assert!(row.density_g_per_ml.is_none());
 
     // Update it.
-    use api::{
-        IngredientUpdate,
-        grocery_section::GrocerySection,
-        helpers::{Name, PositiveFloat},
-    };
+    use api::{IngredientUpdate, Name, PositiveFloat, grocery_section::GrocerySection};
     let update = IngredientUpdate {
-        name: Name::parse(&ingredient_name).unwrap(),
-        density_g_per_ml: Some(PositiveFloat::parse(0.85).unwrap()),
+        name: Name::try_new(&ingredient_name).unwrap(),
+        density_g_per_ml: Some(PositiveFloat::try_new(0.85).unwrap()),
         grocery_section: Some(GrocerySection::Bakery),
     };
     let updated = update_ingredient(ingredient_id, update)
         .await
         .expect("update ingredient");
-    assert_eq!(updated.density_g_per_ml, Some(PositiveFloat(0.85)));
+    assert_eq!(
+        updated.density_g_per_ml,
+        Some(PositiveFloat::try_new(0.85).unwrap())
+    );
     assert_eq!(updated.grocery_section, Some(GrocerySection::Bakery));
 
     // Cleanup the recipe (ingredient row stays, harmless).
-    delete_recipe(slug).await.expect("delete recipe");
+    delete_recipe(slug.to_string())
+        .await
+        .expect("delete recipe");
 }

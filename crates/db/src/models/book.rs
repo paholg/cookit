@@ -1,5 +1,8 @@
 use {
-    crate::id::{BookId, UserId},
+    crate::{
+        Name, Slug, Timestamp,
+        id::{BookId, UserId},
+    },
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "server")]
@@ -17,22 +20,19 @@ use {
 #[cfg_attr(feature = "server", diesel(belongs_to(User, foreign_key = owner_id)))]
 pub struct Book {
     pub id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
-    pub name: String,
-    pub slug: String,
+    pub updated_at: Timestamp,
+    pub name: Name,
+    pub slug: Slug,
     pub owner_id: UserId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug)]
 #[cfg_attr(feature = "server", derive(Insertable))]
 #[cfg_attr(feature = "server", diesel(table_name = books))]
-pub struct BookNew<'a> {
-    pub name: &'a str,
-    pub slug: &'a str,
+pub struct BookNew {
+    pub name: Name,
+    pub slug: Slug,
     pub owner_id: UserId,
 }

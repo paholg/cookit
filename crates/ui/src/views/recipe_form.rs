@@ -131,7 +131,7 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
             match upsert_recipe(payload).await {
                 Ok(detail) => {
                     nav.push(Route::RecipeDetail {
-                        recipe_key: detail.recipe.slug,
+                        recipe_key: detail.recipe.slug.to_string(),
                     });
                 }
                 Err(e) => {

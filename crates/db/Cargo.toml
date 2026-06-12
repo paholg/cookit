@@ -7,8 +7,11 @@ edition = "2024"
 anyhow = "1"
 diesel = { workspace = true, optional = true }
 diesel-derive-enum = { workspace = true, optional = true }
+email_address.workspace = true
 jiff.workspace = true
 jiff-diesel = { workspace = true, optional = true }
+nutype.workspace = true
+regex.workspace = true
 serde.workspace = true
 snafu.workspace = true
 strum = { version = "0.28", features = ["derive"] }

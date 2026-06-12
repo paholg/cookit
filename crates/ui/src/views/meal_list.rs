@@ -38,7 +38,7 @@ pub fn MealList() -> Element {
 
 #[component]
 fn MealRow(meal: Meal) -> Element {
-    let meal_key = meal.slug.clone();
+    let meal_key = meal.slug.to_string();
 
     rsx! {
         li {

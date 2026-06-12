@@ -1,7 +1,7 @@
 use {
     db::{
+        Email, Name, PositiveFloat, Slug,
         grocery_section::GrocerySection,
-        helpers::{Name, PositiveFloat},
         id::{BookId, DraftId, UserId},
         models::{
             book::BookNew,
@@ -26,8 +26,8 @@ async fn main() -> eyre::Result<()> {
     let mut conn = get_conn().await?;
 
     let user_id: UserId = UserNew {
-        email: "paho@paholg.com",
-        name: "Admin User",
+        email: Email::try_from("paho@paholg.com".to_string())?,
+        name: Name::try_from("Admin User".to_string())?,
     }
     .insert_into(users::table)
     .returning(users::id)
@@ -35,8 +35,8 @@ async fn main() -> eyre::Result<()> {
     .await?;
 
     let book_id: BookId = BookNew {
-        name: "Example Book",
-        slug: "example",
+        name: Name::try_from("Example Book".to_string())?,
+        slug: Slug::try_from("example".to_string())?,
         owner_id: user_id,
     }
     .insert_into(books::table)
@@ -292,13 +292,13 @@ async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
 
         let density_g_per_ml = match density {
             Some(d) => {
-                Some(PositiveFloat::parse(d).map_err(|e| eyre::eyre!("{name} density: {e}"))?)
+                Some(PositiveFloat::try_new(d).map_err(|e| eyre::eyre!("{name} density: {e}"))?)
             }
             None => None,
         };
 
         let update = IngredientUpdate {
-            name: Name::parse(name).map_err(|e| eyre::eyre!("{name}: {e}"))?,
+            name: Name::try_new(name).map_err(|e| eyre::eyre!("{name}: {e}"))?,
             density_g_per_ml,
             grocery_section: Some(section),
         };

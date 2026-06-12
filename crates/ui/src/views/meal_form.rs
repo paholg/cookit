@@ -81,7 +81,7 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
             match upsert_meal(payload).await {
                 Ok(detail) => {
                     nav.push(Route::MealDetail {
-                        meal_key: detail.meal.slug,
+                        meal_key: detail.meal.slug.to_string(),
                         tab: None,
                     });
                 }
@@ -244,10 +244,10 @@ fn MealRecipeRow(
                         }
                     },
                     option { value: "", "— pick a recipe —" }
-                    for r in recipes.iter().filter(|r| !used_by_others.contains(&r.slug)) {
+                    for r in recipes.iter().filter(|r| !used_by_others.contains(r.slug.as_str())) {
                         option {
                             value: "{r.slug}",
-                            selected: row.recipe_slug == r.slug,
+                            selected: row.recipe_slug == r.slug.as_str(),
                             "{r.name}"
                         }
                     }

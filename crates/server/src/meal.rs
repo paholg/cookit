@@ -2,13 +2,13 @@ use {
     crate::{conn::DbConn, recipe, session::Session},
     anyhow::{Context, anyhow},
     db::{
-        helpers::slugify,
         id::{BookId, DraftId, MealId, MealRecipeId, RecipeId},
         models::{
             meal::{Meal, MealBuilder, MealDetail},
             meal_recipe::{MealRecipe, MealRecipeBuilder, MealRecipeDetail, parse_multiplier},
         },
         schema::{meal_recipes, meals, recipes},
+        slugify,
     },
     diesel::prelude::*,
     diesel_async::{AsyncConnection, RunQueryDsl},

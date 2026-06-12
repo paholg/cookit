@@ -1,6 +1,6 @@
 use {
     crate::{
-        helpers::Name,
+        Name, Slug, Timestamp,
         id::{BookId, RecipeDraftId, RecipeId, RecipeStepDraftId},
         models::recipe_step::{RecipeStepBuilder, RecipeStepDetail, RecipeStepError},
     },
@@ -20,17 +20,14 @@ use {
 pub struct Recipe {
     pub id: RecipeId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
-    pub slug: String,
-    pub name: String,
+    pub updated_at: Timestamp,
+    pub slug: Slug,
+    pub name: Name,
     pub source: String,
     pub description: String,
     pub notes: String,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -95,7 +92,7 @@ impl From<RecipeDetail> for RecipeBuilder {
     fn from(detail: RecipeDetail) -> Self {
         Self {
             id: detail.recipe.id.into(),
-            name: detail.recipe.name,
+            name: detail.recipe.name.to_string(),
             source: detail.recipe.source,
             steps: detail.steps.into_iter().map(Into::into).collect(),
         }
@@ -114,7 +111,7 @@ impl RecipeBuilder {
     pub fn validate(&self) -> Result<(), RecipeError> {
         let mut err = RecipeError::default();
 
-        if Name::parse(&self.name).is_err() {
+        if Name::try_new(&self.name).is_err() {
             err.name = Some("name is required".to_string());
         }
 

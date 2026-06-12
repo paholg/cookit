@@ -27,7 +27,7 @@ pub fn RecipeList() -> Element {
                         li { key: "{recipe.slug}",
                             Link {
                                 to: Route::RecipeDetail {
-                                    recipe_key: recipe.slug.clone(),
+                                    recipe_key: recipe.slug.to_string(),
                                 },
                                 "{recipe.name}"
                             }

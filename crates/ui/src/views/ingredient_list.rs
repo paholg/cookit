@@ -1,11 +1,9 @@
 use {
     crate::{ClientOnly, client::client},
     api::{
-        APP_NAME, Ingredient, IngredientUpdate,
-        grocery_section::GrocerySection,
-        helpers::{Name, PositiveFloat},
-        id::IngredientId,
-        list_ingredients, page_title, update_ingredient,
+        APP_NAME, Ingredient, IngredientUpdate, Name, PositiveFloat,
+        grocery_section::GrocerySection, id::IngredientId, list_ingredients, page_title,
+        update_ingredient,
     },
     dioxus::prelude::*,
     std::str::FromStr,
@@ -27,10 +25,10 @@ impl RowDraft {
     fn from(i: &Ingredient) -> Self {
         Self {
             id: i.id,
-            name: i.name.0.clone(),
+            name: i.name.to_string(),
             density: i
                 .density_g_per_ml
-                .map(|d| format!("{}", d.0))
+                .map(|d| format!("{d}"))
                 .unwrap_or_default(),
             section: i.grocery_section,
             saving: false,
@@ -46,7 +44,7 @@ impl RowDraft {
     }
 
     fn to_payload(&self) -> Result<IngredientUpdate, String> {
-        let name = Name::parse(&self.name).map_err(|e| e.to_string())?;
+        let name = Name::try_new(&self.name).map_err(|e| e.to_string())?;
 
         let density = match self.density.trim() {
             "" => None,
@@ -54,7 +52,7 @@ impl RowDraft {
                 let v: f64 = t
                     .parse()
                     .map_err(|_| format!("`{t}` is not a valid density"))?;
-                Some(PositiveFloat::parse(v).map_err(|e| e.to_string())?)
+                Some(PositiveFloat::try_new(v).map_err(|e| e.to_string())?)
             }
         };
 

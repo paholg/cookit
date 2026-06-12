@@ -1,6 +1,6 @@
 use {
     crate::{
-        helpers::Name,
+        Name, Slug, Timestamp,
         id::{BookId, MealDraftId, MealId, MealRecipeDraftId},
         models::meal_recipe::{MealRecipeBuilder, MealRecipeDetail, MealRecipeError},
     },
@@ -20,14 +20,11 @@ use {
 pub struct Meal {
     pub id: MealId,
     pub book_id: BookId,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub updated_at: jiff::Timestamp,
-    pub slug: String,
-    pub name: String,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::NullableTimestamp, deserialize_as = jiff_diesel::NullableTimestamp))]
-    pub deleted_at: Option<jiff::Timestamp>,
-    #[cfg_attr(feature = "server", diesel(serialize_as = jiff_diesel::Timestamp, deserialize_as = jiff_diesel::Timestamp))]
-    pub created_at: jiff::Timestamp,
+    pub updated_at: Timestamp,
+    pub slug: Slug,
+    pub name: Name,
+    pub deleted_at: Option<Timestamp>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -83,7 +80,7 @@ impl From<MealDetail> for MealBuilder {
     fn from(detail: MealDetail) -> Self {
         Self {
             id: detail.meal.id.into(),
-            name: detail.meal.name,
+            name: detail.meal.name.to_string(),
             recipes: detail.recipes.into_iter().map(Into::into).collect(),
         }
     }
@@ -104,7 +101,7 @@ impl MealBuilder {
     pub fn validate(&self) -> Result<(), MealError> {
         let mut err = MealError::default();
 
-        if Name::parse(&self.name).is_err() {
+        if Name::try_new(&self.name).is_err() {
             err.name = Some("name is required".to_string());
         }
 

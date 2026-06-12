@@ -3,7 +3,6 @@ use {
     anyhow::{Context, anyhow},
     db::{
         duration::parse_duration,
-        helpers::slugify,
         id::{BookId, DraftId, IngredientId, RecipeId, RecipeStepId, RecipeStepIngredientId},
         models::{
             ingredient::Ingredient,
@@ -15,6 +14,7 @@ use {
             },
         },
         schema::{ingredients, recipe_step_ingredients, recipe_steps, recipes},
+        slugify,
         unit::parse_unit,
     },
     diesel::prelude::*,

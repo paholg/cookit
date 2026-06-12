@@ -1,5 +1,6 @@
 use {
     db::{
+        Email, Name, Slug,
         id::{BookId, UserId, UserRoleId},
         models::{
             book::BookNew,
@@ -27,8 +28,8 @@ pub struct TestBook {
     pub user_id: UserId,
     pub book_id: BookId,
     pub user_role_id: UserRoleId,
-    pub email: String,
-    pub slug: String,
+    pub email: Email,
+    pub slug: Slug,
 }
 
 impl TestBook {
@@ -36,13 +37,13 @@ impl TestBook {
         let mut conn = conn::get_conn().await.unwrap();
 
         let token = Uuid::now_v7().simple().to_string();
-        let email = format!("test-{token}@example.test");
-        let slug = format!("test-book-{token}");
+        let email = Email::try_from(format!("test-{token}@example.test")).unwrap();
+        let slug = Slug::try_from(format!("test-book-{token}")).unwrap();
 
         let user_id: UserId = diesel::insert_into(users::table)
             .values(UserNew {
-                email: &email,
-                name: "Test User",
+                email: email.clone(),
+                name: Name::try_from("Test User").unwrap(),
             })
             .returning(users::id)
             .get_result(&mut conn)
@@ -51,8 +52,8 @@ impl TestBook {
 
         let book_id: BookId = diesel::insert_into(books::table)
             .values(BookNew {
-                name: "Test Book",
-                slug: &slug,
+                name: Name::try_from("Test Book").unwrap(),
+                slug: slug.clone(),
                 owner_id: user_id,
             })
             .returning(books::id)
