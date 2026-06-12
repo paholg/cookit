@@ -5,14 +5,18 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1"
+db-macros = { workspace = true }
 diesel = { workspace = true, optional = true }
+diesel-async = { workspace = true, optional = true }
 diesel-derive-enum = { workspace = true, optional = true }
 email_address.workspace = true
+enum_dispatch = { workspace = true, optional = true }
 jiff.workspace = true
 jiff-diesel = { workspace = true, optional = true }
 nutype.workspace = true
 regex.workspace = true
 serde.workspace = true
+serde_with.workspace = true
 snafu.workspace = true
 strum = { version = "0.28", features = ["derive"] }
 uuid.workspace = true
@@ -25,7 +29,9 @@ uuid = { workspace = true, features = ["js"] }
 default = ["server"]
 server = [
   "dep:diesel",
+  "dep:diesel-async",
   "dep:diesel-derive-enum",
+  "dep:enum_dispatch",
   "dep:jiff-diesel",
   "jiff-diesel/postgres",
 ]

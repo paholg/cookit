@@ -3,7 +3,7 @@ use {
     anyhow::Context,
     db::{
         id::{BookId, IngredientId},
-        models::ingredient::{Ingredient, IngredientUpdate},
+        models::ingredient::Ingredient,
         schema::ingredients,
     },
     diesel::prelude::*,
@@ -18,25 +18,6 @@ pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Ingredient>> 
         .await?;
 
     Ok(rows)
-}
-
-/// Apply an edit to an ingredient within the session's book.
-pub async fn apply(
-    update: IngredientUpdate,
-    id: IngredientId,
-    session: &mut Session,
-) -> anyhow::Result<Ingredient> {
-    diesel::update(
-        ingredients::table
-            .filter(ingredients::id.eq(id))
-            .filter(ingredients::book_id.eq(session.book_id())),
-    )
-    .set(update)
-    .returning(Ingredient::as_returning())
-    .get_result(session.conn())
-    .await
-    .optional()?
-    .ok_or_else(|| anyhow::anyhow!("ingredient {id:?} not found"))
 }
 
 /// Columns for creating a bare ingredient (just a name); density and grocery

@@ -4,6 +4,7 @@ pub mod helpers;
 pub mod id;
 pub mod models;
 pub mod newtypes;
+pub mod rpc;
 pub mod unit;
 
 #[cfg(feature = "server")]

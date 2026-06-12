@@ -234,6 +234,59 @@ impl diesel::deserialize::Queryable<diesel::sql_types::Timestamptz, diesel::pg::
     }
 }
 
+// Write-side Diesel impls for `Timestamp`, so it can be used as a bound value in
+// queries (`updated_at.gt(since)`) and updates (`deleted_at.eq(now)`). Like the
+// read-side impls above, these bridge through `jiff_diesel::Timestamp`, which
+// speaks `Timestamptz`. The `Nullable` variants let it target `deleted_at`.
+#[cfg(feature = "server")]
+mod timestamp_write {
+    use {
+        super::Timestamp,
+        diesel::{
+            expression::AsExpression,
+            pg::Pg,
+            serialize::{self, Output, ToSql},
+            sql_types::{Nullable, Timestamptz},
+        },
+    };
+
+    type Bridge = jiff_diesel::Timestamp;
+
+    macro_rules! as_expression {
+        ($sql_ty:ty) => {
+            impl AsExpression<$sql_ty> for Timestamp {
+                type Expression = <Bridge as AsExpression<$sql_ty>>::Expression;
+
+                fn as_expression(self) -> Self::Expression {
+                    AsExpression::<$sql_ty>::as_expression(Bridge::from(jiff::Timestamp::from(
+                        self,
+                    )))
+                }
+            }
+
+            impl AsExpression<$sql_ty> for &Timestamp {
+                type Expression = <Bridge as AsExpression<$sql_ty>>::Expression;
+
+                fn as_expression(self) -> Self::Expression {
+                    AsExpression::<$sql_ty>::as_expression(Bridge::from(jiff::Timestamp::from(
+                        *self,
+                    )))
+                }
+            }
+        };
+    }
+
+    as_expression!(Timestamptz);
+    as_expression!(Nullable<Timestamptz>);
+
+    impl ToSql<Timestamptz, Pg> for Timestamp {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+            let bridge = Bridge::from(jiff::Timestamp::from(*self));
+            ToSql::<Timestamptz, Pg>::to_sql(&bridge, &mut out.reborrow())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Name;

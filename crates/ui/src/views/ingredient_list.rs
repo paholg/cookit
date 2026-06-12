@@ -56,10 +56,14 @@ impl RowDraft {
             }
         };
 
+        // The edit form always submits the full current state of the row, so
+        // every field is `Some(...)` ("set to this value"); the nullable fields
+        // wrap an inner `Option` (`Some(None)` clears the column).
         Ok(IngredientUpdate {
-            name,
-            density_g_per_ml: density,
-            grocery_section: self.section,
+            id: self.id,
+            name: Some(name),
+            density_g_per_ml: Some(density),
+            grocery_section: Some(self.section),
         })
     }
 }
@@ -69,11 +73,11 @@ async fn autosave_delay() {
 }
 
 fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
-    let (id, this_gen) = {
+    let this_gen = {
         let mut w = rows.write();
         let Some(row) = w.get_mut(idx) else { return };
         row.pending_gen = row.pending_gen.wrapping_add(1);
-        (row.id, row.pending_gen)
+        row.pending_gen
     };
 
     spawn(async move {
@@ -106,7 +110,7 @@ fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
             row.error = None;
         }
 
-        let result = update_ingredient(id, payload).await;
+        let result = update_ingredient(payload).await;
 
         let mut w = rows.write();
         let Some(row) = w.get_mut(idx) else { return };

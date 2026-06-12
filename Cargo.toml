@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/api",
   "crates/db",
+  "crates/db-macros",
   "crates/seed",
   "crates/server",
   "crates/ui",
@@ -12,6 +13,7 @@ members = [
 [workspace.dependencies]
 api = { path = "crates/api", default-features = false }
 db = { path = "crates/db", default-features = false }
+db-macros = { path = "crates/db-macros" }
 server = { path = "crates/server" }
 ui = { path = "crates/ui" }
 
@@ -25,13 +27,18 @@ diesel-async = { version = "0.9.1", features = [
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dioxus = { version = "0.7.9" }
 email_address = "0.2.9"
+enum_dispatch = "0.3"
 jiff = { version = "0.2", features = ["serde"] }
 jiff-diesel = { version = "0.1.3" }
 nutype = { version = "0.7.0", features = ["regex", "serde"] }
+proc-macro2 = "1"
+quote = "1"
 regex = "1.12.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_with = "3"
 snafu = { version = "0.9.1" }
+syn = "2"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 url = { version = "2.5.8", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v7"] }

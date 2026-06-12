@@ -1,24 +1,27 @@
 #[cfg(feature = "development")]
 use db::id::{BookId, UserId};
-// Server-only: handler bodies run sessions and queries against the database,
-// which don't exist on the wasm client.
-#[cfg(feature = "server")]
-use server::{auth, ingredient, meal, recipe, session::Session, shopping_list};
 // The /api/dev/* handlers run their DB ops directly (no session), so they need
 // the connection pool and the test-data helpers — both server-only.
 #[cfg(all(feature = "server", feature = "development"))]
 use server::{conn::get_conn, dev};
+#[cfg(feature = "server")]
+use {
+    db::rpc::{Apply, ApplyOp, ListSince},
+    server::{auth, ingredient, meal, recipe, session::Session, shopping_list},
+};
 use {
     db::{
-        id::{IngredientId, ShoppingListId, ShoppingListItemId, UserRoleId},
+        Timestamp,
+        id::{ShoppingListId, ShoppingListItemId, UserRoleId},
         models::{
-            ingredient::{Ingredient, IngredientUpdate},
+            ingredient::{Ingredient, IngredientResponse, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail},
             recipe::{Recipe, RecipeBuilder, RecipeDetail},
             shopping_list::{ShoppingList, ShoppingListDetail},
             shopping_list_item::ShoppingListItemInput,
             user::CurrentUser,
         },
+        rpc::{ListResponse, Operation, OperationResponse},
     },
     dioxus::prelude::*,
 };
@@ -72,16 +75,43 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
     Ok(ingredients)
 }
 
-#[post("/api/ingredients/:id/update")]
+/// Apply a partial edit to one ingredient. `input.id` selects the row; unset
+/// fields are left unchanged (see [`IngredientUpdate`]).
+#[post("/api/ingredients/update")]
 pub async fn update_ingredient(
-    id: IngredientId,
     input: IngredientUpdate,
-) -> Result<Ingredient, ServerFnError> {
+) -> Result<IngredientResponse, ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
-    let ingredient = ingredient::apply(input, id, &mut session).await?;
+    let ingredient = input.apply(&mut session).await?;
 
     Ok(ingredient)
+}
+
+/// Apply a batch of create/update/delete operations across models in order,
+/// returning each resulting row. The client uses this to flush local edits.
+#[post("/api/apply")]
+pub async fn apply_ops(ops: Vec<Operation>) -> Result<Vec<OperationResponse>, ServerFnError> {
+    let mut session = Session::require().await?;
+    session.require_admin()?;
+
+    let mut responses = Vec::with_capacity(ops.len());
+    // TODO: Do this in a transaction.
+    for op in ops {
+        responses.push(op.apply_op(&mut session).await?);
+    }
+
+    Ok(responses)
+}
+
+#[get("/api/ingredients/since")]
+pub async fn list_ingredients_since(
+    since: Timestamp,
+) -> Result<ListResponse<IngredientResponse>, ServerFnError> {
+    let mut session = Session::require().await?;
+    let page = IngredientResponse::list_since(&mut session, since).await?;
+
+    Ok(page)
 }
 
 /// Create or update a recipe and all of its steps/ingredients in one shot.

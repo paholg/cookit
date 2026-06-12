@@ -14,6 +14,7 @@ use {
             user::UserNew,
             user_role::{Role, UserRoleNew},
         },
+        rpc::Apply,
         schema::{books, user_roles, users},
     },
     diesel::prelude::*,
@@ -298,12 +299,14 @@ async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
         };
 
         let update = IngredientUpdate {
-            name: Name::try_new(name).map_err(|e| eyre::eyre!("{name}: {e}"))?,
-            density_g_per_ml,
-            grocery_section: Some(section),
+            id: ingredient.id,
+            name: Some(Name::try_new(name).map_err(|e| eyre::eyre!("{name}: {e}"))?),
+            density_g_per_ml: Some(density_g_per_ml),
+            grocery_section: Some(Some(section)),
         };
 
-        server::ingredient::apply(update, ingredient.id, session)
+        update
+            .apply(session)
             .await
             .map_err(|e| eyre::eyre!("update ingredient {name:?}: {e}"))?;
     }

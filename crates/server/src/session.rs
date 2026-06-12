@@ -11,10 +11,11 @@ use {
             user::{CurrentUser, User},
             user_role::{Role, UserRole},
         },
+        rpc::RpcContext,
         schema::{books, user_roles, users},
     },
     diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl},
-    diesel_async::RunQueryDsl,
+    diesel_async::{AsyncPgConnection, RunQueryDsl},
     dioxus::{fullstack::FullstackContext, prelude::ServerFnError},
     snafu::ensure,
 };
@@ -154,5 +155,17 @@ impl Session {
     pub fn require_admin(&self) -> crate::Result<()> {
         ensure!(self.role.role == Role::Admin, ForbiddenSnafu);
         Ok(())
+    }
+}
+
+/// Lets the generated `db::rpc` operations run against a session's connection
+/// and book without `db` having to depend on this crate.
+impl RpcContext for Session {
+    fn conn(&mut self) -> &mut AsyncPgConnection {
+        &mut self.conn
+    }
+
+    fn book_id(&self) -> BookId {
+        self.book.id
     }
 }

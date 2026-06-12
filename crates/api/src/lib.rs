@@ -4,7 +4,10 @@ pub use {
     db::{
         Name, PositiveFloat, duration, grocery_section, helpers, id,
         models::{
-            ingredient::{Ingredient, IngredientUpdate},
+            ingredient::{
+                Ingredient, IngredientCreate, IngredientDelete, IngredientResponse,
+                IngredientUpdate,
+            },
             meal::{Meal, MealBuilder, MealDetail, MealError},
             meal_recipe::{MealRecipeBuilder, MealRecipeDetail, MealRecipeError},
             recipe::{Recipe, RecipeBuilder, RecipeDetail, RecipeError},
@@ -16,6 +19,7 @@ pub use {
             shopping_list_item::{ShoppingListItem, ShoppingListItemInput, ShoppingListItemView},
             user::CurrentUser,
         },
+        rpc::{ListResponse, Operation, OperationResponse},
         unit,
     },
     routes::*,

@@ -119,16 +119,16 @@ async fn ingredient_update_round_trips() {
         .expect("ingredient present");
     assert!(row.density_g_per_ml.is_none());
 
-    // Update it.
+    // Update it. The tri-state fields: `Some(...)` sets the value, an inner
+    // `Some` for the nullable columns.
     use api::{IngredientUpdate, Name, PositiveFloat, grocery_section::GrocerySection};
     let update = IngredientUpdate {
-        name: Name::try_new(&ingredient_name).unwrap(),
-        density_g_per_ml: Some(PositiveFloat::try_new(0.85).unwrap()),
-        grocery_section: Some(GrocerySection::Bakery),
+        id: ingredient_id,
+        name: Some(Name::try_new(&ingredient_name).unwrap()),
+        density_g_per_ml: Some(Some(PositiveFloat::try_new(0.85).unwrap())),
+        grocery_section: Some(Some(GrocerySection::Bakery)),
     };
-    let updated = update_ingredient(ingredient_id, update)
-        .await
-        .expect("update ingredient");
+    let updated = update_ingredient(update).await.expect("update ingredient");
     assert_eq!(
         updated.density_g_per_ml,
         Some(PositiveFloat::try_new(0.85).unwrap())
