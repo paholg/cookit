@@ -3,6 +3,7 @@ use {
         ClientOnly, Route,
         client::client,
         icons::{InsertAboveIcon, TrashIcon},
+        use_confirm,
     },
     api::{
         RecipeBuilder, RecipeStepBuilder, RecipeStepIngredientBuilder, delete_recipe,
@@ -88,6 +89,7 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
     let mut error = use_signal(|| None::<String>);
     let mut submitting = use_signal(|| false);
     let mut deleting = use_signal(|| false);
+    let confirm = use_confirm();
     // Transient per-step timer parse errors, surfaced on blur. Not part of the
     // wire payload, so they live alongside the draft rather than inside it.
     let duration_errors = use_signal(HashMap::<RecipeStepDraftId, String>::new);
@@ -187,8 +189,8 @@ pub fn RecipeForm(initial: RecipeBuilder, mode: RecipeFormMode) -> Element {
                         if deleting() { return; }
                         let recipe_key = recipe_key.clone();
                         spawn(async move {
-                            let confirmed = client()
-                                .confirm("Delete this recipe? This cannot be undone.")
+                            let confirmed = confirm
+                                .show("Delete this recipe? This cannot be undone.")
                                 .await;
                             if !confirmed { return; }
 

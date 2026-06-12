@@ -295,6 +295,31 @@ button.primary:not(:disabled):active,
   filter: var(--press-filter);
 }
 
+/* Solid destructive button, styled like .primary but on the ruby/alert ramp.
+   Used for confirm-dialog deletes; reusable for any destructive action. */
+button.danger,
+.button.danger {
+  background: var(--alert-solid);
+  color: #fff;
+  border-color: var(--alert-solid);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  button.danger:not(:disabled):hover,
+  .button.danger:hover {
+    background: var(--ruby-10);
+    border-color: var(--ruby-10);
+  }
+}
+
+button.danger:not(:disabled):active,
+.button.danger:active {
+  background: var(--ruby-10);
+  border-color: var(--ruby-10);
+  filter: var(--press-filter);
+}
+
 /* .secondary intentionally adds no color — it falls through to the neutral
    button styling above. The --accent-* (mint) ramp is reserved for accents. */
 button:disabled {

@@ -1,6 +1,6 @@
 use {
     crate::{
-        RunningTimersCtx, ThemeToggle, TimerBar,
+        ConfirmProvider, RunningTimersCtx, ThemeToggle, TimerBar,
         client::client,
         navbar::Navbar,
         timers::{self, RunningTimer},
@@ -107,7 +107,9 @@ pub fn App() -> Element {
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
         // Loaded first so the listener is installed before any other JS runs.
         document::Script { src: ERROR_BANNER_JS }
-        Router::<Route> {}
+        ConfirmProvider {
+            Router::<Route> {}
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 set dotenv-load := true
 
+check: lint test
+
 serve *args:
     dx serve -p web --features development --port 8080 {{args}}
 
@@ -20,8 +22,6 @@ db-redo:
 
 db-revert:
     diesel migration revert
-
-check: lint test
 
 build *args:
     cd crates/web && dx build {{args}}

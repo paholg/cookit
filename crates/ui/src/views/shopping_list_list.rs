@@ -1,5 +1,5 @@
 use {
-    crate::{Route, client::client, icons::TrashIcon},
+    crate::{Route, icons::TrashIcon, use_confirm},
     api::{ShoppingList, delete_shopping_list, list_shopping_lists, page_title},
     dioxus::prelude::*,
 };
@@ -45,6 +45,7 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
     let id = list.id;
     let mut deleting = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
+    let confirm = use_confirm();
 
     rsx! {
         li {
@@ -57,8 +58,8 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
                     title: "Delete shopping list",
                     disabled: deleting(),
                     onclick: move |_| async move {
-                        let confirmed = client()
-                            .confirm("Delete this shopping list? This cannot be undone.")
+                        let confirmed = confirm
+                            .show("Delete this shopping list? This cannot be undone.")
                             .await;
                         if !confirmed {
                             return;

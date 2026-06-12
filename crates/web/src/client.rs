@@ -42,17 +42,6 @@ impl ui::Client for WebClient {
         ));
     }
 
-    async fn confirm(&self, message: &str) -> bool {
-        // JSON-encode the message so quotes/newlines can't break out of the
-        // call or inject script.
-        let msg = serde_json::to_string(message).unwrap_or_else(|_| "\"\"".to_string());
-
-        eval(&format!("return confirm({msg})"))
-            .join::<bool>()
-            .await
-            .unwrap_or(false)
-    }
-
     fn focus_field(&self, key: &str) {
         let safe = key.replace('"', "");
 

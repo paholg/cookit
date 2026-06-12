@@ -1,5 +1,5 @@
 use {
-    crate::{ClientOnly, Route, client::client, icons::TrashIcon},
+    crate::{ClientOnly, Route, icons::TrashIcon, use_confirm},
     api::{
         MealBuilder, MealRecipeBuilder, Recipe, delete_meal,
         id::{DraftId, MealRecipeDraftId},
@@ -50,6 +50,7 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
     let mut submitting = use_signal(|| false);
     let mut deleting = use_signal(|| false);
     let nav = use_navigator();
+    let confirm = use_confirm();
 
     let recipes = use_server_future(list_recipes)?;
     let available: Vec<Recipe> = match recipes.cloned() {
@@ -124,8 +125,8 @@ pub fn MealForm(initial: MealBuilder, mode: MealFormMode) -> Element {
                         if deleting() { return; }
                         let meal_key = meal_key.clone();
                         spawn(async move {
-                            let confirmed = client()
-                                .confirm("Delete this meal? This cannot be undone.")
+                            let confirmed = confirm
+                                .show("Delete this meal? This cannot be undone.")
                                 .await;
                             if !confirmed { return; }
 

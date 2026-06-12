@@ -20,10 +20,6 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// cadence while a timer is ringing; the client just plays a single tone.
     fn play_bell(&self);
 
-    /// Ask the user to confirm a destructive action, returning `true` if they
-    /// accept. Used to guard deletes.
-    async fn confirm(&self, message: &str) -> bool;
-
     /// Move keyboard focus to the element tagged with the given focus key.
     /// Deferred to the next frame so it works for elements added in the same
     /// tick. No-op on platforms without a focusable view.
