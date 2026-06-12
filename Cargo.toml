@@ -26,6 +26,7 @@ diesel-async = { version = "0.9.1", features = [
 ] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dioxus = { version = "0.7.9" }
+dioxus-sdk = { version = "0.7", default-features = false }
 email_address = "0.2.9"
 enum_dispatch = "0.3"
 jiff = { version = "0.2", features = ["serde"] }

@@ -15,19 +15,6 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// the timers so a reload keeps counting from real elapsed time.
     fn now_ms(&self) -> i64;
 
-    /// Read a string previously stored under `key`, or `None` if absent. Backs
-    /// the timers' persistence so a running bake survives navigation/reload.
-    fn storage_get(&self, key: &str) -> Option<String>;
-
-    /// Persist `value` under `key`. Best-effort: a platform with no storage
-    /// (or a quota error) silently drops it.
-    fn storage_set(&self, key: &str, value: &str);
-
-    /// Resolve after roughly `ms` milliseconds. A platform-agnostic sleep — the
-    /// timer bar's 1 Hz tick and the ingredient autosave debounce both ride on
-    /// it, since `tokio::time` isn't available on wasm.
-    async fn sleep(&self, ms: u32);
-
     /// Prime the audio path inside a user gesture so a later timer-expiry bell
     /// is actually audible (browsers suspend audio created outside a gesture).
     /// No-op on platforms without that restriction.

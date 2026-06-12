@@ -1,12 +1,13 @@
 use {
-    crate::{ClientOnly, client::client},
+    crate::ClientOnly,
     api::{
         APP_NAME, Ingredient, IngredientUpdate, Name, PositiveFloat,
         grocery_section::GrocerySection, id::IngredientId, list_ingredients, page_title,
         update_ingredient,
     },
     dioxus::prelude::*,
-    std::str::FromStr,
+    dioxus_sdk::time::use_debounce,
+    std::{str::FromStr, time::Duration},
 };
 
 #[derive(Clone, PartialEq)]
@@ -17,8 +18,12 @@ struct RowDraft {
     section: Option<GrocerySection>,
     saving: bool,
     error: Option<String>,
-    pending_gen: u64,
-    last_saved_gen: u64,
+    /// Set on each edit, cleared when the in-flight save snapshots the row.
+    /// Distinguishes "edited, save pending" from "saved and clean".
+    dirty: bool,
+    /// Whether at least one successful save has landed — so a never-touched row
+    /// doesn't claim "Saved ✓".
+    saved: bool,
 }
 
 impl RowDraft {
@@ -33,8 +38,8 @@ impl RowDraft {
             section: i.grocery_section,
             saving: false,
             error: None,
-            pending_gen: 0,
-            last_saved_gen: 0,
+            dirty: false,
+            saved: false,
         }
     }
 
@@ -66,64 +71,6 @@ impl RowDraft {
             grocery_section: Some(self.section),
         })
     }
-}
-
-async fn autosave_delay() {
-    client().sleep(500).await;
-}
-
-fn trigger_autosave(idx: usize, mut rows: Signal<Vec<RowDraft>>) {
-    let this_gen = {
-        let mut w = rows.write();
-        let Some(row) = w.get_mut(idx) else { return };
-        row.pending_gen = row.pending_gen.wrapping_add(1);
-        row.pending_gen
-    };
-
-    spawn(async move {
-        autosave_delay().await;
-
-        let payload = {
-            let r = rows.read();
-            let Some(row) = r.get(idx) else { return };
-            if row.pending_gen != this_gen {
-                return;
-            }
-            row.to_payload()
-        };
-
-        let payload = match payload {
-            Ok(p) => p,
-            Err(msg) => {
-                if let Some(row) = rows.write().get_mut(idx) {
-                    row.error = Some(msg);
-                    row.saving = false;
-                }
-                return;
-            }
-        };
-
-        {
-            let mut w = rows.write();
-            let Some(row) = w.get_mut(idx) else { return };
-            row.saving = true;
-            row.error = None;
-        }
-
-        let result = update_ingredient(payload).await;
-
-        let mut w = rows.write();
-        let Some(row) = w.get_mut(idx) else { return };
-        row.saving = false;
-        match result {
-            Ok(_updated) => {
-                row.last_saved_gen = this_gen;
-            }
-            Err(e) => {
-                row.error = Some(e.to_string());
-            }
-        }
-    });
 }
 
 #[component]
@@ -175,15 +122,53 @@ pub fn IngredientList() -> Element {
 
 #[component]
 fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
+    // One debounce per row: each keystroke restarts the 500 ms countdown and the
+    // row saves once editing pauses. Keeping it per-row means editing a second
+    // row never cancels the first row's pending save.
+    let mut autosave = use_debounce(Duration::from_millis(500), move |()| async move {
+        let payload = {
+            let r = rows.read();
+            let Some(row) = r.get(idx) else { return };
+            row.to_payload()
+        };
+
+        let payload = match payload {
+            Ok(p) => p,
+            Err(msg) => {
+                if let Some(row) = rows.write().get_mut(idx) {
+                    row.error = Some(msg);
+                }
+                return;
+            }
+        };
+
+        // Snapshot taken — mark clean. A keystroke during the await sets `dirty`
+        // again, so the row won't flash "Saved ✓" before the follow-up save.
+        {
+            let mut w = rows.write();
+            let Some(row) = w.get_mut(idx) else { return };
+            row.saving = true;
+            row.error = None;
+            row.dirty = false;
+        }
+
+        let result = update_ingredient(payload).await;
+
+        let mut w = rows.write();
+        let Some(row) = w.get_mut(idx) else { return };
+        row.saving = false;
+        match result {
+            Ok(_updated) => row.saved = true,
+            Err(e) => row.error = Some(e.to_string()),
+        }
+    });
+
     let row = rows.read().get(idx).cloned();
     let Some(row) = row else {
         return rsx! {};
     };
     let incomplete = row.is_incomplete();
-    let settled = row.last_saved_gen > 0
-        && row.last_saved_gen == row.pending_gen
-        && !row.saving
-        && row.error.is_none();
+    let settled = row.saved && !row.dirty && !row.saving && row.error.is_none();
 
     rsx! {
         li { class: if incomplete { "ingredient-row-card incomplete" } else { "ingredient-row-card" },
@@ -194,8 +179,11 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         r#type: "text",
                         value: "{row.name}",
                         oninput: move |e| {
-                            rows.write()[idx].name = e.value();
-                            trigger_autosave(idx, rows);
+                            let mut w = rows.write();
+                            w[idx].name = e.value();
+                            w[idx].dirty = true;
+                            drop(w);
+                            autosave.action(());
                         },
                     }
                 }
@@ -208,8 +196,11 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                         inputmode: "decimal",
                         value: "{row.density}",
                         oninput: move |e| {
-                            rows.write()[idx].density = e.value();
-                            trigger_autosave(idx, rows);
+                            let mut w = rows.write();
+                            w[idx].density = e.value();
+                            w[idx].dirty = true;
+                            drop(w);
+                            autosave.action(());
                         },
                     }
                 }
@@ -227,8 +218,11 @@ fn IngredientRow(idx: usize, rows: Signal<Vec<RowDraft>>) -> Element {
                                 select {
                                     value: "{current}",
                                     onchange: move |e| {
-                                        rows.write()[idx].section = GrocerySection::from_str(&e.value()).ok();
-                                        trigger_autosave(idx, rows);
+                                        let mut w = rows.write();
+                                        w[idx].section = GrocerySection::from_str(&e.value()).ok();
+                                        w[idx].dirty = true;
+                                        drop(w);
+                                        autosave.action(());
                                     },
                                     option { value: "", "—" }
                                     for section in GrocerySection::alphabetical_names() {

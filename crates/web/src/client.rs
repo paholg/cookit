@@ -1,8 +1,6 @@
 use {
     async_trait::async_trait,
     dioxus::document::eval,
-    gloo_storage::{LocalStorage, Storage},
-    gloo_timers::future::TimeoutFuture,
     web_time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -37,18 +35,6 @@ impl ui::Client for WebClient {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0)
-    }
-
-    fn storage_get(&self, key: &str) -> Option<String> {
-        LocalStorage::raw().get_item(key).ok().flatten()
-    }
-
-    fn storage_set(&self, key: &str, value: &str) {
-        let _ = LocalStorage::raw().set_item(key, value);
-    }
-
-    async fn sleep(&self, ms: u32) {
-        TimeoutFuture::new(ms).await;
     }
 
     fn prime_audio(&self) {

@@ -7,6 +7,7 @@ edition = "2024"
 api = { workspace = true }
 async-trait = { workspace = true }
 dioxus = { workspace = true, features = ["router"] }
+dioxus-sdk = { workspace = true, features = ["storage", "time"] }
 pulldown-cmark = { version = "0.13", default-features = false, features = [
   "html"
 ] }

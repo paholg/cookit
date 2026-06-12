@@ -3,6 +3,7 @@ use {
         RunningTimersCtx, ThemeToggle, TimerBar,
         client::client,
         navbar::Navbar,
+        timers::{self, RunningTimer},
         views::{
             IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
             RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
@@ -12,6 +13,7 @@ use {
         APP_NAME, CurrentUser, id::ShoppingListId, login_as_first, logout, page_title, routes::me,
     },
     dioxus::prelude::*,
+    dioxus_sdk::storage::{LocalStorage, use_synced_storage},
 };
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -81,19 +83,19 @@ pub fn App() -> Element {
     });
     use_context_provider(|| user);
 
-    let mut timers: RunningTimersCtx = use_signal(Vec::new);
+    // `use_synced_storage` returns a `Signal` backed by `localStorage`: it
+    // hydrates from storage on the client (SSR sees an empty bar, so there's no
+    // DOM diff trouble), persists on every write, and syncs across tabs.
+    let timers: RunningTimersCtx = use_synced_storage::<LocalStorage, Vec<RunningTimer>>(
+        timers::STORAGE_KEY.to_string(),
+        Vec::new,
+    );
     use_context_provider(|| timers);
 
-    // Hydrate from storage once, after the first client render. SSR sees an
-    // empty bar (no DOM diff trouble) and the real list paints right after.
-    // Also prime the audio path so the WebAudio context gets resumed inside
-    // every user gesture — required for the expired-timer bell to be audible.
+    // Prime the audio path so the WebAudio context gets resumed inside every
+    // user gesture — required for the expired-timer bell to be audible.
     use_effect(move || {
         client().prime_audio();
-        let loaded = crate::timers::load_from_storage();
-        if !loaded.is_empty() {
-            timers.set(loaded);
-        }
     });
 
     rsx! {

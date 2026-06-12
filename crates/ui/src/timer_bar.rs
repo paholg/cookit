@@ -10,7 +10,8 @@ use {
     },
     api::duration::format_countdown,
     dioxus::prelude::*,
-    std::collections::HashSet,
+    dioxus_sdk::time::{sleep, use_interval},
+    std::{collections::HashSet, time::Duration},
 };
 
 const BELL_PERIOD_MS: i64 = 30_000;
@@ -21,13 +22,10 @@ pub fn TimerBar() -> Element {
     let mut expanded_ids = use_signal(Vec::<u64>::new);
     let mut tick = use_signal(|| 0u64);
 
-    // 1 Hz re-render. The platform `sleep` works on wasm where `tokio::time`
-    // doesn't.
-    use_future(move || async move {
-        loop {
-            client().sleep(1000).await;
-            tick.with_mut(|t| *t = t.wrapping_add(1));
-        }
+    // 1 Hz re-render so the countdowns tick even though the underlying timer
+    // signal doesn't change.
+    use_interval(Duration::from_secs(1), move |()| {
+        tick.with_mut(|t| *t = t.wrapping_add(1));
     });
 
     // Forces this body to depend on `tick` so the loop above actually causes
@@ -66,7 +64,7 @@ pub fn TimerBar() -> Element {
             }
 
             ringing_ids = current;
-            client().sleep(1000).await;
+            sleep(Duration::from_secs(1)).await;
         }
     });
 
@@ -172,7 +170,6 @@ fn silence(ctx: &mut RunningTimersCtx, id: u64) {
     if let Some(t) = list.iter_mut().find(|t| t.id == id) {
         t.silenced = true;
     }
-    timers::save_to_storage(&list);
 }
 
 fn add_seconds(ctx: &mut RunningTimersCtx, id: u64, seconds: i64) {
@@ -182,11 +179,9 @@ fn add_seconds(ctx: &mut RunningTimersCtx, id: u64, seconds: i64) {
         // Adding time un-silences so the user gets re-notified if it expires.
         t.silenced = false;
     }
-    timers::save_to_storage(&list);
 }
 
 fn dismiss(ctx: &mut RunningTimersCtx, id: u64) {
     let mut list = ctx.write();
     list.retain(|t| t.id != id);
-    timers::save_to_storage(&list);
 }

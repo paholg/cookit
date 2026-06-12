@@ -1,18 +1,21 @@
-//! App-wide running-timer state, persisted via the platform [`Client`] so a
-//! running bake survives navigation and accidental reloads.
+//! App-wide running-timer state, persisted to `localStorage` via
+//! `use_synced_storage` (set up in [`crate::app`]) so a running bake survives
+//! navigation, accidental reloads, and even syncs across tabs.
 //!
 //! `RunningTimer.started_at_ms` is an absolute wall-clock timestamp; the
 //! `remaining` calculation always subtracts `now - started`, so a reload
 //! continues counting from where it really should be (or rings if expiry
 //! happened while the page was closed).
-//!
-//! [`Client`]: crate::Client
 
 use {
     crate::client::client,
     dioxus::prelude::*,
     serde::{Deserialize, Serialize},
 };
+
+// Persistence is handled by the synced-storage signal created in `App` (see
+// `crate::app`); writing to that `Signal` saves to `localStorage` and syncs
+// across tabs, so the helpers here just mutate the shared context.
 
 pub const STORAGE_KEY: &str = "cookit.timers";
 
@@ -65,20 +68,8 @@ pub fn next_timer_id(timers: &[RunningTimer]) -> u64 {
         .saturating_add(1)
 }
 
-pub fn load_from_storage() -> Vec<RunningTimer> {
-    client()
-        .storage_get(STORAGE_KEY)
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default()
-}
-
-pub fn save_to_storage(timers: &Vec<RunningTimer>) {
-    if let Ok(raw) = serde_json::to_string(timers) {
-        client().storage_set(STORAGE_KEY, &raw);
-    }
-}
-
-/// Push a new timer onto the shared context and persist.
+/// Push a new timer onto the shared context. The write persists automatically
+/// through the synced-storage signal backing [`RunningTimersCtx`].
 pub fn start_timer(
     mut ctx: RunningTimersCtx,
     meal_key: Option<String>,
@@ -100,5 +91,4 @@ pub fn start_timer(
         silenced: false,
         added_seconds: 0,
     });
-    save_to_storage(&list);
 }
