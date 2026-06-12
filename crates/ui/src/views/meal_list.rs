@@ -1,6 +1,6 @@
 use {
     crate::Route,
-    api::{APP_NAME, Meal, list_meals},
+    api::{APP_NAME, Meal, list_meals, page_title},
     dioxus::prelude::*,
 };
 
@@ -9,7 +9,7 @@ pub fn MealList() -> Element {
     let meals = use_server_future(list_meals)?;
 
     rsx! {
-        document::Title { "{APP_NAME}" }
+        document::Title { "{page_title(APP_NAME)}" }
         header { class: "page-header",
             h1 { "Meals" }
             Link { to: Route::MealNew {}, class: "button primary", "+ New meal" }

@@ -5,7 +5,7 @@ use {
         delete_shopping_list_item, get_shopping_list,
         grocery_section::GrocerySection,
         id::{ShoppingListId, ShoppingListItemId},
-        set_shopping_list_item_checked,
+        page_title, set_shopping_list_item_checked,
     },
     dioxus::prelude::*,
     std::collections::HashMap,
@@ -20,7 +20,8 @@ pub fn ShoppingListDetail(id: ShoppingListId) -> Element {
         .cloned()
         .and_then(|r| r.ok())
         .map(|d| d.list.name)
-        .unwrap_or_else(|| "Shopping list".to_string());
+        .map(|n| page_title(&n))
+        .unwrap_or_else(|| page_title("Shopping list"));
 
     let body = match list.cloned() {
         Some(Ok(detail)) => {

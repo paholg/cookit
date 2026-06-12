@@ -1,6 +1,6 @@
 use {
     crate::{CurrentUserCtx, Route},
-    api::{APP_NAME, list_recipes},
+    api::{APP_NAME, list_recipes, page_title},
     dioxus::prelude::*,
 };
 
@@ -10,7 +10,7 @@ pub fn RecipeList() -> Element {
     let user = use_context::<CurrentUserCtx>();
     let is_admin = user.read().as_ref().is_some_and(|u| u.is_admin());
     rsx! {
-        document::Title { "{APP_NAME}" }
+        document::Title { "{page_title(APP_NAME)}" }
         header { class: "page-header",
             h1 { "Recipes" }
             if is_admin {

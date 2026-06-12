@@ -21,8 +21,14 @@ pub use {
     routes::*,
 };
 
+pub const APP_NAME: &str = "CookIt!";
+
 #[cfg(feature = "development")]
-pub const APP_NAME: &str = "[dev] CookIt!";
+pub fn page_title(title: &str) -> String {
+    format!("[dev] {title}")
+}
 
 #[cfg(not(feature = "development"))]
-pub const APP_NAME: &str = "CookIt!";
+pub fn page_title(title: &str) -> String {
+    title.to_string()
+}

@@ -8,7 +8,9 @@ use {
             RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
         },
     },
-    api::{APP_NAME, CurrentUser, id::ShoppingListId, login_as_first, logout, routes::me},
+    api::{
+        APP_NAME, CurrentUser, id::ShoppingListId, login_as_first, logout, page_title, routes::me,
+    },
     dioxus::prelude::*,
 };
 
@@ -114,7 +116,7 @@ fn AppNavbar() -> Element {
 
     rsx! {
         Navbar {
-            Link { to: Route::RecipeList {}, "{APP_NAME}" }
+            Link { to: Route::RecipeList {}, "{page_title(APP_NAME)}" }
             Link { to: Route::RecipeList {}, "Recipes" }
             // Meals are available to everyone; unauthenticated users get a
             // localStorage-backed view via `api::meals`.

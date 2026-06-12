@@ -5,7 +5,7 @@ use {
         grocery_section::GrocerySection,
         helpers::{Name, PositiveFloat},
         id::IngredientId,
-        list_ingredients, update_ingredient,
+        list_ingredients, page_title, update_ingredient,
     },
     dioxus::prelude::*,
     std::str::FromStr,
@@ -138,7 +138,7 @@ pub fn IngredientList() -> Element {
     });
     let incomplete_count = rows.read().iter().filter(|r| r.is_incomplete()).count();
     rsx! {
-        document::Title { "{APP_NAME}" }
+        document::Title { "{page_title(APP_NAME)}" }
         header { class: "page-header",
             h1 { "Ingredients" }
             if incomplete_count > 0 {

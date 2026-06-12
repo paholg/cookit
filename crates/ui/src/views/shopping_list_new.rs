@@ -1,6 +1,6 @@
 use {
     crate::{ClientOnly, Route},
-    api::{create_shopping_list, create_shopping_list_from_meal, list_meals},
+    api::{create_shopping_list, create_shopping_list_from_meal, list_meals, page_title},
     dioxus::prelude::*,
 };
 
@@ -44,7 +44,7 @@ pub fn ShoppingListNew() -> Element {
     };
 
     rsx! {
-        document::Title { "New shopping list" }
+        document::Title { "{page_title(\"New shopping list\")}" }
         header { class: "page-header",
             h1 { "New shopping list" }
         }

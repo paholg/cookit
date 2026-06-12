@@ -11,6 +11,7 @@ CREATE TABLE "public"."users" (
     "name" text NOT NULL,
     "email" text NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "users_email_key" UNIQUE ("email")
 );
@@ -33,6 +34,7 @@ CREATE TABLE "public"."books" (
     "slug" text NOT NULL,
     "owner_id" uuid NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "books_slug_key" UNIQUE ("slug"),
     CONSTRAINT "books_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -47,6 +49,7 @@ CREATE TABLE "public"."ingredients" (
     "density_g_per_ml" double precision NULL,
     "grocery_section" text NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "ingredients_name_key" UNIQUE ("name"),
     CONSTRAINT "ingredients_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -63,6 +66,7 @@ CREATE TABLE "public"."meals" (
     "slug" text NOT NULL,
     "name" text NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "meals_book_id_slug_key" UNIQUE ("book_id", "slug"),
     CONSTRAINT "meals_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -82,6 +86,7 @@ CREATE TABLE "public"."recipes" (
     "description" text NOT NULL,
     "notes" text NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "recipes_book_id_slug_key" UNIQUE ("book_id", "slug"),
     CONSTRAINT "recipes_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -100,6 +105,7 @@ CREATE TABLE "public"."meal_recipes" (
     "multiplier" double precision NOT NULL DEFAULT 1.0,
     "position" integer NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "meal_recipes_meal_id_position_key" UNIQUE ("meal_id", "position"),
     CONSTRAINT "meal_recipes_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
@@ -120,6 +126,7 @@ CREATE TABLE "public"."recipe_steps" (
     "text" text NOT NULL,
     "duration_s" integer NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "recipe_steps_recipe_id_position_key" UNIQUE ("recipe_id", "position"),
     CONSTRAINT "recipe_steps_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
@@ -141,6 +148,7 @@ CREATE TABLE "public"."recipe_step_ingredients" (
     "unit" text NULL,
     "ingredient_id" uuid NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "recipe_step_ingredients_step_id_position_key" UNIQUE ("step_id", "position"),
     CONSTRAINT "recipe_step_ingredients_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
@@ -159,6 +167,7 @@ CREATE TABLE "public"."shopping_lists" (
     "slug" text NOT NULL,
     "name" text NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "shopping_lists_book_id_slug_key" UNIQUE ("book_id", "slug"),
     CONSTRAINT "shopping_lists_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -181,6 +190,7 @@ CREATE TABLE "public"."shopping_list_items" (
     "text" text NULL,
     "checked" boolean NOT NULL DEFAULT false,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "shopping_list_items_shopping_list_id_position_key" UNIQUE ("shopping_list_id", "position"),
     CONSTRAINT "shopping_list_items_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
@@ -199,6 +209,7 @@ CREATE TABLE "public"."user_roles" (
     "user_id" uuid NOT NULL,
     "role" "public"."role" NOT NULL,
     "deleted_at" timestamptz NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
     PRIMARY KEY ("id"),
     CONSTRAINT "user_roles_book_id_user_id_key" UNIQUE ("book_id", "user_id"),
     CONSTRAINT "user_roles_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,

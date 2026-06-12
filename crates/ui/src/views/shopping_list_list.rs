@@ -1,6 +1,6 @@
 use {
     crate::{Route, client::client, icons::TrashIcon},
-    api::{ShoppingList, delete_shopping_list, list_shopping_lists},
+    api::{ShoppingList, delete_shopping_list, list_shopping_lists, page_title},
     dioxus::prelude::*,
 };
 
@@ -9,7 +9,7 @@ pub fn ShoppingListList() -> Element {
     let mut lists = use_server_future(list_shopping_lists)?;
 
     rsx! {
-        document::Title { "Shopping" }
+        document::Title { "{page_title(\"Shopping\")}" }
         header { class: "page-header",
             h1 { "Shopping lists" }
             Link { to: Route::ShoppingListNew {}, class: "button primary", "+ New list" }

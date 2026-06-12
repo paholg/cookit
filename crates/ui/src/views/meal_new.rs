@@ -1,13 +1,13 @@
 use {
     crate::views::meal_form::{MealForm, MealFormMode},
-    api::{APP_NAME, MealBuilder},
+    api::{APP_NAME, MealBuilder, page_title},
     dioxus::prelude::*,
 };
 
 #[component]
 pub fn MealNew() -> Element {
     rsx! {
-        document::Title { "{APP_NAME}" }
+        document::Title { "{page_title(APP_NAME)}" }
         MealForm { initial: MealBuilder::new(), mode: MealFormMode::Create }
     }
 }
