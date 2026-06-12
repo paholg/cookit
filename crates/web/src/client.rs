@@ -1,8 +1,4 @@
-use {
-    async_trait::async_trait,
-    dioxus::document::eval,
-    web_time::{SystemTime, UNIX_EPOCH},
-};
+use {async_trait::async_trait, dioxus::document::eval};
 
 #[derive(Debug)]
 pub struct WebClient;
@@ -28,13 +24,6 @@ impl ui::Client for WebClient {
             Ok(true) => Some(Box::new(WebWakeLock)),
             _ => None,
         }
-    }
-
-    fn now_ms(&self) -> i64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0)
     }
 
     fn prime_audio(&self) {

@@ -11,7 +11,6 @@ dioxus = { workspace = true, features = ["fullstack", "router"] }
 serde_json = "1"
 server = { workspace = true, optional = true }
 ui = { workspace = true }
-web-time = "1"
 
 [features]
 default = []

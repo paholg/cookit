@@ -8,9 +8,9 @@
 //! happened while the page was closed).
 
 use {
-    crate::client::client,
     dioxus::prelude::*,
     serde::{Deserialize, Serialize},
+    web_time::{SystemTime, UNIX_EPOCH},
 };
 
 // Persistence is handled by the synced-storage signal created in `App` (see
@@ -54,8 +54,14 @@ impl RunningTimer {
 
 pub type RunningTimersCtx = Signal<Vec<RunningTimer>>;
 
+/// Current wall-clock time in ms since the Unix epoch. `web-time` is a
+/// portability shim — `std::time` on the server, `Performance`/`Date` on
+/// wasm — so this needs no platform indirection through [`crate::Client`].
 pub fn now_ms() -> i64 {
-    client().now_ms()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 /// Allocate a fresh id that won't collide with anything already in `timers`.

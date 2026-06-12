@@ -4565,6 +4565,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
+ "web-time",
 ]
 
 [[package]]
@@ -4878,7 +4879,6 @@ dependencies = [
  "serde_json",
  "server",
  "ui",
- "web-time",
 ]
 
 [[package]]

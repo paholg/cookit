@@ -11,10 +11,6 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// lock.
     async fn acquire_wake_lock(&self) -> Option<Box<dyn WakeLock>>;
 
-    /// Current wall-clock time in milliseconds since the Unix epoch. Used by
-    /// the timers so a reload keeps counting from real elapsed time.
-    fn now_ms(&self) -> i64;
-
     /// Prime the audio path inside a user gesture so a later timer-expiry bell
     /// is actually audible (browsers suspend audio created outside a gesture).
     /// No-op on platforms without that restriction.
