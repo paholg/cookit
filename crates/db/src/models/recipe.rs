@@ -4,29 +4,41 @@ use {
         id::{BookId, RecipeDraftId, RecipeId, RecipeStepDraftId},
         models::recipe_step::{RecipeStepBuilder, RecipeStepDetail, RecipeStepError},
     },
+    db_macros::DieselRpc,
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
 };
 #[cfg(feature = "server")]
 use {
     crate::{models::book::Book, schema::recipes},
-    diesel::prelude::*,
+    diesel::prelude::{Associations, HasQuery, Identifiable},
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DieselRpc)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
+#[diesel_rpc(table = recipes)]
 pub struct Recipe {
+    #[diesel_rpc(create, read, update, delete)]
     pub id: RecipeId,
+    #[diesel_rpc(create)]
     pub book_id: BookId,
+    #[diesel_rpc(read)]
     pub updated_at: Timestamp,
+    #[diesel_rpc(create, read)]
     pub slug: Slug,
+    #[diesel_rpc(create, read, update)]
     pub name: Name,
+    #[diesel_rpc(create, read, update)]
     pub source: String,
+    #[diesel_rpc(create, read, update)]
     pub description: String,
+    #[diesel_rpc(create, read, update)]
     pub notes: String,
+    #[diesel_rpc(read)]
     pub deleted_at: Option<Timestamp>,
+    #[diesel_rpc(read)]
     pub created_at: Timestamp,
 }
 

@@ -6,6 +6,7 @@ use {
         },
         models::ingredient::Ingredient,
     },
+    db_macros::DieselRpc,
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "server")]
@@ -14,26 +15,38 @@ use {
         models::{book::Book, recipe_step::RecipeStep},
         schema::recipe_step_ingredients,
     },
-    diesel::prelude::*,
+    diesel::prelude::{Associations, HasQuery, Identifiable},
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DieselRpc)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(RecipeStep, foreign_key = step_id)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Ingredient)))]
+#[diesel_rpc(table = recipe_step_ingredients)]
 pub struct RecipeStepIngredient {
+    #[diesel_rpc(create, read, update, delete)]
     pub id: RecipeStepIngredientId,
+    #[diesel_rpc(create)]
     pub book_id: BookId,
+    #[diesel_rpc(read)]
     pub updated_at: Timestamp,
+    #[diesel_rpc(create, read)]
     pub step_id: RecipeStepId,
+    #[diesel_rpc(create, read, update)]
     pub position: i32,
+    #[diesel_rpc(create, read, update)]
     pub quantity: Option<f64>,
+    #[diesel_rpc(create, read, update)]
     pub unit_kind: Option<String>,
+    #[diesel_rpc(create, read, update)]
     pub unit: Option<String>,
+    #[diesel_rpc(create, read, update)]
     pub ingredient_id: IngredientId,
+    #[diesel_rpc(read)]
     pub deleted_at: Option<Timestamp>,
+    #[diesel_rpc(read)]
     pub created_at: Timestamp,
 }
 

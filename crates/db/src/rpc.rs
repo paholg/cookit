@@ -16,8 +16,29 @@ use {
 use {
     crate::{
         Timestamp,
-        models::ingredient::{
-            IngredientCreate, IngredientDelete, IngredientResponse, IngredientUpdate,
+        models::{
+            ingredient::{
+                IngredientCreate, IngredientDelete, IngredientResponse, IngredientUpdate,
+            },
+            meal::{MealCreate, MealDelete, MealResponse, MealUpdate},
+            meal_recipe::{
+                MealRecipeCreate, MealRecipeDelete, MealRecipeResponse, MealRecipeUpdate,
+            },
+            recipe::{RecipeCreate, RecipeDelete, RecipeResponse, RecipeUpdate},
+            recipe_step::{
+                RecipeStepCreate, RecipeStepDelete, RecipeStepResponse, RecipeStepUpdate,
+            },
+            recipe_step_ingredient::{
+                RecipeStepIngredientCreate, RecipeStepIngredientDelete,
+                RecipeStepIngredientResponse, RecipeStepIngredientUpdate,
+            },
+            shopping_list::{
+                ShoppingListCreate, ShoppingListDelete, ShoppingListResponse, ShoppingListUpdate,
+            },
+            shopping_list_item::{
+                ShoppingListItemCreate, ShoppingListItemDelete, ShoppingListItemResponse,
+                ShoppingListItemUpdate,
+            },
         },
     },
     serde::{Deserialize, Serialize},
@@ -43,12 +64,47 @@ pub enum Operation {
     IngredientCreate(IngredientCreate),
     IngredientUpdate(IngredientUpdate),
     IngredientDelete(IngredientDelete),
+
+    MealCreate(MealCreate),
+    MealUpdate(MealUpdate),
+    MealDelete(MealDelete),
+
+    MealRecipeCreate(MealRecipeCreate),
+    MealRecipeUpdate(MealRecipeUpdate),
+    MealRecipeDelete(MealRecipeDelete),
+
+    RecipeCreate(RecipeCreate),
+    RecipeUpdate(RecipeUpdate),
+    RecipeDelete(RecipeDelete),
+
+    RecipeStepCreate(RecipeStepCreate),
+    RecipeStepUpdate(RecipeStepUpdate),
+    RecipeStepDelete(RecipeStepDelete),
+
+    RecipeStepIngredientCreate(RecipeStepIngredientCreate),
+    RecipeStepIngredientUpdate(RecipeStepIngredientUpdate),
+    RecipeStepIngredientDelete(RecipeStepIngredientDelete),
+
+    ShoppingListCreate(ShoppingListCreate),
+    ShoppingListUpdate(ShoppingListUpdate),
+    ShoppingListDelete(ShoppingListDelete),
+
+    ShoppingListItemCreate(ShoppingListItemCreate),
+    ShoppingListItemUpdate(ShoppingListItemUpdate),
+    ShoppingListItemDelete(ShoppingListItemDelete),
 }
 
 /// The row an applied [`Operation`] produced, returned to the client.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OperationResponse {
     Ingredient(IngredientResponse),
+    Meal(MealResponse),
+    MealRecipe(MealRecipeResponse),
+    Recipe(RecipeResponse),
+    RecipeStep(RecipeStepResponse),
+    RecipeStepIngredient(RecipeStepIngredientResponse),
+    ShoppingList(ShoppingListResponse),
+    ShoppingListItem(ShoppingListItemResponse),
 }
 
 /// The context a generated DB operation runs against: a connection plus the

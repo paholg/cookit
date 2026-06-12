@@ -7,6 +7,7 @@ use {
             RecipeStepIngredientBuilder, RecipeStepIngredientDetail, RecipeStepIngredientError,
         },
     },
+    db_macros::DieselRpc,
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
 };
@@ -16,23 +17,33 @@ use {
         models::{book::Book, recipe::Recipe},
         schema::recipe_steps,
     },
-    diesel::prelude::*,
+    diesel::prelude::{Associations, HasQuery, Identifiable},
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DieselRpc)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Recipe)))]
+#[diesel_rpc(table = recipe_steps)]
 pub struct RecipeStep {
+    #[diesel_rpc(create, read, update, delete)]
     pub id: RecipeStepId,
+    #[diesel_rpc(create)]
     pub book_id: BookId,
+    #[diesel_rpc(read)]
     pub updated_at: Timestamp,
+    #[diesel_rpc(create, read)]
     pub recipe_id: RecipeId,
+    #[diesel_rpc(create, read, update)]
     pub position: i32,
+    #[diesel_rpc(create, read, update)]
     pub text: String,
+    #[diesel_rpc(create, read, update)]
     pub duration_s: Option<i32>,
+    #[diesel_rpc(read)]
     pub deleted_at: Option<Timestamp>,
+    #[diesel_rpc(read)]
     pub created_at: Timestamp,
 }
 

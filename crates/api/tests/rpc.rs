@@ -25,6 +25,7 @@ fn recent_watermark() -> Timestamp {
 fn unwrap_ingredient(resp: OperationResponse) -> IngredientResponse {
     match resp {
         OperationResponse::Ingredient(row) => row,
+        other => panic!("expected an ingredient response, got {other:?}"),
     }
 }
 
