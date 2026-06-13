@@ -38,12 +38,15 @@ up:
     cargo upgrade -i
     cd e2e && npm update
 
-fix:
-    cargo clippy --workspace --all-targets --all-features --allow-staged --fix
+fmt:
     # Can break rsx :(
     # dx fmt
     cargo fmt --all
     tombi format
+
+fix:
+    cargo clippy --workspace --all-targets --all-features --allow-staged --fix
+    just fmt
     script/schema-dump
 
 lint: fmt-check clippy

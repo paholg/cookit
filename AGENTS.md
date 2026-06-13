@@ -30,6 +30,12 @@ Strongly prefer **crate separation** over feature flags for splitting code acros
 - Feature flags should only be used where crate separation is impractical (e.g., enabling/disabling a Diesel backend within `db`, or the `development` backdoor flag).
 - When in doubt, make a new crate or pass behavior via dependency injection (trait objects, function parameters) rather than `#[cfg(feature = "...")]` blocks.
 
+# Testing
+
+* After any changes, run `just fmt`
+* After a set of changes is complete, validate with `just check`
+* Additionally, you may run playwright tests with `just test-e2e`
+
 # Code Style
 
 Let code breathe. Use blank lines between function/method/component definitions, between `impl` blocks, and between logical groupings of statements within a function (e.g., setup vs. main logic vs. return). Do not pack everything into a single dense block.

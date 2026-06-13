@@ -1,19 +1,21 @@
 //! `#[derive(DieselRpc)]` — generate the CRUD/sync layer for a Diesel model.
 //!
-//! From one annotated model it emits four wire structs — `…Response` (read),
-//! `…Create`, `…Update`, `…Delete` — plus the server-only `Apply` / `ListSince`
-//! / `ApplyOp` impls that run them against the database. See `db::rpc` for the
-//! traits and the cross-model `Operation` enum these plug into.
+//! From one annotated model it emits three wire structs — `…Create`, `…Update`,
+//! `…Delete` — plus the server-only `Apply` / `ListSince` / `ApplyOp` impls that
+//! run them against the database. The annotated struct itself is the read/response
+//! type: `Apply` returns it, `list_since` pages it, and `OperationResponse` wraps
+//! it. See `db::rpc` for the traits and the cross-model `Operation` enum these
+//! plug into.
 //!
 //! ```ignore
 //! #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DieselRpc)]
 //! #[cfg_attr(feature = "server", derive(HasQuery, Identifiable))]
 //! #[diesel_rpc(table = ingredients)]
 //! pub struct Ingredient {
-//!     #[diesel_rpc(create, read, update, delete)] pub id: IngredientId,
-//!     #[diesel_rpc(create)]                        pub book_id: BookId,
-//!     #[diesel_rpc(read)]                          pub updated_at: Timestamp,
-//!     #[diesel_rpc(create, read, update)]          pub name: Name,
+//!     #[diesel_rpc(create, update, delete)] pub id: IngredientId,
+//!     #[diesel_rpc(create)]                 pub book_id: BookId,
+//!     pub updated_at: Timestamp,
+//!     #[diesel_rpc(create, update)]         pub name: Name,
 //!     // …
 //! }
 //! ```
@@ -45,7 +47,6 @@ pub fn derive_diesel_rpc(input: TokenStream) -> TokenStream {
 #[derive(Default, Clone, Copy)]
 struct Ops {
     create: bool,
-    read: bool,
     update: bool,
     delete: bool,
 }
@@ -67,12 +68,10 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
     let table = table_name(&input)?;
     let fields = collect_fields(&input)?;
 
-    let response = format_ident!("{model}Response");
     let create = format_ident!("{model}Create");
     let update = format_ident!("{model}Update");
     let delete = format_ident!("{model}Delete");
 
-    let response_fields = struct_fields(&fields, |o| o.read);
     let create_fields = struct_fields(&fields, |o| o.create);
     let delete_fields = struct_fields(&fields, |o| o.delete);
     let update_fields = update_struct_fields(&fields);
@@ -93,18 +92,9 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
     let apply_op_impls = apply_op_impl(&[&create, &update, &delete]);
 
     // Always-compiled wire structs. The server-only diesel derives live in
-    // `cfg_attr` so the wasm client gets plain (de)serializable structs.
+    // `cfg_attr` so the wasm client gets plain (de)serializable structs. The
+    // read/response struct is the annotated model itself, not generated here.
     let wire_structs = quote! {
-        #[derive(Debug, Clone, PartialEq, ::serde::Serialize, ::serde::Deserialize)]
-        #[cfg_attr(feature = "server", derive(::diesel::prelude::HasQuery))]
-        #[cfg_attr(
-            feature = "server",
-            diesel(table_name = crate::schema::#table, check_for_backend(::diesel::pg::Pg))
-        )]
-        pub struct #response {
-            #(#response_fields,)*
-        }
-
         #[derive(Debug, Clone, PartialEq, ::serde::Serialize, ::serde::Deserialize)]
         #[cfg_attr(feature = "server", derive(::diesel::prelude::Insertable))]
         #[cfg_attr(feature = "server", diesel(table_name = crate::schema::#table))]
@@ -138,22 +128,22 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             use ::diesel_async::RunQueryDsl;
             use ::snafu::OptionExt;
 
-            impl ::core::convert::From<#response> for crate::rpc::OperationResponse {
-                fn from(response: #response) -> Self {
+            impl ::core::convert::From<#model> for crate::rpc::OperationResponse {
+                fn from(response: #model) -> Self {
                     crate::rpc::OperationResponse::#model(response)
                 }
             }
 
             impl crate::rpc::Apply for #create {
-                type Response = #response;
+                type Response = #model;
 
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> crate::error::Result<#response> {
+                ) -> crate::error::Result<#model> {
                     let response = ::diesel::insert_into(crate::schema::#table::table)
                         .values(&self)
-                        .returning(#response::as_returning())
+                        .returning(#model::as_returning())
                         .get_result(ctx.conn())
                         .await?;
 
@@ -162,12 +152,12 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             }
 
             impl crate::rpc::Apply for #update {
-                type Response = #response;
+                type Response = #model;
 
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> crate::error::Result<#response> {
+                ) -> crate::error::Result<#model> {
                     let id = self.id;
                     let book_id = ctx.book_id();
 
@@ -177,7 +167,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                             .filter(crate::schema::#table::book_id.eq(book_id)),
                     )
                     .set(&self)
-                    .returning(#response::as_returning())
+                    .returning(#model::as_returning())
                     .get_result(ctx.conn())
                     .await
                     .optional()?
@@ -189,12 +179,12 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             }
 
             impl crate::rpc::Apply for #delete {
-                type Response = #response;
+                type Response = #model;
 
                 async fn apply(
                     self,
                     ctx: &mut dyn crate::rpc::RpcContext,
-                ) -> crate::error::Result<#response> {
+                ) -> crate::error::Result<#model> {
                     let id = self.id;
                     let book_id = ctx.book_id();
 
@@ -207,7 +197,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                         crate::schema::#table::deleted_at
                             .eq(crate::Timestamp::new(::jiff::Timestamp::now())),
                     )
-                    .returning(#response::as_returning())
+                    .returning(#model::as_returning())
                     .get_result(ctx.conn())
                     .await
                     .optional()?
@@ -218,19 +208,19 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 }
             }
 
-            impl crate::rpc::ListSince for #response {
+            impl crate::rpc::ListSince for #model {
                 async fn list_since(
                     ctx: &mut dyn crate::rpc::RpcContext,
                     since: crate::Timestamp,
                 ) -> crate::error::Result<crate::rpc::ListResponse<Self>> {
                     let book_id = ctx.book_id();
 
-                    let records: ::std::vec::Vec<#response> = crate::schema::#table::table
+                    let records: ::std::vec::Vec<#model> = crate::schema::#table::table
                         .filter(crate::schema::#table::book_id.eq(book_id))
                         .filter(crate::schema::#table::updated_at.gt(since))
                         .order(crate::schema::#table::updated_at.asc())
                         .limit(crate::rpc::PAGE_SIZE)
-                        .select(#response::as_select())
+                        .select(#model::as_select())
                         .load(ctx.conn())
                         .await?;
 
@@ -311,7 +301,7 @@ fn collect_fields(input: &DeriveInput) -> syn::Result<Vec<FieldInfo>> {
         .collect()
 }
 
-/// Parses a field's `#[diesel_rpc(create, read, update, delete)]` membership.
+/// Parses a field's `#[diesel_rpc(create, update, delete)]` membership.
 fn parse_ops(field: &syn::Field) -> syn::Result<Ops> {
     let mut ops = Ops::default();
 
@@ -323,14 +313,12 @@ fn parse_ops(field: &syn::Field) -> syn::Result<Ops> {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("create") {
                 ops.create = true;
-            } else if meta.path.is_ident("read") {
-                ops.read = true;
             } else if meta.path.is_ident("update") {
                 ops.update = true;
             } else if meta.path.is_ident("delete") {
                 ops.delete = true;
             } else {
-                return Err(meta.error("expected one of: create, read, update, delete"));
+                return Err(meta.error("expected one of: create, update, delete"));
             }
             Ok(())
         })?;

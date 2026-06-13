@@ -24,23 +24,20 @@ use {
 #[cfg_attr(feature = "server", diesel(belongs_to(Recipe)))]
 #[diesel_rpc(table = meal_recipes)]
 pub struct MealRecipe {
-    #[diesel_rpc(create, read, update, delete)]
+    #[diesel_rpc(create, update, delete)]
     pub id: MealRecipeId,
     #[diesel_rpc(create)]
     pub book_id: BookId,
-    #[diesel_rpc(read)]
     pub updated_at: Timestamp,
-    #[diesel_rpc(create, read)]
+    #[diesel_rpc(create)]
     pub meal_id: MealId,
-    #[diesel_rpc(create, read)]
+    #[diesel_rpc(create)]
     pub recipe_id: RecipeId,
-    #[diesel_rpc(create, read, update)]
+    #[diesel_rpc(create, update)]
     pub multiplier: f64,
-    #[diesel_rpc(create, read, update)]
+    #[diesel_rpc(create, update)]
     pub position: i32,
-    #[diesel_rpc(read)]
     pub deleted_at: Option<Timestamp>,
-    #[diesel_rpc(read)]
     pub created_at: Timestamp,
 }
 

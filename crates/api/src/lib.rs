@@ -4,10 +4,7 @@ pub use {
     db::{
         Name, PositiveFloat, duration, grocery_section, helpers, id,
         models::{
-            ingredient::{
-                Ingredient, IngredientCreate, IngredientDelete, IngredientResponse,
-                IngredientUpdate,
-            },
+            ingredient::{Ingredient, IngredientCreate, IngredientDelete, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail, MealError},
             meal_recipe::{MealRecipeBuilder, MealRecipeDetail, MealRecipeError},
             recipe::{Recipe, RecipeBuilder, RecipeDetail, RecipeError},

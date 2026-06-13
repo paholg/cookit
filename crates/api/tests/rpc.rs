@@ -5,7 +5,7 @@
 use {
     crate::test_support::{TestBook, unique},
     api::{
-        IngredientCreate, IngredientDelete, IngredientResponse, IngredientUpdate, Name, Operation,
+        Ingredient, IngredientCreate, IngredientDelete, IngredientUpdate, Name, Operation,
         OperationResponse, PositiveFloat, apply_ops, grocery_section::GrocerySection,
         id::IngredientId, list_ingredients_since, me, update_ingredient,
     },
@@ -22,7 +22,7 @@ fn recent_watermark() -> Timestamp {
     Timestamp::new(jiff::Timestamp::now() - jiff::SignedDuration::from_secs(5))
 }
 
-fn unwrap_ingredient(resp: OperationResponse) -> IngredientResponse {
+fn unwrap_ingredient(resp: OperationResponse) -> Ingredient {
     match resp {
         OperationResponse::Ingredient(row) => row,
         other => panic!("expected an ingredient response, got {other:?}"),

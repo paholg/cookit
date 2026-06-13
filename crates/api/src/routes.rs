@@ -14,7 +14,7 @@ use {
         Timestamp,
         id::{ShoppingListId, ShoppingListItemId, UserRoleId},
         models::{
-            ingredient::{Ingredient, IngredientResponse, IngredientUpdate},
+            ingredient::{Ingredient, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail},
             recipe::{Recipe, RecipeBuilder, RecipeDetail},
             shopping_list::{ShoppingList, ShoppingListDetail},
@@ -78,9 +78,7 @@ pub async fn list_ingredients() -> Result<Vec<Ingredient>, ServerFnError> {
 /// Apply a partial edit to one ingredient. `input.id` selects the row; unset
 /// fields are left unchanged (see [`IngredientUpdate`]).
 #[post("/api/ingredients/update")]
-pub async fn update_ingredient(
-    input: IngredientUpdate,
-) -> Result<IngredientResponse, ServerFnError> {
+pub async fn update_ingredient(input: IngredientUpdate) -> Result<Ingredient, ServerFnError> {
     let mut session = Session::require().await?;
     session.require_admin()?;
     let ingredient = input
@@ -114,9 +112,9 @@ pub async fn apply_ops(ops: Vec<Operation>) -> Result<Vec<OperationResponse>, Se
 #[get("/api/ingredients/since")]
 pub async fn list_ingredients_since(
     since: Timestamp,
-) -> Result<ListResponse<IngredientResponse>, ServerFnError> {
+) -> Result<ListResponse<Ingredient>, ServerFnError> {
     let mut session = Session::require().await?;
-    let page = IngredientResponse::list_since(&mut session, since)
+    let page = Ingredient::list_since(&mut session, since)
         .await
         .map_err(server::Error::from)?;
 

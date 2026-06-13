@@ -17,26 +17,20 @@ use {
     crate::{
         Timestamp,
         models::{
-            ingredient::{
-                IngredientCreate, IngredientDelete, IngredientResponse, IngredientUpdate,
-            },
-            meal::{MealCreate, MealDelete, MealResponse, MealUpdate},
-            meal_recipe::{
-                MealRecipeCreate, MealRecipeDelete, MealRecipeResponse, MealRecipeUpdate,
-            },
-            recipe::{RecipeCreate, RecipeDelete, RecipeResponse, RecipeUpdate},
-            recipe_step::{
-                RecipeStepCreate, RecipeStepDelete, RecipeStepResponse, RecipeStepUpdate,
-            },
+            ingredient::{Ingredient, IngredientCreate, IngredientDelete, IngredientUpdate},
+            meal::{Meal, MealCreate, MealDelete, MealUpdate},
+            meal_recipe::{MealRecipe, MealRecipeCreate, MealRecipeDelete, MealRecipeUpdate},
+            recipe::{Recipe, RecipeCreate, RecipeDelete, RecipeUpdate},
+            recipe_step::{RecipeStep, RecipeStepCreate, RecipeStepDelete, RecipeStepUpdate},
             recipe_step_ingredient::{
-                RecipeStepIngredientCreate, RecipeStepIngredientDelete,
-                RecipeStepIngredientResponse, RecipeStepIngredientUpdate,
+                RecipeStepIngredient, RecipeStepIngredientCreate, RecipeStepIngredientDelete,
+                RecipeStepIngredientUpdate,
             },
             shopping_list::{
-                ShoppingListCreate, ShoppingListDelete, ShoppingListResponse, ShoppingListUpdate,
+                ShoppingList, ShoppingListCreate, ShoppingListDelete, ShoppingListUpdate,
             },
             shopping_list_item::{
-                ShoppingListItemCreate, ShoppingListItemDelete, ShoppingListItemResponse,
+                ShoppingListItem, ShoppingListItemCreate, ShoppingListItemDelete,
                 ShoppingListItemUpdate,
             },
         },
@@ -97,14 +91,14 @@ pub enum Operation {
 /// The row an applied [`Operation`] produced, returned to the client.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OperationResponse {
-    Ingredient(IngredientResponse),
-    Meal(MealResponse),
-    MealRecipe(MealRecipeResponse),
-    Recipe(RecipeResponse),
-    RecipeStep(RecipeStepResponse),
-    RecipeStepIngredient(RecipeStepIngredientResponse),
-    ShoppingList(ShoppingListResponse),
-    ShoppingListItem(ShoppingListItemResponse),
+    Ingredient(Ingredient),
+    Meal(Meal),
+    MealRecipe(MealRecipe),
+    Recipe(Recipe),
+    RecipeStep(RecipeStep),
+    RecipeStepIngredient(RecipeStepIngredient),
+    ShoppingList(ShoppingList),
+    ShoppingListItem(ShoppingListItem),
 }
 
 /// The context a generated DB operation runs against: a connection plus the
@@ -129,8 +123,8 @@ pub trait Apply {
     async fn apply(self, ctx: &mut dyn RpcContext) -> crate::error::Result<Self::Response>;
 }
 
-/// A response type that can be paged by `updated_at` for sync. Implemented by
-/// each `…Response` struct.
+/// A model type that can be paged by `updated_at` for sync. Implemented by each
+/// model struct (the read/response type).
 #[cfg(feature = "server")]
 #[allow(async_fn_in_trait)]
 pub trait ListSince: Sized {
