@@ -1,9 +1,9 @@
 set dotenv-load := true
 
-check: lint test
-
 serve *args:
     dx serve -p web --features development --port 8080 {{args}}
+
+check: lint test
 
 seed:
     cargo run --bin seed
