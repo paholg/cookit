@@ -13,3 +13,5 @@ pub mod unit;
 pub mod schema;
 
 pub use newtypes::*;
+#[cfg(feature = "server")]
+pub use {error::Error, error::Result};

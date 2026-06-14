@@ -5,8 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1"
+async-trait.workspace = true
 axum = "0.8"
-cookie = { version = "0.18", features = ["signed"] }
+axum_session.workspace = true
+axum_session_auth.workspace = true
 db = { workspace = true, features = ["server"] }
 diesel.workspace = true
 diesel-async.workspace = true
@@ -15,7 +17,6 @@ dioxus = { workspace = true, features = ["fullstack", "server"] }
 figment = { version = "0.10.19", features = ["env"] }
 jiff.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 snafu.workspace = true
 tracing = "0.1"
 url.workspace = true

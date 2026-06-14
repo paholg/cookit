@@ -18,7 +18,7 @@ pub fn RecipeDetail(recipe_key: String) -> Element {
         .unwrap_or_else(|| page_title(APP_NAME));
 
     let user = use_context::<CurrentUserCtx>();
-    let is_admin = user.read().clone().is_some_and(|u| u.is_admin());
+    let is_admin = user.read().is_admin();
 
     rsx! {
         document::Title { "{title}" }

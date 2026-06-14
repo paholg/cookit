@@ -6,13 +6,13 @@
 use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
+#[snafu(visibility(pub))]
 pub enum Error {
-    /// A row addressed by id wasn't found in the caller's book.
+    #[snafu(display("no cookbook selected"))]
+    NoBook,
     #[snafu(display("{entity} {id} not found"))]
     NotFound { entity: &'static str, id: String },
 
-    /// Any underlying Diesel / database failure.
     #[snafu(display("database error: {source}"), context(false))]
     Query { source: diesel::result::Error },
 }
@@ -23,6 +23,7 @@ impl Error {
     /// The HTTP status this maps to at the API boundary.
     pub fn code(&self) -> u16 {
         match self {
+            Error::NoBook => 404,
             Error::NotFound { .. } => 404,
             Error::Query { .. } => 500,
         }

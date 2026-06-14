@@ -1,5 +1,5 @@
 use {
-    crate::{conn::DbConn, meal, session::Session},
+    crate::{conn::DbConn, meal, request_context::RequestContext},
     anyhow::{Context, anyhow},
     db::{
         id::{BookId, IngredientId, ShoppingListId, ShoppingListItemId},
@@ -19,9 +19,9 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<ShoppingList>> {
+pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<ShoppingList>> {
     let rows = shopping_lists::table
-        .filter(shopping_lists::book_id.eq(session.book_id()))
+        .filter(shopping_lists::book_id.eq(session.book_id()?))
         .order(shopping_lists::name.asc())
         .load(session.conn())
         .await?;
@@ -30,8 +30,8 @@ pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<ShoppingList>
 }
 
 /// Create an empty, named shopping list. Returns its id.
-pub async fn create(session: &mut Session, name: &str) -> anyhow::Result<ShoppingListId> {
-    let book_id = session.book_id();
+pub async fn create(session: &mut RequestContext, name: &str) -> anyhow::Result<ShoppingListId> {
+    let book_id = session.book_id()?;
     let name = name.trim();
     anyhow::ensure!(!name.is_empty(), "shopping list name is required");
 
@@ -55,14 +55,14 @@ pub async fn create(session: &mut Session, name: &str) -> anyhow::Result<Shoppin
 /// ingredients (scaled by each recipe's multiplier), merging rows that share
 /// an ingredient and unit. Returns the new list's id.
 pub async fn create_from_meal(
-    session: &mut Session,
+    session: &mut RequestContext,
     meal_slug: &str,
 ) -> anyhow::Result<ShoppingListId> {
     let meal_detail = meal::get(session, meal_slug).await?;
     let aggregated = aggregate_meal(&meal_detail);
 
     let id = create(session, &meal_detail.meal.name).await?;
-    let book_id = session.book_id();
+    let book_id = session.book_id()?;
 
     for (position, agg) in aggregated.into_iter().enumerate() {
         diesel::insert_into(shopping_list_items::table)
@@ -85,11 +85,11 @@ pub async fn create_from_meal(
 }
 
 /// Delete a shopping list by id within the book. Items go via FK cascade.
-pub async fn delete(session: &mut Session, id: ShoppingListId) -> anyhow::Result<()> {
+pub async fn delete(session: &mut RequestContext, id: ShoppingListId) -> anyhow::Result<()> {
     diesel::delete(
         shopping_lists::table
             .filter(shopping_lists::id.eq(id))
-            .filter(shopping_lists::book_id.eq(session.book_id())),
+            .filter(shopping_lists::book_id.eq(session.book_id()?)),
     )
     .execute(session.conn())
     .await
@@ -98,10 +98,13 @@ pub async fn delete(session: &mut Session, id: ShoppingListId) -> anyhow::Result
     Ok(())
 }
 
-pub async fn get(session: &mut Session, id: ShoppingListId) -> anyhow::Result<ShoppingListDetail> {
+pub async fn get(
+    session: &mut RequestContext,
+    id: ShoppingListId,
+) -> anyhow::Result<ShoppingListDetail> {
     let list: ShoppingList = shopping_lists::table
         .filter(shopping_lists::id.eq(id))
-        .filter(shopping_lists::book_id.eq(session.book_id()))
+        .filter(shopping_lists::book_id.eq(session.book_id()?))
         .first(session.conn())
         .await?;
 
@@ -141,11 +144,11 @@ pub async fn get(session: &mut Session, id: ShoppingListId) -> anyhow::Result<Sh
 
 /// Append a manually entered item to a list. Returns the new item's id.
 pub async fn add_item(
-    session: &mut Session,
+    session: &mut RequestContext,
     list_id: ShoppingListId,
     input: ShoppingListItemInput,
 ) -> anyhow::Result<ShoppingListItemId> {
-    let book_id = session.book_id();
+    let book_id = session.book_id()?;
 
     // Confirm the list is in this book before adding to it.
     let position: i64 = ShoppingListItem::belonging_to(&list_owned(session, list_id).await?)
@@ -168,14 +171,14 @@ pub async fn add_item(
 
 /// Check or uncheck a single item.
 pub async fn set_item_checked(
-    session: &mut Session,
+    session: &mut RequestContext,
     item_id: ShoppingListItemId,
     checked: bool,
 ) -> anyhow::Result<()> {
     let affected = diesel::update(
         shopping_list_items::table
             .filter(shopping_list_items::id.eq(item_id))
-            .filter(shopping_list_items::book_id.eq(session.book_id())),
+            .filter(shopping_list_items::book_id.eq(session.book_id()?)),
     )
     .set(shopping_list_items::checked.eq(checked))
     .execute(session.conn())
@@ -187,11 +190,14 @@ pub async fn set_item_checked(
 }
 
 /// Remove a single item.
-pub async fn delete_item(session: &mut Session, item_id: ShoppingListItemId) -> anyhow::Result<()> {
+pub async fn delete_item(
+    session: &mut RequestContext,
+    item_id: ShoppingListItemId,
+) -> anyhow::Result<()> {
     diesel::delete(
         shopping_list_items::table
             .filter(shopping_list_items::id.eq(item_id))
-            .filter(shopping_list_items::book_id.eq(session.book_id())),
+            .filter(shopping_list_items::book_id.eq(session.book_id()?)),
     )
     .execute(session.conn())
     .await
@@ -202,12 +208,12 @@ pub async fn delete_item(session: &mut Session, item_id: ShoppingListItemId) -> 
 
 /// Fetch a list scoped to the session's book, erroring if it isn't there.
 async fn list_owned(
-    session: &mut Session,
+    session: &mut RequestContext,
     list_id: ShoppingListId,
 ) -> anyhow::Result<ShoppingList> {
     shopping_lists::table
         .filter(shopping_lists::id.eq(list_id))
-        .filter(shopping_lists::book_id.eq(session.book_id()))
+        .filter(shopping_lists::book_id.eq(session.book_id()?))
         .first(session.conn())
         .await
         .optional()

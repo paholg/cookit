@@ -1,5 +1,5 @@
 use {
-    crate::{conn::DbConn, recipe, session::Session},
+    crate::{conn::DbConn, recipe, request_context::RequestContext},
     anyhow::{Context, anyhow},
     db::{
         id::{BookId, DraftId, MealId, MealRecipeId, RecipeId},
@@ -16,9 +16,9 @@ use {
 };
 
 // TODO: Paginate.
-pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Meal>> {
+pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Meal>> {
     let rows = meals::table
-        .filter(meals::book_id.eq(session.book_id()))
+        .filter(meals::book_id.eq(session.book_id()?))
         .order(meals::name.asc())
         .load(session.conn())
         .await?;
@@ -28,8 +28,8 @@ pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Meal>> {
 
 /// Delete a meal by slug within the current book. Meal-recipe rows go via FK
 /// cascade.
-pub async fn delete(session: &mut Session, slug: &str) -> anyhow::Result<()> {
-    let book_id = session.book_id();
+pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<()> {
+    let book_id = session.book_id()?;
 
     diesel::delete(
         meals::table
@@ -43,9 +43,9 @@ pub async fn delete(session: &mut Session, slug: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn get(session: &mut Session, slug: &str) -> anyhow::Result<MealDetail> {
+pub async fn get(session: &mut RequestContext, slug: &str) -> anyhow::Result<MealDetail> {
     let meal: Meal = meals::table
-        .filter(meals::book_id.eq(session.book_id()))
+        .filter(meals::book_id.eq(session.book_id()?))
         .filter(meals::slug.eq(slug))
         .first(session.conn())
         .await?;
@@ -106,8 +106,11 @@ struct MealNew<'a> {
 ///
 /// Rows are matched by `DraftId`; order comes from `Vec` order. Every query
 /// is scoped to the session's book.
-pub async fn upsert(builder: MealBuilder, session: &mut Session) -> anyhow::Result<MealDetail> {
-    let book_id = session.book_id();
+pub async fn upsert(
+    builder: MealBuilder,
+    session: &mut RequestContext,
+) -> anyhow::Result<MealDetail> {
+    let book_id = session.book_id()?;
     let name = builder.name.trim().to_string();
 
     let slug = {

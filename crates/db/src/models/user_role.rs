@@ -25,7 +25,13 @@ pub enum Role {
     User,
 }
 
-#[derive(Debug, Clone)]
+impl Role {
+    pub fn is_admin(&self) -> bool {
+        self == &Role::Admin
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
 #[cfg_attr(feature = "server", diesel(belongs_to(Book)))]

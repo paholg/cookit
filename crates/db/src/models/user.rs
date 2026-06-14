@@ -3,8 +3,8 @@ use {crate::schema::users, diesel::prelude::*};
 use {
     crate::{
         Email, Name, Timestamp,
-        id::{BookId, UserId},
-        models::user_role::Role,
+        id::UserId,
+        models::{book::Book, user_role::UserRole},
     },
     serde::{Deserialize, Serialize},
 };
@@ -29,19 +29,31 @@ pub struct UserNew {
     pub name: Name,
 }
 
-/// The logged-in user as the client sees it: identity plus the active book and
-/// role, flattened from the server-side session.
+/// The currently authenticated user.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrentUser {
-    pub id: UserId,
-    pub book_id: BookId,
-    pub name: Name,
-    pub email: Email,
-    pub role: Role,
+pub struct AuthUser {
+    pub user: Option<User>,
+    pub book: Option<Book>,
+    pub role: Option<UserRole>,
 }
 
-impl CurrentUser {
+impl AuthUser {
+    pub fn none() -> Self {
+        Self {
+            user: None,
+            book: None,
+            role: None,
+        }
+    }
+
     pub fn is_admin(&self) -> bool {
-        self.role == Role::Admin
+        match (&self.role, &self.book) {
+            (Some(r), Some(b)) => r.book_id == b.id && r.role.is_admin(),
+            _ => false,
+        }
+    }
+
+    pub fn is_logged_in(&self) -> bool {
+        self.user.is_some()
     }
 }

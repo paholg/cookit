@@ -20,7 +20,7 @@ setup("authenticate", async ({ page }) => {
   writeFileSync(DEV_DATA, JSON.stringify(data), "utf8");
 
   const loginRes = await page.request.post("/api/auth/login", {
-    data: { user_role_id: data.user_role_id },
+    data: { user_id: data.user_id },
   });
   expect(loginRes.ok()).toBeTruthy();
 

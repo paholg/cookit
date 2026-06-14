@@ -103,6 +103,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    sessions (id) {
+        id -> Text,
+        expires_at -> Timestamptz,
+        session -> Text,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     shopping_list_items (id) {
         id -> Uuid,
         book_id -> Uuid,
@@ -185,6 +195,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     recipe_step_ingredients,
     recipe_steps,
     recipes,
+    sessions,
     shopping_list_items,
     shopping_lists,
     user_roles,

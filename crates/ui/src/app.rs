@@ -9,9 +9,7 @@ use {
             RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
         },
     },
-    api::{
-        APP_NAME, CurrentUser, id::ShoppingListId, login_as_first, logout, page_title, routes::me,
-    },
+    api::{APP_NAME, AuthUser, id::ShoppingListId, login_as_first, logout, page_title, routes::me},
     dioxus::prelude::*,
     dioxus_sdk::storage::{LocalStorage, use_synced_storage},
 };
@@ -72,14 +70,14 @@ const THEME_SEED_JS: &str = r#"
 
 /// Convenience signal for components that need to know the logged-in user.
 /// Provided at the root via [`use_context_provider`] in [`App`].
-pub type CurrentUserCtx = Signal<Option<CurrentUser>>;
+pub type CurrentUserCtx = Signal<AuthUser>;
 
 #[component]
 pub fn App() -> Element {
     let me_future = use_server_future(me)?;
-    let user: Signal<Option<CurrentUser>> = use_signal(|| match me_future.cloned() {
+    let user: Signal<AuthUser> = use_signal(|| match me_future.cloned() {
         Some(Ok(u)) => u,
-        _ => None,
+        _ => AuthUser::none(),
     });
     use_context_provider(|| user);
 
@@ -116,7 +114,7 @@ pub fn App() -> Element {
 #[component]
 fn AppNavbar() -> Element {
     let user = use_context::<CurrentUserCtx>();
-    let logged_in = user.read().is_some();
+    let logged_in = user.read().is_logged_in();
 
     rsx! {
         Navbar {
@@ -141,7 +139,7 @@ fn AppNavbar() -> Element {
 fn AuthControls() -> Element {
     let mut user = use_context::<CurrentUserCtx>();
 
-    let inner = match user.read().as_ref() {
+    let inner = match user.read().user.as_ref() {
         Some(u) => {
             let name = u.name.clone();
             rsx! {
@@ -152,7 +150,7 @@ fn AuthControls() -> Element {
                     onclick: move |_| {
                         spawn(async move {
                             if logout().await.is_ok() {
-                                user.set(None);
+                                user.set(AuthUser::none());
                             }
                         });
                     },
@@ -168,7 +166,7 @@ fn AuthControls() -> Element {
                 onclick: move |_| {
                     spawn(async move {
                         if let Ok(current) = login_as_first().await {
-                            user.set(Some(current));
+                            user.set(current);
                         }
                     });
                 },
@@ -186,7 +184,7 @@ fn AuthControls() -> Element {
 /// crashing on a 403.
 pub fn require_login_or_message() -> Option<Element> {
     let user = use_context::<CurrentUserCtx>();
-    if user.read().is_none() {
+    if !user.read().is_logged_in() {
         Some(rsx! {
             p { class: "empty", "Please log in to view this page." }
         })

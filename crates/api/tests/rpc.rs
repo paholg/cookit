@@ -30,7 +30,7 @@ fn unwrap_ingredient(resp: OperationResponse) -> Ingredient {
 }
 
 async fn session_book() -> db::id::BookId {
-    me().await.expect("me").expect("session").book_id
+    me().await.expect("me").book.expect("book").id
 }
 
 /// Create → list_since sees it → soft-delete → list_since still reports it with

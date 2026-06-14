@@ -19,7 +19,7 @@ use {
     },
     diesel::prelude::*,
     diesel_async::RunQueryDsl,
-    server::{conn::get_conn, session::Session},
+    server::{RequestContext, conn::get_conn},
 };
 
 #[tokio::main]
@@ -45,20 +45,16 @@ async fn main() -> eyre::Result<()> {
     .get_result(&mut conn)
     .await?;
 
-    let role_id = UserRoleNew {
+    UserRoleNew {
         book_id,
         user_id,
         role: Role::Admin,
     }
     .insert_into(user_roles::table)
-    .returning(user_roles::id)
-    .get_result(&mut conn)
+    .execute(&mut conn)
     .await?;
 
-    let mut session = Session::load_for_role(conn, role_id)
-        .await
-        .unwrap()
-        .unwrap();
+    let mut session = RequestContext::load_for_user(conn, user_id).await.unwrap();
 
     seed_content(&mut session).await?;
 
@@ -68,7 +64,7 @@ async fn main() -> eyre::Result<()> {
 /// Seed a starter cookbook: a handful of recipes (which create their referenced
 /// ingredients), a few meals composed of those recipes, and density/grocery
 /// section details filled in on the common ingredients.
-async fn seed_content(session: &mut Session) -> eyre::Result<()> {
+async fn seed_content(session: &mut RequestContext) -> eyre::Result<()> {
     let recipes = vec![
         recipe(
             "Spaghetti Bolognese",
@@ -246,7 +242,7 @@ async fn seed_content(session: &mut Session) -> eyre::Result<()> {
 /// Fill in density and grocery section on the ingredients the recipes created.
 /// Recipes only create bare ingredients (just a name); this is the data the
 /// ingredient editor would otherwise add by hand.
-async fn enrich_ingredients(session: &mut Session) -> eyre::Result<()> {
+async fn enrich_ingredients(session: &mut RequestContext) -> eyre::Result<()> {
     use GrocerySection::*;
 
     // (name, density g/ml if it's a liquid/powder worth converting, section)

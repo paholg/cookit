@@ -13,14 +13,5 @@ fn main() {
     }
 
     #[cfg(feature = "server")]
-    {
-        use dioxus::server::axum::middleware;
-
-        dioxus::serve(|| async {
-            server::migrate::run_migrations().await;
-
-            let app_router = dioxus::server::router(ui::App);
-            Ok(app_router.layer(middleware::from_fn(server::log_server_errors)))
-        })
-    }
+    server::serve(ui::App)
 }

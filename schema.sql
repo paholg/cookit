@@ -4,6 +4,29 @@ CREATE SCHEMA IF NOT EXISTS "public";
 -- Set comment to schema: "public"
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
+-- Create "sessions" table
+CREATE TABLE "public"."sessions" (
+    "id" text NOT NULL,
+    "expires_at" timestamptz NOT NULL,
+    "session" text NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
+    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+    PRIMARY KEY ("id")
+);
+
+-- Create index "sessions_expires_at_idx" to table: "sessions"
+CREATE INDEX "sessions_expires_at_idx" ON "public"."sessions" ("expires_at");
+
+-- Create "__diesel_schema_migrations" table
+CREATE TABLE "public"."__diesel_schema_migrations" (
+    "version" character varying(50) NOT NULL,
+    "run_on" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("version")
+);
+
+-- Create enum type "role"
+CREATE TYPE "public"."role" AS ENUM ('admin', 'user');
+
 -- Create "users" table
 CREATE TABLE "public"."users" (
     "id" uuid NOT NULL DEFAULT uuidv7(),
@@ -15,16 +38,6 @@ CREATE TABLE "public"."users" (
     PRIMARY KEY ("id"),
     CONSTRAINT "users_email_key" UNIQUE ("email")
 );
-
--- Create "__diesel_schema_migrations" table
-CREATE TABLE "public"."__diesel_schema_migrations" (
-    "version" character varying(50) NOT NULL,
-    "run_on" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ("version")
-);
-
--- Create enum type "role"
-CREATE TYPE "public"."role" AS ENUM ('admin', 'user');
 
 -- Create "books" table
 CREATE TABLE "public"."books" (

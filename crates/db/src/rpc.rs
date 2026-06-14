@@ -109,7 +109,7 @@ pub enum OperationResponse {
 #[cfg(feature = "server")]
 pub trait RpcContext: Send {
     fn conn(&mut self) -> &mut AsyncPgConnection;
-    fn book_id(&self) -> BookId;
+    fn book_id(&self) -> crate::Result<BookId>;
 }
 
 /// A create/update/delete record that knows how to apply itself and return the
@@ -120,7 +120,7 @@ pub trait RpcContext: Send {
 pub trait Apply {
     type Response;
 
-    async fn apply(self, ctx: &mut dyn RpcContext) -> crate::error::Result<Self::Response>;
+    async fn apply(self, ctx: &mut dyn RpcContext) -> crate::Result<Self::Response>;
 }
 
 /// A model type that can be paged by `updated_at` for sync. Implemented by each
@@ -146,5 +146,5 @@ pub trait ApplyOp {
     fn apply_op(
         self,
         ctx: &mut dyn RpcContext,
-    ) -> Pin<Box<dyn Future<Output = crate::error::Result<OperationResponse>> + Send + '_>>;
+    ) -> Pin<Box<dyn Future<Output = crate::Result<OperationResponse>> + Send + '_>>;
 }

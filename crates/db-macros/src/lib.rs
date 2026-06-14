@@ -159,7 +159,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                     ctx: &mut dyn crate::rpc::RpcContext,
                 ) -> crate::error::Result<#model> {
                     let id = self.id;
-                    let book_id = ctx.book_id();
+                    let book_id = ctx.book_id()?;
 
                     ::diesel::update(
                         crate::schema::#table::table
@@ -186,7 +186,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                     ctx: &mut dyn crate::rpc::RpcContext,
                 ) -> crate::error::Result<#model> {
                     let id = self.id;
-                    let book_id = ctx.book_id();
+                    let book_id = ctx.book_id()?;
 
                     ::diesel::update(
                         crate::schema::#table::table
@@ -213,7 +213,7 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                     ctx: &mut dyn crate::rpc::RpcContext,
                     since: crate::Timestamp,
                 ) -> crate::error::Result<crate::rpc::ListResponse<Self>> {
-                    let book_id = ctx.book_id();
+                    let book_id = ctx.book_id()?;
 
                     let records: ::std::vec::Vec<#model> = crate::schema::#table::table
                         .filter(crate::schema::#table::book_id.eq(book_id))

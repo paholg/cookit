@@ -1,5 +1,5 @@
 use {
-    crate::{conn::DbConn, session::Session},
+    crate::{conn::DbConn, request_context::RequestContext},
     anyhow::Context,
     db::{
         id::{BookId, IngredientId},
@@ -10,9 +10,9 @@ use {
     diesel_async::RunQueryDsl,
 };
 
-pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Ingredient>> {
+pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Ingredient>> {
     let rows = ingredients::table
-        .filter(ingredients::book_id.eq(session.book_id()))
+        .filter(ingredients::book_id.eq(session.book_id()?))
         .order(ingredients::name.asc())
         .load(session.conn())
         .await?;

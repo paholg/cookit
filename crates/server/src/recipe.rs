@@ -1,5 +1,5 @@
 use {
-    crate::{conn::DbConn, ingredient, session::Session},
+    crate::{conn::DbConn, ingredient, request_context::RequestContext},
     anyhow::{Context, anyhow},
     db::{
         duration::parse_duration,
@@ -23,9 +23,9 @@ use {
 };
 
 // TODO: Paginate.
-pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Recipe>> {
+pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Recipe>> {
     let rows = recipes::table
-        .filter(recipes::book_id.eq(session.book_id()))
+        .filter(recipes::book_id.eq(session.book_id()?))
         .order(recipes::name.asc())
         .load(session.conn())
         .await?;
@@ -33,10 +33,8 @@ pub async fn list_all(session: &mut Session) -> anyhow::Result<Vec<Recipe>> {
     Ok(rows)
 }
 
-/// Delete a recipe by slug within the current book. Steps and ingredients go
-/// via FK cascade.
-pub async fn delete(session: &mut Session, slug: &str) -> anyhow::Result<()> {
-    let book_id = session.book_id();
+pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<()> {
+    let book_id = session.book_id()?;
 
     diesel::delete(
         recipes::table
@@ -50,9 +48,9 @@ pub async fn delete(session: &mut Session, slug: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn get(session: &mut Session, slug: &str) -> anyhow::Result<RecipeDetail> {
+pub async fn get(session: &mut RequestContext, slug: &str) -> anyhow::Result<RecipeDetail> {
     let recipe: Recipe = recipes::table
-        .filter(recipes::book_id.eq(session.book_id()))
+        .filter(recipes::book_id.eq(session.book_id()?))
         .filter(recipes::slug.eq(slug))
         .first(session.conn())
         .await?;
@@ -121,13 +119,12 @@ struct RecipeNew<'a> {
 }
 
 /// Insert or update the recipe and its steps and ingredients in one
-/// transaction, then return the canonical [`RecipeDetail`] as [`get`] would.
-///
-/// Rows are matched by `DraftId`: new rows are inserted, persisted rows
-/// updated, and persisted rows absent from the builder deleted; order comes
-/// from the `Vec` order. Every query is scoped to the session's book.
-pub async fn upsert(builder: RecipeBuilder, session: &mut Session) -> anyhow::Result<RecipeDetail> {
-    let book_id = session.book_id();
+/// transaction.
+pub async fn upsert(
+    builder: RecipeBuilder,
+    session: &mut RequestContext,
+) -> anyhow::Result<RecipeDetail> {
+    let book_id = session.book_id()?;
     let name = builder.name.trim().to_string();
     let source = builder.source.trim().to_string();
 
