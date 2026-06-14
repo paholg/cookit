@@ -133,6 +133,7 @@
               postgresql_18
               rust-bin.nightly.latest.rustfmt
               sccache
+              shellcheck
               sleek
               sqlite
               tombi
