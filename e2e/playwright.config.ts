@@ -54,15 +54,6 @@ export default defineConfig({
     { name: "cleanup", testMatch: /cleanup\.teardown\.ts/ },
   ],
   webServer: [
-    // Run Caddy in front of dioxus, so that X-Forwarded-Host gets set.
-    {
-      command: `caddy reverse-proxy --from :${PORT} --to 127.0.0.1:${INTERNAL_PORT}`,
-      url: BASE_URL,
-      reuseExistingServer: false,
-      timeout: 60_000,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
     {
       // Disable live reloading and the filesystem watcher, so the server stays
       // static during the test run.
@@ -72,6 +63,15 @@ export default defineConfig({
       // Each run starts a server with an OS-provided port.
       reuseExistingServer: false,
       timeout: 600_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    // Run Caddy in front of dioxus, so that X-Forwarded-Host gets set.
+    {
+      command: `caddy reverse-proxy --from :${PORT} --to 127.0.0.1:${INTERNAL_PORT}`,
+      url: BASE_URL,
+      reuseExistingServer: false,
+      timeout: 60_000,
       stdout: "pipe",
       stderr: "pipe",
     },
