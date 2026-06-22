@@ -10,8 +10,12 @@
 * ratings
 * description/notes
 
+* timer/stopwatch not tied to step
+
 * CI
 * deploy
 
 * android
 * iOS
+
+* Homepage tour
