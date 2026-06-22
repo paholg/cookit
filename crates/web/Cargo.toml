@@ -9,7 +9,6 @@ async-trait.workspace = true
 console_error_panic_hook = "0.1"
 db.workspace = true
 dioxus = { workspace = true, features = ["fullstack", "router"] }
-serde_json = "1"
 server = { workspace = true, optional = true }
 snafu.workspace = true
 ui = { workspace = true }

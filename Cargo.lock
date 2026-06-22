@@ -5395,7 +5395,6 @@ dependencies = [
  "console_error_panic_hook",
  "db",
  "dioxus",
- "serde_json",
  "server",
  "snafu",
  "ui",

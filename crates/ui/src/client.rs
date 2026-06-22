@@ -21,13 +21,7 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// lock.
     async fn acquire_wake_lock(&self) -> Option<Box<dyn WakeLock>>;
 
-    /// Prime the audio path inside a user gesture so a later timer-expiry bell
-    /// is actually audible (browsers suspend audio created outside a gesture).
-    /// No-op on platforms without that restriction.
-    fn prime_audio(&self);
-
-    /// Play the timer-expiry bell once. The timer bar repeats this on its own
-    /// cadence while a timer is ringing; the client just plays a single tone.
+    /// Play the timer-expiry bell.
     fn play_bell(&self);
 
     /// Move keyboard focus to the element tagged with the given focus key.

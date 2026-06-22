@@ -1,7 +1,7 @@
 use {
     crate::{
         ConfirmProvider, RunningTimersCtx, ThemeToggle, TimerBar,
-        client::client,
+        client::{BELL, client},
         navbar::Navbar,
         timers::{self, RunningTimer},
         views::{
@@ -90,12 +90,6 @@ pub fn App() -> Element {
     );
     use_context_provider(|| timers);
 
-    // Prime the audio path so the WebAudio context gets resumed inside every
-    // user gesture — required for the expired-timer bell to be audible.
-    use_effect(move || {
-        client().prime_audio();
-    });
-
     rsx! {
         // Runs before paint to set the theme attribute the palette keys off of.
         document::Script { {THEME_SEED_JS} }
@@ -105,6 +99,9 @@ pub fn App() -> Element {
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
         // Loaded first so the listener is installed before any other JS runs.
         document::Script { src: ERROR_BANNER_JS }
+
+        audio { id: "timer-bell", src: BELL, preload: "auto" }
+
         ConfirmProvider {
             Router::<Route> {}
         }

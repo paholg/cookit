@@ -2,7 +2,7 @@ use {
     async_trait::async_trait,
     db::models::book::Book,
     dioxus::document::eval,
-    snafu::{OptionExt, ResultExt},
+    snafu::OptionExt,
     ui::{BASE_DOMAIN, Client, Error, error::OtherSnafu},
     web_sys::js_sys::futures::JsFuture,
     webauthn_rs_proto::{
@@ -37,20 +37,8 @@ impl Client for WebClient {
         }
     }
 
-    fn prime_audio(&self) {
-        eval(include_str!("js/audio-primer.js"));
-    }
-
     fn play_bell(&self) {
-        // Hand the bundled mp3's URL to the JS as a JSON literal so it can't
-        // break out of the string.
-        let url =
-            serde_json::to_string(&ui::BELL.to_string()).unwrap_or_else(|_| "\"\"".to_string());
-
-        eval(&format!(
-            "const BELL_URL = {url};\n{}",
-            include_str!("js/play-bell.js")
-        ));
+        eval(include_str!("js/play-bell.js"));
     }
 
     fn focus_field(&self, key: &str) {
