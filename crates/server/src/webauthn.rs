@@ -4,16 +4,10 @@ mod user_passkey;
 mod user_passkey_authentication;
 mod user_passkey_registration;
 
+pub use client::{WebauthnClient, client};
 use db::{
     id::{DraftId, Id, TablePrefix},
     table_id,
-};
-pub use {
-    client::{WebauthnClient, client},
-    webauthn_rs::prelude::{
-        CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
-        RequestChallengeResponse,
-    },
 };
 
 table_id! {

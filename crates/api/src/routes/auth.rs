@@ -1,15 +1,12 @@
 #[cfg(feature = "server")]
-use server::{
-    RequestContext,
-    webauthn::{
-        CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
-        RequestChallengeResponse,
-    },
-};
+use server::RequestContext;
 use {
     db::{Email, id::UserId, models::user::Current},
     dioxus::prelude::*,
-    server::user,
+    webauthn_rs_proto::{
+        CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
+        RequestChallengeResponse,
+    },
 };
 
 #[post("/api/register_passkey/start", mut ctx: RequestContext)]
@@ -38,6 +35,8 @@ pub async fn register_finish(reg: RegisterPublicKeyCredential) -> Result<(), Ser
 pub async fn authenticate_start(
     email: Email,
 ) -> Result<(UserId, RequestChallengeResponse), ServerFnError> {
+    use server::user;
+
     let conn = ctx.conn();
     let user = user::find_by_email(conn, &email).await?;
 

@@ -8,6 +8,7 @@ db = { workspace = true }
 dioxus = { workspace = true, features = ["fullstack"] }
 serde = { version = "1", features = ["derive"] }
 server = { workspace = true, optional = true }
+webauthn-rs-proto.workspace = true
 
 [dev-dependencies]
 axum = "0.8"
