@@ -46,3 +46,4 @@ syn = "2"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 url = { version = "2.5.8", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v7"] }
+webauthn-rs-proto = { version = "0.5" }

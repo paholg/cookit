@@ -12,7 +12,7 @@ use {
         id::{BookId, UserId, UserRoleId},
         models::{
             book::BookNew,
-            user::UserNew,
+            user::UserCreate,
             user_role::{Role, UserRoleNew},
         },
         schema::{books, user_roles, users},
@@ -34,7 +34,7 @@ pub async fn create_test_book(
     let email = Email::try_from(format!("e2e-{suffix}@example.com"))?;
     let slug = Slug::try_from(format!("e2e-{suffix}"))?;
 
-    let user_id: UserId = UserNew {
+    let user_id: UserId = UserCreate {
         email,
         name: "E2E Admin".try_into()?,
     }

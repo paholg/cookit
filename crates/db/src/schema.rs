@@ -143,6 +143,38 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_passkey_authentications (id) {
+        id -> Uuid,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        user_id -> Uuid,
+        passkey_authentication -> Jsonb,
+    }
+}
+
+diesel::table! {
+    user_passkey_registrations (id) {
+        id -> Uuid,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        user_id -> Uuid,
+        passkey_registration -> Jsonb,
+    }
+}
+
+diesel::table! {
+    user_passkeys (id) {
+        id -> Uuid,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        deleted_at -> Nullable<Timestamptz>,
+        user_id -> Uuid,
+        credential_id -> Text,
+        passkey -> Jsonb,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::Role;
 
@@ -184,6 +216,9 @@ diesel::joinable!(shopping_list_items -> books (book_id));
 diesel::joinable!(shopping_list_items -> ingredients (ingredient_id));
 diesel::joinable!(shopping_list_items -> shopping_lists (shopping_list_id));
 diesel::joinable!(shopping_lists -> books (book_id));
+diesel::joinable!(user_passkey_authentications -> users (user_id));
+diesel::joinable!(user_passkey_registrations -> users (user_id));
+diesel::joinable!(user_passkeys -> users (user_id));
 diesel::joinable!(user_roles -> books (book_id));
 diesel::joinable!(user_roles -> users (user_id));
 
@@ -198,6 +233,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     sessions,
     shopping_list_items,
     shopping_lists,
+    user_passkey_authentications,
+    user_passkey_registrations,
+    user_passkeys,
     user_roles,
     users,
 );

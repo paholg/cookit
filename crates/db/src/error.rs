@@ -5,6 +5,7 @@ use {http::StatusCode, snafu::Snafu};
 pub enum Error {
     #[snafu(display("no cookbook selected"))]
     NoBook,
+
     #[snafu(display("{entity} {id} not found"))]
     NotFound { entity: &'static str, id: String },
 

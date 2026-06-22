@@ -4,7 +4,7 @@ use {
         Email, Name, Slug,
         models::{
             book::{Book, BookNew},
-            user::{User, UserNew},
+            user::{User, UserCreate},
             user_role::{Role, UserRoleNew},
         },
         prelude::*,
@@ -43,7 +43,7 @@ impl TestBook {
         let slug = Slug::try_from(format!("test-book-{token}")).unwrap();
 
         let user: User = diesel::insert_into(users::table)
-            .values(UserNew {
+            .values(UserCreate {
                 email: email.clone(),
                 name: Name::try_from("Test User").unwrap(),
             })

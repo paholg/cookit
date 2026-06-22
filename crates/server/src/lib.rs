@@ -1,21 +1,18 @@
-pub mod book;
 pub mod config;
 pub mod conn;
 pub mod dev;
 mod error;
-pub mod ingredient;
-pub mod meal;
 mod middleware;
 mod migrate;
-pub mod recipe;
+mod models;
 mod request_context;
 mod session;
-pub mod shopping_list;
-mod user_role;
+pub mod webauthn;
 
 pub use {
     error::{Error, Result},
     middleware::log_server_errors,
+    models::*,
     request_context::RequestContext,
     session::{AuthUser, CookitAuthSession, install},
 };

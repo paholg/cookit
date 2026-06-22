@@ -2,6 +2,7 @@ use {
     axum::{http::StatusCode, response::IntoResponse},
     dioxus::prelude::ServerFnError,
     snafu::prelude::*,
+    webauthn_rs::prelude::WebauthnError,
 };
 
 #[derive(Debug, Snafu)]
@@ -41,6 +42,9 @@ pub enum Error {
 
     #[snafu(display("internal error: {msg}"))]
     Internal { msg: String },
+
+    #[snafu(display("webauthn: {source}"))]
+    Webauthn { source: WebauthnError },
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -59,6 +63,7 @@ impl Error {
             | Error::Internal { msg: _ } => StatusCode::INTERNAL_SERVER_ERROR,
             Error::DatabasePool { source: _ } => StatusCode::SERVICE_UNAVAILABLE,
             Error::Db { source } => source.code(),
+            Error::Webauthn { source: _ } => StatusCode::UNAUTHORIZED,
         }
     }
 }

@@ -29,6 +29,8 @@ use {
     dioxus::prelude::*,
 };
 
+pub mod auth;
+
 #[get("/api/me", ctx: RequestContext)]
 pub async fn me() -> Result<Current, ServerFnError> {
     Ok(ctx.current)

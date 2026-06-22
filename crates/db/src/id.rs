@@ -66,6 +66,7 @@ impl<T> Id<T> {
     }
 }
 
+#[macro_export]
 macro_rules! table_id {
     () => {};
     ($prefix:tt, $id:ident, $draft_id:ident, $struct:ident; $($tail:tt)*) => {
@@ -116,6 +117,12 @@ impl<T> PartialEq for Id<T> {
     }
 }
 impl<T> Eq for Id<T> {}
+
+impl<T> From<Id<T>> for Uuid {
+    fn from(value: Id<T>) -> Self {
+        value.id
+    }
+}
 
 impl<T: TablePrefix> fmt::Display for Id<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {

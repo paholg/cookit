@@ -9,6 +9,14 @@ use {
     serde::{Deserialize, Serialize},
 };
 
+#[derive(Debug)]
+#[cfg_attr(feature = "server", derive(Insertable))]
+#[cfg_attr(feature = "server", diesel(table_name = users))]
+pub struct UserCreate {
+    pub email: Email,
+    pub name: Name,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
@@ -19,14 +27,6 @@ pub struct User {
     pub email: Email,
     pub deleted_at: Option<Timestamp>,
     pub created_at: Timestamp,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "server", derive(Insertable))]
-#[cfg_attr(feature = "server", diesel(table_name = users))]
-pub struct UserNew {
-    pub email: Email,
-    pub name: Name,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

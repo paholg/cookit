@@ -11,7 +11,7 @@ use {
             recipe::RecipeBuilder,
             recipe_step::RecipeStepBuilder,
             recipe_step_ingredient::RecipeStepIngredientBuilder,
-            user::UserNew,
+            user::UserCreate,
             user_role::{Role, UserRoleNew},
         },
         rpc::Apply,
@@ -26,7 +26,7 @@ use {
 async fn main() -> eyre::Result<()> {
     let mut conn = get_conn().await?;
 
-    let user_id: UserId = UserNew {
+    let user_id: UserId = UserCreate {
         email: Email::try_from("paho@paholg.com".to_string())?,
         name: Name::try_from("Admin User".to_string())?,
     }

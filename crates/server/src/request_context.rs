@@ -1,6 +1,6 @@
 use {
     crate::{
-        book,
+        Error, book,
         config::config,
         conn::{DbConn, get_conn},
         error::{
@@ -46,7 +46,7 @@ impl RequestContext {
         let book = book::load_home_book(&mut self.conn, user.id).await?;
 
         let user_role = match &book {
-            Some(book) => user_role::find(&mut self.conn, user.id, book.id).await?,
+            Some(book) => user_role::try_find(&mut self.conn, user.id, book.id).await?,
             None => None,
         };
 
@@ -117,6 +117,14 @@ impl RequestContext {
         &mut self.conn
     }
 
+    pub fn require_user(&self) -> crate::Result<&User> {
+        let Some(user) = &self.current.user else {
+            return Err(Error::Unauthorized);
+        };
+
+        Ok(user)
+    }
+
     pub fn require_book(&self) -> crate::Result<()> {
         ensure!(
             self.current.book.is_some(),
@@ -166,7 +174,7 @@ where
         };
 
         let user_role = match (&user, &book) {
-            (Some(user), Some(book)) => user_role::find(&mut conn, user.id, book.id).await?,
+            (Some(user), Some(book)) => user_role::try_find(&mut conn, user.id, book.id).await?,
             _ => None,
         };
 

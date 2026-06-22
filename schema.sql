@@ -4,19 +4,6 @@ CREATE SCHEMA IF NOT EXISTS "public";
 -- Set comment to schema: "public"
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
--- Create "sessions" table
-CREATE TABLE "public"."sessions" (
-    "id" text NOT NULL,
-    "expires_at" timestamptz NOT NULL,
-    "session" text NOT NULL,
-    "created_at" timestamptz NOT NULL DEFAULT NOW(),
-    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
-    PRIMARY KEY ("id")
-);
-
--- Create index "sessions_expires_at_idx" to table: "sessions"
-CREATE INDEX "sessions_expires_at_idx" ON "public"."sessions" ("expires_at");
-
 -- Create "__diesel_schema_migrations" table
 CREATE TABLE "public"."__diesel_schema_migrations" (
     "version" character varying(50) NOT NULL,
@@ -38,6 +25,19 @@ CREATE TABLE "public"."users" (
     PRIMARY KEY ("id"),
     CONSTRAINT "users_email_key" UNIQUE ("email")
 );
+
+-- Create "sessions" table
+CREATE TABLE "public"."sessions" (
+    "id" text NOT NULL,
+    "expires_at" timestamptz NOT NULL,
+    "session" text NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
+    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+    PRIMARY KEY ("id")
+);
+
+-- Create index "sessions_expires_at_idx" to table: "sessions"
+CREATE INDEX "sessions_expires_at_idx" ON "public"."sessions" ("expires_at");
 
 -- Create "books" table
 CREATE TABLE "public"."books" (
@@ -213,6 +213,44 @@ CREATE TABLE "public"."shopping_list_items" (
 
 -- Create index "shopping_list_items_book_id_updated_at_idx" to table: "shopping_list_items"
 CREATE INDEX "shopping_list_items_book_id_updated_at_idx" ON "public"."shopping_list_items" ("book_id", "updated_at");
+
+-- Create "user_passkey_authentications" table
+CREATE TABLE "public"."user_passkey_authentications" (
+    "id" uuid NOT NULL DEFAULT uuidv7(),
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
+    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+    "user_id" uuid NOT NULL,
+    "passkey_authentication" jsonb NOT NULL,
+    PRIMARY KEY ("id"),
+    CONSTRAINT "user_passkey_authentications_user_id_key" UNIQUE ("user_id"),
+    CONSTRAINT "user_passkey_authentications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+-- Create "user_passkey_registrations" table
+CREATE TABLE "public"."user_passkey_registrations" (
+    "id" uuid NOT NULL DEFAULT uuidv7(),
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
+    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+    "user_id" uuid NOT NULL,
+    "passkey_registration" jsonb NOT NULL,
+    PRIMARY KEY ("id"),
+    CONSTRAINT "user_passkey_registrations_user_id_key" UNIQUE ("user_id"),
+    CONSTRAINT "user_passkey_registrations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+-- Create "user_passkeys" table
+CREATE TABLE "public"."user_passkeys" (
+    "id" uuid NOT NULL DEFAULT uuidv7(),
+    "created_at" timestamptz NOT NULL DEFAULT NOW(),
+    "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+    "deleted_at" timestamptz NULL,
+    "user_id" uuid NOT NULL,
+    "credential_id" text NOT NULL,
+    "passkey" jsonb NOT NULL,
+    PRIMARY KEY ("id"),
+    CONSTRAINT "user_passkeys_credential_id_key" UNIQUE ("credential_id"),
+    CONSTRAINT "user_passkeys_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
 
 -- Create "user_roles" table
 CREATE TABLE "public"."user_roles" (

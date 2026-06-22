@@ -8,7 +8,7 @@ use {
     },
 };
 
-pub async fn find(
+pub async fn try_find(
     conn: &mut DbConn,
     user_id: UserId,
     book_id: BookId,
