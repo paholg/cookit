@@ -14,7 +14,7 @@ pub use {
             },
             shopping_list::{ShoppingList, ShoppingListDetail},
             shopping_list_item::{ShoppingListItem, ShoppingListItemInput, ShoppingListItemView},
-            user::AuthUser,
+            user::Current,
         },
         rpc::{ListResponse, Operation, OperationResponse},
         unit,

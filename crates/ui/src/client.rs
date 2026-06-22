@@ -1,4 +1,4 @@
-use {async_trait::async_trait, dioxus::prelude::*, std::sync::OnceLock};
+use {async_trait::async_trait, db::models::book::Book, dioxus::prelude::*, std::sync::OnceLock};
 
 pub const BELL: Asset = asset!("/assets/bell.mp3");
 
@@ -34,6 +34,12 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// Lets a `#step-N` deep link land on the right step. No-op where there's
     /// no URL hash.
     fn scroll_to_hash(&self);
+
+    /// Set the currently active book.
+    ///
+    /// On the web, this will update the URL. On other platforms, it will likely
+    /// set a header to be used with requests.
+    fn set_current_book(&self, book: Option<&Book>);
 }
 
 /// A held screen wake lock. Dropping it releases the lock.

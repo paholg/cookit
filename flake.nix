@@ -100,6 +100,7 @@
             {
               version = dioxusVersion;
               inherit src;
+
               # Regenerate the vendored deps from the new source rather than
               # overriding the old derivation, which drops the recursive
               # output-hash mode and fails with an "output path ... should be a
@@ -112,16 +113,21 @@
             }
           );
 
+          # NOTE: These are used both by the devShell and the devcontainer.
           devPackages =
             with pkgs;
             [
               atlas
               atuin
+              bat
+              caddy
               cargo-dist
               cargo-edit
+              cargo-machete
               cargo-nextest
               external.claude-code
               diesel-cli
+              dig
               fzf
               just
               libpq
@@ -247,11 +253,12 @@
             packages = devPackages;
 
             shellHook = ''
-              # On the host, derive DATABASE_URL from the devconcurrent proxy. Inside
-              # the devcontainer, compose already exports the right value (and
-              # devconcurrent is absent), so only set it when unset.
+              # Inside the devcontainer, these are already set based on the
+              # docker network, so we don't want to overwrite them.
               if [ -z "''${DATABASE_URL:-}" ] && command -v devconcurrent >/dev/null; then
-                export DATABASE_URL="postgres://postgres:postgres@$(devconcurrent show workspace).postgres.test:5432/cookit_dev"
+                export WORKSPACE="$(devconcurrent show workspace)"
+                export DATABASE_URL="postgres://postgres:postgres@$WORKSPACE.postgres.test:5432/cookit_dev"
+                export BASE_DOMAIN="$WORKSPACE.cookit.test"
               fi
 
               # Pin Playwright to the nix-provided browsers so e2e never downloads them.

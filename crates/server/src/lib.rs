@@ -1,3 +1,4 @@
+pub mod book;
 pub mod config;
 pub mod conn;
 pub mod dev;
@@ -10,11 +11,13 @@ pub mod recipe;
 mod request_context;
 mod session;
 pub mod shopping_list;
+mod user_role;
 
 pub use {
     error::{Error, Result},
     middleware::log_server_errors,
     request_context::RequestContext,
+    session::{AuthUser, CookitAuthSession, install},
 };
 
 pub fn serve(app: fn() -> dioxus::core::Element) -> ! {

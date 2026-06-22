@@ -19,6 +19,7 @@ services:
     environment:
       COLORTERM: truecolor
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/cookit_dev"
+      BASE_DOMAIN: "${WORKSPACE_DIR}.cookit.test"
       WORKSPACE_DIR: ${WORKSPACE_DIR}
       RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/vscode/.cache/sccache

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 api = { workspace = true }
 async-trait = { workspace = true }
+db = { workspace = true }
 dioxus = { workspace = true, features = ["router"] }
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", default-features = false }
 dioxus-sdk = { workspace = true, features = ["storage", "time"] }

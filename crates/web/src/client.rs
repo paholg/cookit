@@ -1,4 +1,4 @@
-use {async_trait::async_trait, dioxus::document::eval};
+use {async_trait::async_trait, db::models::book::Book, dioxus::document::eval, ui::BASE_DOMAIN};
 
 #[derive(Debug)]
 pub struct WebClient;
@@ -68,6 +68,15 @@ impl ui::Client for WebClient {
 
     fn scroll_to_hash(&self) {
         eval(include_str!("js/scroll-to-hash.js"));
+    }
+
+    fn set_current_book(&self, book: Option<&Book>) {
+        let hostname = match book {
+            Some(book) => format!("{}.{}", book.slug, BASE_DOMAIN),
+            None => BASE_DOMAIN.to_string(),
+        };
+
+        eval(&format!("window.location.hostname = \"{hostname}\";"));
     }
 }
 

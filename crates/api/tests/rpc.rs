@@ -37,125 +37,131 @@ async fn session_book() -> db::id::BookId {
 /// `deleted_at` set (the deletion propagates through the timestamp sync).
 #[tokio::test]
 async fn ingredient_create_and_delete_sync() {
-    TestBook::new().await;
-    let book_id = session_book().await;
+    let book = TestBook::new().await;
+    book.as_user(async move {
+        let book_id = session_book().await;
 
-    let id = IngredientId::from_uuid(Uuid::now_v7());
-    let watermark = recent_watermark();
+        let id = IngredientId::from_uuid(Uuid::now_v7());
+        let watermark = recent_watermark();
 
-    let create = IngredientCreate {
-        id,
-        book_id,
-        name: Name::try_new(unique("rpc-sugar")).unwrap(),
-        density_g_per_ml: Some(PositiveFloat::try_new(1.5).unwrap()),
-        grocery_section: None,
-    };
+        let create = IngredientCreate {
+            id,
+            book_id,
+            name: Name::try_new(unique("rpc-sugar")).unwrap(),
+            density_g_per_ml: Some(PositiveFloat::try_new(1.5).unwrap()),
+            grocery_section: None,
+        };
 
-    let created = unwrap_ingredient(
-        apply_ops(vec![Operation::IngredientCreate(create)])
+        let created = unwrap_ingredient(
+            apply_ops(vec![Operation::IngredientCreate(create)])
+                .await
+                .expect("create")
+                .into_iter()
+                .next()
+                .expect("one response"),
+        );
+        assert_eq!(created.id, id);
+        assert_eq!(
+            created.density_g_per_ml,
+            Some(PositiveFloat::try_new(1.5).unwrap())
+        );
+        assert!(created.deleted_at.is_none());
+
+        let page = list_ingredients_since(watermark).await.expect("since");
+        assert!(
+            page.records
+                .iter()
+                .any(|r| r.id == id && r.deleted_at.is_none()),
+            "freshly created ingredient should sync"
+        );
+
+        let deleted = unwrap_ingredient(
+            apply_ops(vec![Operation::IngredientDelete(IngredientDelete { id })])
+                .await
+                .expect("delete")
+                .into_iter()
+                .next()
+                .expect("one response"),
+        );
+        assert_eq!(deleted.id, id);
+        assert!(deleted.deleted_at.is_some(), "delete should be soft");
+
+        let page = list_ingredients_since(watermark)
             .await
-            .expect("create")
-            .into_iter()
-            .next()
-            .expect("one response"),
-    );
-    assert_eq!(created.id, id);
-    assert_eq!(
-        created.density_g_per_ml,
-        Some(PositiveFloat::try_new(1.5).unwrap())
-    );
-    assert!(created.deleted_at.is_none());
-
-    let page = list_ingredients_since(watermark).await.expect("since");
-    assert!(
-        page.records
+            .expect("since after delete");
+        let row = page
+            .records
             .iter()
-            .any(|r| r.id == id && r.deleted_at.is_none()),
-        "freshly created ingredient should sync"
-    );
-
-    let deleted = unwrap_ingredient(
-        apply_ops(vec![Operation::IngredientDelete(IngredientDelete { id })])
-            .await
-            .expect("delete")
-            .into_iter()
-            .next()
-            .expect("one response"),
-    );
-    assert_eq!(deleted.id, id);
-    assert!(deleted.deleted_at.is_some(), "delete should be soft");
-
-    let page = list_ingredients_since(watermark)
-        .await
-        .expect("since after delete");
-    let row = page
-        .records
-        .iter()
-        .find(|r| r.id == id)
-        .expect("soft-deleted row still syncs");
-    assert!(
-        row.deleted_at.is_some(),
-        "sync must carry the deletion to clients"
-    );
+            .find(|r| r.id == id)
+            .expect("soft-deleted row still syncs");
+        assert!(
+            row.deleted_at.is_some(),
+            "sync must carry the deletion to clients"
+        );
+    })
+    .await;
 }
 
 /// The three-way semantics of `IngredientUpdate`: `Some(_)` sets, `None` leaves
 /// a field untouched, and the nullable columns' inner `Option` can clear to NULL.
 #[tokio::test]
 async fn ingredient_update_is_tri_state() {
-    TestBook::new().await;
-    let book_id = session_book().await;
+    let book = TestBook::new().await;
+    book.as_user(async move {
+        let book_id = session_book().await;
 
-    let id = IngredientId::from_uuid(Uuid::now_v7());
-    let original = unique("rpc-tri");
+        let id = IngredientId::from_uuid(Uuid::now_v7());
+        let original = unique("rpc-tri");
 
-    apply_ops(vec![Operation::IngredientCreate(IngredientCreate {
-        id,
-        book_id,
-        name: Name::try_new(&original).unwrap(),
-        density_g_per_ml: Some(PositiveFloat::try_new(2.0).unwrap()),
-        grocery_section: None,
-    })])
-    .await
-    .expect("create");
+        apply_ops(vec![Operation::IngredientCreate(IngredientCreate {
+            id,
+            book_id,
+            name: Name::try_new(&original).unwrap(),
+            density_g_per_ml: Some(PositiveFloat::try_new(2.0).unwrap()),
+            grocery_section: None,
+        })])
+        .await
+        .expect("create");
 
-    // Rename, leave density untouched, set the section.
-    let renamed = unique("rpc-tri-renamed");
-    let updated = update_ingredient(IngredientUpdate {
-        id,
-        name: Some(Name::try_new(&renamed).unwrap()),
-        density_g_per_ml: None,
-        grocery_section: Some(Some(GrocerySection::Dairy)),
+        // Rename, leave density untouched, set the section.
+        let renamed = unique("rpc-tri-renamed");
+        let updated = update_ingredient(IngredientUpdate {
+            id,
+            name: Some(Name::try_new(&renamed).unwrap()),
+            density_g_per_ml: None,
+            grocery_section: Some(Some(GrocerySection::Dairy)),
+        })
+        .await
+        .expect("update 1");
+        assert_eq!(updated.name.as_ref(), renamed);
+        assert_eq!(
+            updated.density_g_per_ml,
+            Some(PositiveFloat::try_new(2.0).unwrap()),
+            "density left unchanged"
+        );
+        assert_eq!(updated.grocery_section, Some(GrocerySection::Dairy));
+
+        // Clear density to NULL, leave name and section untouched.
+        let updated = update_ingredient(IngredientUpdate {
+            id,
+            name: None,
+            density_g_per_ml: Some(None),
+            grocery_section: None,
+        })
+        .await
+        .expect("update 2");
+        assert!(
+            updated.density_g_per_ml.is_none(),
+            "density cleared to NULL"
+        );
+        assert_eq!(updated.name.as_ref(), renamed, "name left unchanged");
+        assert_eq!(
+            updated.grocery_section,
+            Some(GrocerySection::Dairy),
+            "section left unchanged"
+        );
     })
-    .await
-    .expect("update 1");
-    assert_eq!(updated.name.as_ref(), renamed);
-    assert_eq!(
-        updated.density_g_per_ml,
-        Some(PositiveFloat::try_new(2.0).unwrap()),
-        "density left unchanged"
-    );
-    assert_eq!(updated.grocery_section, Some(GrocerySection::Dairy));
-
-    // Clear density to NULL, leave name and section untouched.
-    let updated = update_ingredient(IngredientUpdate {
-        id,
-        name: None,
-        density_g_per_ml: Some(None),
-        grocery_section: None,
-    })
-    .await
-    .expect("update 2");
-    assert!(
-        updated.density_g_per_ml.is_none(),
-        "density cleared to NULL"
-    );
-    assert_eq!(updated.name.as_ref(), renamed, "name left unchanged");
-    assert_eq!(
-        updated.grocery_section,
-        Some(GrocerySection::Dairy),
-        "section left unchanged"
-    );
+    .await;
 }
 
 /// The wire format must distinguish "leave unchanged" (field omitted) from "set

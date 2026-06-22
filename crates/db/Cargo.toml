@@ -10,6 +10,7 @@ diesel-async = { workspace = true, optional = true }
 diesel-derive-enum = { workspace = true, optional = true }
 email_address.workspace = true
 enum_dispatch = { workspace = true, optional = true }
+http.workspace = true
 jiff.workspace = true
 jiff-diesel = { workspace = true, optional = true }
 nutype.workspace = true

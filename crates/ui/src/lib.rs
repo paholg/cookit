@@ -23,3 +23,5 @@ pub use {
     views::{IngredientList, RecipeView, ShoppingListDetail},
     wake_toggle::WakeLockToggle,
 };
+
+pub const BASE_DOMAIN: &str = env!("BASE_DOMAIN");

@@ -1,11 +1,6 @@
-//! The error type for the generated `db::rpc` layer.
-//!
-//! Server-only (it wraps `diesel::result::Error`). The API boundary maps it to
-//! an HTTP status via [`Error::code`].
+use {http::StatusCode, snafu::Snafu};
 
-use snafu::Snafu;
-
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("no cookbook selected"))]
@@ -20,12 +15,11 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
-    /// The HTTP status this maps to at the API boundary.
-    pub fn code(&self) -> u16 {
+    pub fn code(&self) -> StatusCode {
         match self {
-            Error::NoBook => 404,
-            Error::NotFound { .. } => 404,
-            Error::Query { .. } => 500,
+            Error::NoBook => StatusCode::NOT_FOUND,
+            Error::NotFound { .. } => StatusCode::NOT_FOUND,
+            Error::Query { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

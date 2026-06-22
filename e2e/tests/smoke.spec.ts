@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 // These run against a live `dx serve` (started automatically by the Playwright
 // config, with `--features development`). The `setup` project creates an
@@ -49,10 +49,10 @@ test("create then delete a recipe", async ({ page }) => {
   // Lands on the recipe's detail page, titled with its name.
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
-  // Clean up: edit -> delete (confirm dialog), back to the list.
+  // Clean up: edit -> delete -> confirm in the in-app AlertDialog, back to list.
   await page.getByRole("button", { name: "Edit recipe" }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete recipe" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Recipes" })).toBeVisible();
 });
 
@@ -68,10 +68,10 @@ test("create then delete an empty shopping list", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
-  // Clean up from the list page.
+  // Clean up from the list page; confirm in the in-app AlertDialog.
   await page.getByRole("link", { name: "Shopping", exact: true }).click();
   const row = page.locator("li", { hasText: name });
-  page.once("dialog", (dialog) => dialog.accept());
   await row.getByRole("button", { name: "Delete shopping list" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(row).toHaveCount(0);
 });

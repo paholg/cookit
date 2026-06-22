@@ -15,3 +15,8 @@ pub mod schema;
 pub use newtypes::*;
 #[cfg(feature = "server")]
 pub use {error::Error, error::Result};
+
+#[cfg(feature = "server")]
+pub mod prelude {
+    pub use {diesel::prelude::*, diesel_async::RunQueryDsl};
+}

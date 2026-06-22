@@ -1,5 +1,8 @@
 #[cfg(feature = "development")]
-use db::id::{BookId, UserRoleId};
+use db::{
+    Slug,
+    id::{BookId, UserRoleId},
+};
 // The /api/dev/* handlers run their DB ops directly (no session), so they need
 // the connection pool and the test-data helpers — both server-only.
 #[cfg(all(feature = "server", feature = "development"))]
@@ -19,7 +22,7 @@ use {
             recipe::{Recipe, RecipeBuilder, RecipeDetail},
             shopping_list::{ShoppingList, ShoppingListDetail},
             shopping_list_item::ShoppingListItemInput,
-            user::AuthUser,
+            user::Current,
         },
         rpc::{ListResponse, Operation, OperationResponse},
     },
@@ -27,27 +30,23 @@ use {
 };
 
 #[get("/api/me", ctx: RequestContext)]
-pub async fn me() -> Result<AuthUser, ServerFnError> {
-    Ok(ctx.current_user().clone())
+pub async fn me() -> Result<Current, ServerFnError> {
+    Ok(ctx.current)
 }
 
-/// Log in as a specific user (used by the e2e tests). Records the identity in
-/// the session — `SessionLayer` writes the cookie — and returns the now-current
-/// user, scoped to that user's first book.
-#[post("/api/auth/login")]
-pub async fn login(user_id: UserId) -> Result<AuthUser, ServerFnError> {
-    let user = RequestContext::login(user_id).await?;
-    Ok(user)
+// TODO: Passkeys
+#[post("/api/auth/login", mut ctx: RequestContext)]
+pub async fn login(user_id: UserId) -> Result<Current, ServerFnError> {
+    ctx.login_as(user_id).await.map_err(Into::into)
 }
 
-/// Log in as the first user/book. Powers the dev "Log in" button until real
-/// login is restored.
-#[post("/api/auth/login-first")]
-pub async fn login_as_first() -> Result<AuthUser, ServerFnError> {
-    let user = RequestContext::login_first().await?;
-    Ok(user)
+// TODO: Passkeys
+#[post("/api/auth/login-first", mut ctx: RequestContext)]
+pub async fn login_as_first() -> Result<Current, ServerFnError> {
+    ctx.login_first().await.map_err(Into::into)
 }
 
+/// Log out and return the apex host to redirect the now-bookless user to.
 #[post("/api/auth/logout")]
 pub async fn logout() -> Result<(), ServerFnError> {
     RequestContext::logout().await?;
@@ -225,6 +224,8 @@ pub async fn delete_shopping_list_item(item_id: ShoppingListItemId) -> Result<()
     Ok(())
 }
 
+// TODO: Delete all this:
+
 /// The ids of the throwaway admin user/book/role created by [`dev_setup`]. The
 /// e2e suite logs in with `user_role_id` and hands `user_id`/`book_id` back to
 /// [`dev_teardown`].
@@ -234,6 +235,7 @@ pub struct DevTestData {
     pub user_id: UserId,
     pub book_id: BookId,
     pub user_role_id: UserRoleId,
+    pub slug: Slug,
 }
 
 /// Create an isolated admin user + book + role for an e2e run. Unauthenticated
@@ -243,12 +245,13 @@ pub struct DevTestData {
 #[post("/api/dev/setup")]
 pub async fn dev_setup() -> Result<DevTestData, ServerFnError> {
     let mut conn = get_conn().await?;
-    let (user_id, book_id, user_role_id) = dev::create_test_book(&mut conn).await?;
+    let (user_id, book_id, user_role_id, slug) = dev::create_test_book(&mut conn).await?;
 
     Ok(DevTestData {
         user_id,
         book_id,
         user_role_id,
+        slug,
     })
 }
 

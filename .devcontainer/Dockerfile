@@ -7,6 +7,7 @@ ENV TZ="America/Los_Angeles" \
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         direnv \
+        dnsmasq \
         zsh-autosuggestions \
         zsh-syntax-highlighting \
     && rm -rf /var/lib/apt/lists/* \

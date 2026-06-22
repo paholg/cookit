@@ -14,6 +14,12 @@ const PORT = (() => {
 })();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
+// `dx serve` runs on an internal port; Caddy sits in front on PORT and adds the
+// `X-Forwarded-Host` header (from the request's Host) that the server resolves
+// the book from — standing in for the production/devcontainer proxy.
+const INTERNAL_PORT = freePort();
+const INTERNAL_URL = `http://127.0.0.1:${INTERNAL_PORT}`;
+
 const STORAGE_STATE = path.join(__dirname, ".auth", "state.json");
 
 export default defineConfig({
@@ -47,25 +53,27 @@ export default defineConfig({
     // Deletes the test user/book via /api/dev/teardown.
     { name: "cleanup", testMatch: /cleanup\.teardown\.ts/ },
   ],
-  webServer: {
-    // `--features development` exposes the /api/dev/* endpoints the setup and
-    // cleanup projects use to create and delete their test data. Migrations run
-    // automatically on server start, so there's no diesel/cargo step.
-    //
-    // Disable live reloading: e2e runs a fixed build, not an interactive dev
-    // session. (`--hot-patch` is a bare flag that already defaults to off and
-    // isn't affected by dx CLI settings, so we just don't pass it.)
-    command: `dx serve -p web --features development --addr 127.0.0.1 --port ${PORT} --hot-reload false`,
-    cwd: "..",
-    url: BASE_URL,
-    // Each run binds a fresh OS-assigned port, so there's never an existing
-    // server to reuse — always start our own. The first build compiles the wasm
-    // client and can take minutes.
-    reuseExistingServer: false,
-    timeout: 600_000,
-    // Stream the build/serve output so a slow first compile looks like progress
-    // rather than a silent hang.
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: [
+    // Run Caddy in front of dioxus, so that X-Forwarded-Host gets set.
+    {
+      command: `caddy reverse-proxy --from :${PORT} --to 127.0.0.1:${INTERNAL_PORT}`,
+      url: BASE_URL,
+      reuseExistingServer: false,
+      timeout: 60_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // Disable live reloading and the filesystem watcher, so the server stays
+      // static during the test run.
+      command: `dx serve -p web --features development --addr 127.0.0.1 --port ${INTERNAL_PORT} --hot-reload false`,
+      cwd: "..",
+      url: INTERNAL_URL,
+      // Each run starts a server with an OS-provided port.
+      reuseExistingServer: false,
+      timeout: 600_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  ],
 });

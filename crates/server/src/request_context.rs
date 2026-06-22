@@ -1,14 +1,29 @@
 use {
     crate::{
+        book,
+        config::config,
         conn::{DbConn, get_conn},
-        error::{ForbiddenSnafu, NotFoundSnafu, SessionSnafu, UnauthorizedSnafu},
-        session::{self, AppAuthSession, AuthUserId},
+        error::{
+            ForbiddenSnafu, InternalSnafu, MissingHostSnafu, NotFoundSnafu, SessionSnafu,
+            UnauthorizedSnafu,
+        },
+        session::{AuthUserId, CookitAuthSession},
+        user_role,
     },
     axum::{
         extract::FromRequestParts,
-        http::{StatusCode, request::Parts},
+        http::{header, request::Parts},
     },
-    db::{id::BookId, models::user::AuthUser, rpc::RpcContext},
+    db::{
+        id::{BookId, UserId},
+        models::{
+            user::{Current, User},
+            user_role::UserRole,
+        },
+        prelude::*,
+        rpc::RpcContext,
+        schema::{books, user_roles, users},
+    },
     diesel_async::AsyncPgConnection,
     dioxus::fullstack::FullstackContext,
     snafu::{OptionExt, ResultExt, ensure},
@@ -16,56 +31,82 @@ use {
 
 pub struct RequestContext {
     conn: DbConn,
-    auth: AuthUser,
+    pub current: Current,
 }
 
 impl RequestContext {
-    /// Log in as `user_id`.
-    // TODO: Temporary
-    pub async fn login(user_id: db::id::UserId) -> crate::Result<AuthUser> {
-        let mut conn = get_conn().await?;
-        let auth_user = session::load_auth_user(&mut conn, user_id).await?;
-        let auth: AppAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
+    // TODO: Passkeys
+    pub async fn login_as(&mut self, user_id: UserId) -> crate::Result<Current> {
+        let user: User = users::table.find(user_id).first(&mut self.conn).await?;
+
+        let auth: CookitAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
         auth.login_user(AuthUserId(Some(user_id)));
         auth.remember_user(true);
 
-        Ok(auth_user)
+        let book = book::load_home_book(&mut self.conn, user.id).await?;
+
+        let user_role = match &book {
+            Some(book) => user_role::find(&mut self.conn, user.id, book.id).await?,
+            None => None,
+        };
+
+        Ok(Current {
+            user: Some(user),
+            book,
+            role: user_role.map(|ur| ur.role),
+        })
     }
 
-    /// Log in as the first user/book.
-    // TODO: Temporary
-    pub async fn login_first() -> crate::Result<AuthUser> {
-        let mut conn = get_conn().await?;
-        let auth_user = session::load_first_auth_user(&mut conn).await?;
+    // TODO: Passkeys
+    pub async fn login_first(&mut self) -> crate::Result<Current> {
+        let user_id: UserId = users::table
+            .order_by(users::id.asc())
+            .select(users::id)
+            .first(&mut self.conn)
+            .await?;
 
-        let auth: AppAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
-        auth.login_user(AuthUserId(auth_user.user.as_ref().map(|u| u.id)));
-        auth.remember_user(true);
-
-        Ok(auth_user)
+        self.login_as(user_id).await
     }
 
     pub async fn logout() -> crate::Result<()> {
-        let auth: AppAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
+        let auth: CookitAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
         auth.logout_user();
 
         Ok(())
     }
 
-    /// Build a context for a specific user, no HTTP session involved (used by the
-    /// seed binary).
-    pub async fn load_for_user(mut conn: DbConn, user_id: db::id::UserId) -> crate::Result<Self> {
-        let auth = session::load_auth_user(&mut conn, user_id).await?;
-        Ok(Self { conn, auth })
+    // NOTE: This is currently only used in `seed`. Find a better way.
+    pub async fn load_for_user(mut conn: DbConn, user_id: UserId) -> crate::Result<Self> {
+        let user: User = users::table.find(user_id).first(&mut conn).await?;
+
+        let user_role: Option<UserRole> = UserRole::belonging_to(&user)
+            .order_by(user_roles::id.asc())
+            .first(&mut conn)
+            .await
+            .optional()?;
+
+        let book = match &user_role {
+            Some(r) => Some(books::table.find(r.book_id).first(&mut conn).await?),
+            None => None,
+        };
+
+        Ok(Self {
+            conn,
+            current: Current {
+                user: Some(user),
+                book,
+                role: user_role.map(|ur| ur.role),
+            },
+        })
     }
 
     pub fn book_id(&self) -> crate::Result<BookId> {
         let id = self
-            .auth
+            .current
             .book
             .as_ref()
             .context(NotFoundSnafu {
-                msg: "No book!".to_string(),
+                msg: "No book for this host".to_string(),
             })?
             .id;
 
@@ -76,48 +117,77 @@ impl RequestContext {
         &mut self.conn
     }
 
-    pub fn current_user(&self) -> &AuthUser {
-        &self.auth
-    }
-
     pub fn require_book(&self) -> crate::Result<()> {
-        ensure!(self.auth.book.is_some(), UnauthorizedSnafu);
+        ensure!(
+            self.current.book.is_some(),
+            NotFoundSnafu {
+                msg: "No book for this host".to_string(),
+            }
+        );
+        ensure!(self.current.role.is_some(), UnauthorizedSnafu);
 
         Ok(())
     }
 
     pub fn require_admin(&self) -> crate::Result<()> {
-        ensure!(self.auth.is_admin(), ForbiddenSnafu);
+        self.require_book()?;
+
+        let is_admin = self.current.is_admin();
+        ensure!(is_admin, ForbiddenSnafu);
 
         Ok(())
     }
 }
 
-/// Built per request from the `AppAuthSession` that `AuthSessionLayer` puts in
-/// the request extensions — which already holds the (cached) [`AuthUser`], so no
-/// query runs here on a cache hit. Outside an HTTP request — Rust integration
-/// tests, the seed binary — there is no such extension, so we fall back to the
-/// first user/book, keeping non-request callers working without faking a session.
 impl<S> FromRequestParts<S> for RequestContext
 where
     S: Send + Sync,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = crate::Error;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let mut conn = get_conn()
-            .await
-            .map_err(|e| (StatusCode::SERVICE_UNAVAILABLE, e.to_string()))?;
+        let mut conn = get_conn().await?;
 
-        let auth = match parts.extensions.get::<AppAuthSession>() {
-            Some(auth) => auth.current_user.clone().unwrap_or_else(AuthUser::none),
-            None => session::load_first_auth_user(&mut conn)
-                .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?,
+        let auth = parts
+            .extensions
+            .get::<CookitAuthSession>()
+            .context(InternalSnafu {
+                msg: "missing auth middleware",
+            })?;
+
+        let user = auth.current_user.clone().and_then(|au| au.user);
+
+        let host = request_host(parts)?;
+        let slug = config().book_slug(host)?;
+
+        let book = match slug {
+            Some(slug) => book::find_by_slug(&mut conn, &slug).await?,
+            None => None,
         };
 
-        Ok(Self { conn, auth })
+        let user_role = match (&user, &book) {
+            (Some(user), Some(book)) => user_role::find(&mut conn, user.id, book.id).await?,
+            _ => None,
+        };
+
+        Ok(Self {
+            conn,
+            current: Current {
+                user,
+                book,
+                role: user_role.map(|ur| ur.role),
+            },
+        })
     }
+}
+
+fn request_host(parts: &Parts) -> crate::Result<&str> {
+    parts
+        .headers
+        .get("x-forwarded-host")
+        .or_else(|| parts.headers.get(header::HOST))
+        .and_then(|h| h.to_str().ok())
+        .context(MissingHostSnafu)
 }
 
 /// Lets the generated `db::rpc` operations run against a context's connection
@@ -128,7 +198,7 @@ impl RpcContext for RequestContext {
     }
 
     fn book_id(&self) -> db::Result<BookId> {
-        self.auth
+        self.current
             .book
             .as_ref()
             .map(|b| b.id)

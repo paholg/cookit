@@ -4,7 +4,7 @@ use {
     crate::{
         Email, Name, Timestamp,
         id::UserId,
-        models::{book::Book, user_role::UserRole},
+        models::{book::Book, user_role::Role},
     },
     serde::{Deserialize, Serialize},
 };
@@ -29,15 +29,14 @@ pub struct UserNew {
     pub name: Name,
 }
 
-/// The currently authenticated user.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthUser {
+pub struct Current {
     pub user: Option<User>,
     pub book: Option<Book>,
-    pub role: Option<UserRole>,
+    pub role: Option<Role>,
 }
 
-impl AuthUser {
+impl Current {
     pub fn none() -> Self {
         Self {
             user: None,
@@ -47,10 +46,7 @@ impl AuthUser {
     }
 
     pub fn is_admin(&self) -> bool {
-        match (&self.role, &self.book) {
-            (Some(r), Some(b)) => r.book_id == b.id && r.role.is_admin(),
-            _ => false,
-        }
+        self.role.is_some_and(|r| r.is_admin())
     }
 
     pub fn is_logged_in(&self) -> bool {

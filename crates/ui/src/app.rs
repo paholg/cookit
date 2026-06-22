@@ -9,7 +9,7 @@ use {
             RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
         },
     },
-    api::{APP_NAME, AuthUser, id::ShoppingListId, login_as_first, logout, page_title, routes::me},
+    api::{APP_NAME, Current, id::ShoppingListId, login_as_first, logout, page_title, routes::me},
     dioxus::prelude::*,
     dioxus_sdk::storage::{LocalStorage, use_synced_storage},
 };
@@ -70,14 +70,14 @@ const THEME_SEED_JS: &str = r#"
 
 /// Convenience signal for components that need to know the logged-in user.
 /// Provided at the root via [`use_context_provider`] in [`App`].
-pub type CurrentUserCtx = Signal<AuthUser>;
+pub type CurrentUserCtx = Signal<Current>;
 
 #[component]
 pub fn App() -> Element {
     let me_future = use_server_future(me)?;
-    let user: Signal<AuthUser> = use_signal(|| match me_future.cloned() {
+    let user: Signal<Current> = use_signal(|| match me_future.cloned() {
         Some(Ok(u)) => u,
-        _ => AuthUser::none(),
+        _ => Current::none(),
     });
     use_context_provider(|| user);
 
@@ -137,7 +137,7 @@ fn AppNavbar() -> Element {
 
 #[component]
 fn AuthControls() -> Element {
-    let mut user = use_context::<CurrentUserCtx>();
+    let user = use_context::<CurrentUserCtx>();
 
     let inner = match user.read().user.as_ref() {
         Some(u) => {
@@ -150,7 +150,7 @@ fn AuthControls() -> Element {
                     onclick: move |_| {
                         spawn(async move {
                             if logout().await.is_ok() {
-                                user.set(AuthUser::none());
+                                client().set_current_book(None);
                             }
                         });
                     },
@@ -166,7 +166,7 @@ fn AuthControls() -> Element {
                 onclick: move |_| {
                     spawn(async move {
                         if let Ok(current) = login_as_first().await {
-                            user.set(current);
+                            client().set_current_book(current.book.as_ref());
                         }
                     });
                 },

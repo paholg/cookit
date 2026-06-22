@@ -26,7 +26,9 @@ use {
 ///
 /// The suffix keeps each run isolated: a crashed run that never cleaned up
 /// won't collide with the next one's `UNIQUE` email/slug.
-pub async fn create_test_book(conn: &mut DbConn) -> anyhow::Result<(UserId, BookId, UserRoleId)> {
+pub async fn create_test_book(
+    conn: &mut DbConn,
+) -> anyhow::Result<(UserId, BookId, UserRoleId, Slug)> {
     let suffix = jiff::Timestamp::now().as_nanosecond();
 
     let email = Email::try_from(format!("e2e-{suffix}@example.com"))?;
@@ -43,7 +45,7 @@ pub async fn create_test_book(conn: &mut DbConn) -> anyhow::Result<(UserId, Book
 
     let book_id: BookId = BookNew {
         name: "E2E Book".try_into()?,
-        slug,
+        slug: slug.clone(),
         owner_id: user_id,
     }
     .insert_into(books::table)
@@ -61,7 +63,7 @@ pub async fn create_test_book(conn: &mut DbConn) -> anyhow::Result<(UserId, Book
     .get_result(conn)
     .await?;
 
-    Ok((user_id, book_id, user_role_id))
+    Ok((user_id, book_id, user_role_id, slug))
 }
 
 /// Delete the test book and user. The book goes first so its `ON DELETE

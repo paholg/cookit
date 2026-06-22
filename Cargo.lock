@@ -71,6 +71,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "api"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "db",
  "diesel",
  "diesel-async",
@@ -80,6 +81,7 @@ dependencies = [
  "serde_json",
  "server",
  "tokio",
+ "tower",
  "uuid",
 ]
 
@@ -870,6 +872,7 @@ dependencies = [
  "diesel-derive-enum",
  "email_address",
  "enum_dispatch",
+ "http",
  "jiff",
  "jiff-diesel",
  "nutype",
@@ -2268,9 +2271,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.4.0"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
+checksum = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425"
 dependencies = [
  "bytes",
  "itoa",
@@ -4869,6 +4872,7 @@ version = "0.1.0"
 dependencies = [
  "api",
  "async-trait",
+ "db",
  "dioxus",
  "dioxus-primitives",
  "dioxus-sdk",
@@ -5197,6 +5201,7 @@ dependencies = [
  "api",
  "async-trait",
  "console_error_panic_hook",
+ "db",
  "dioxus",
  "serde_json",
  "server",

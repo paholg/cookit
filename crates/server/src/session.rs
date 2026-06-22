@@ -1,5 +1,3 @@
-//! Server-side session storage.
-
 use {
     crate::conn::{DbConn, DbPool, POOL},
     anyhow::Context as _,
@@ -9,12 +7,8 @@ use {
     db::{
         Timestamp,
         id::UserId,
-        models::{
-            book::Book,
-            user::{AuthUser, User},
-            user_role::UserRole,
-        },
-        schema::{books, sessions, user_roles, users},
+        models::user::User,
+        schema::{sessions, users},
     },
     diesel::{
         dsl::{exists, now},
@@ -26,9 +20,14 @@ use {
     std::fmt,
 };
 
-/// Id used by `axum_session_auth`.
+/// ID used by `axum_session_auth`.
 #[derive(Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct AuthUserId(pub Option<UserId>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+    pub user: Option<User>,
+}
 
 impl fmt::Display for AuthUserId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,6 +38,30 @@ impl fmt::Display for AuthUserId {
     }
 }
 
+pub type CookitAuthSession =
+    axum_session_auth::AuthSession<AuthUser, AuthUserId, DieselSessionPool, DieselSessionPool>;
+
+pub async fn install(router: axum::Router) -> axum::Router {
+    let pool = DieselSessionPool::new();
+
+    let base_domain = &crate::config::config().base_domain;
+    let config = SessionConfig::default().with_cookie_domain(base_domain.clone());
+
+    let store = SessionStore::new(Some(pool.clone()), config)
+        .await
+        .expect("failed to build session store");
+
+    router
+        .layer(
+            AuthSessionLayer::<AuthUser, AuthUserId, DieselSessionPool, DieselSessionPool>::new(
+                Some(pool),
+            )
+            .with_config(AuthConfig::<AuthUserId>::default()),
+        )
+        .layer(SessionLayer::new(store))
+}
+
+/// Newtype wrapper around our database pool, so we can implement `axum_session::DatabasePool`.
 #[derive(Clone)]
 pub struct DieselSessionPool(pub DbPool);
 
@@ -59,27 +82,6 @@ impl std::fmt::Debug for DieselSessionPool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DieselSessionPool").finish_non_exhaustive()
     }
-}
-
-pub type AppAuthSession =
-    axum_session_auth::AuthSession<AuthUser, AuthUserId, DieselSessionPool, DieselSessionPool>;
-
-pub async fn install(router: axum::Router) -> axum::Router {
-    let pool = DieselSessionPool::new();
-
-    let config = SessionConfig::default();
-    let store = SessionStore::new(Some(pool.clone()), config)
-        .await
-        .expect("failed to build session store");
-
-    router
-        .layer(
-            AuthSessionLayer::<AuthUser, AuthUserId, DieselSessionPool, DieselSessionPool>::new(
-                Some(pool),
-            )
-            .with_config(AuthConfig::<AuthUserId>::default()),
-        )
-        .layer(SessionLayer::new(store))
 }
 
 #[async_trait]
@@ -203,55 +205,6 @@ impl DatabasePool for DieselSessionPool {
     }
 }
 
-/// Load a user's identity — user + first `user_role` + that role's book.
-/// Returns `None` if the user doesn't exist or has no role/book yet.
-pub(crate) async fn load_auth_user(conn: &mut DbConn, user_id: UserId) -> crate::Result<AuthUser> {
-    let user: Option<User> = users::table.find(user_id).first(conn).await.optional()?;
-
-    let Some(user) = user else {
-        return Ok(AuthUser::none());
-    };
-
-    let role: Option<UserRole> = UserRole::belonging_to(&user)
-        .order_by(user_roles::id.asc())
-        .first(conn)
-        .await
-        .optional()?;
-    let Some(role) = role else {
-        return Ok(AuthUser {
-            user: Some(user),
-            role: None,
-            book: None,
-        });
-    };
-
-    let book: Book = books::table.find(role.book_id).first(conn).await?;
-
-    Ok(AuthUser {
-        user: Some(user),
-        book: Some(book),
-        role: Some(role),
-    })
-}
-
-/// The first user/book/role, for callers with no HTTP session (Rust integration
-/// tests, the seed binary).
-pub(crate) async fn load_first_auth_user(conn: &mut DbConn) -> crate::Result<AuthUser> {
-    let role: UserRole = user_roles::table
-        .order_by(user_roles::id.asc())
-        .first(conn)
-        .await?;
-
-    let user: User = users::table.find(role.user_id).first(conn).await?;
-    let book: Book = books::table.find(role.book_id).first(conn).await?;
-
-    Ok(AuthUser {
-        user: Some(user),
-        book: Some(book),
-        role: Some(role),
-    })
-}
-
 #[async_trait]
 impl Authentication<AuthUser, AuthUserId, DieselSessionPool> for AuthUser {
     async fn load_user(
@@ -262,11 +215,17 @@ impl Authentication<AuthUser, AuthUserId, DieselSessionPool> for AuthUser {
         let user_id = userid.0.context("no user id in session")?;
 
         let mut conn = pool.0.get().await?;
-        load_auth_user(&mut conn, user_id).await.map_err(Into::into)
+        let user: Option<User> = users::table
+            .find(user_id)
+            .first(&mut conn)
+            .await
+            .optional()?;
+
+        Ok(AuthUser { user })
     }
 
     fn is_authenticated(&self) -> bool {
-        self.role.is_some()
+        self.user.is_some()
     }
 
     fn is_active(&self) -> bool {
