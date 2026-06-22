@@ -247,7 +247,7 @@ pub struct DevTestData {
 #[post("/api/dev/setup")]
 pub async fn dev_setup() -> Result<DevTestData, ServerFnError> {
     let mut conn = get_conn().await?;
-    let (user_id, book_id, user_role_id, slug) = dev::create_test_book(&mut conn).await?;
+    let (user_id, book_id, user_role_id, slug) = dev::create_test_book(&mut conn).await;
 
     Ok(DevTestData {
         user_id,
