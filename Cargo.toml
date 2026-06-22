@@ -21,7 +21,7 @@ async-trait = "0.1"
 axum_session = "0.20"
 axum_session_auth = "0.20"
 diesel = { version = "2.3", features = ["postgres", "postgres_backend", "uuid"] }
-diesel-async = { version = "0.9.1", features = [
+diesel-async = { version = "0.9.2", features = [
   "deadpool",
   "migrations",
   "postgres"

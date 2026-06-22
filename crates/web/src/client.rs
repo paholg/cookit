@@ -1,10 +1,21 @@
-use {async_trait::async_trait, db::models::book::Book, dioxus::document::eval, ui::BASE_DOMAIN};
+use {
+    async_trait::async_trait,
+    db::models::book::Book,
+    dioxus::document::eval,
+    snafu::{OptionExt, ResultExt},
+    ui::{BASE_DOMAIN, Client, Error, error::OtherSnafu},
+    web_sys::js_sys::futures::JsFuture,
+    webauthn_rs_proto::{
+        CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
+        RequestChallengeResponse,
+    },
+};
 
 #[derive(Debug)]
 pub struct WebClient;
 
 #[async_trait(?Send)]
-impl ui::Client for WebClient {
+impl Client for WebClient {
     fn toggle_theme(&self) {
         // Flips `<html data-theme>` between light and dark and remembers the choice in
         // `localStorage` (read back on the next load by the seed script in `main`).
@@ -77,6 +88,58 @@ impl ui::Client for WebClient {
         };
 
         eval(&format!("window.location.hostname = \"{hostname}\";"));
+    }
+
+    async fn passkey_register(
+        &self,
+        ccr: CreationChallengeResponse,
+    ) -> ui::Result<RegisterPublicKeyCredential> {
+        let c_options: web_sys::CredentialCreationOptions = ccr.into();
+
+        let promise = web_sys::window()
+            .context(OtherSnafu {
+                msg: "no browser window",
+            })?
+            .navigator()
+            .credentials()
+            .create_with_options(&c_options)
+            .map_err(|e| Error::Other {
+                msg: format!("failed to create passkey prompt: {e:?}"),
+            })?;
+
+        let credential = JsFuture::from(promise).await.map_err(|e| Error::Other {
+            msg: format!("prompt cancelled: {e:?}"),
+        })?;
+
+        Ok(RegisterPublicKeyCredential::from(
+            web_sys::PublicKeyCredential::from(credential),
+        ))
+    }
+
+    async fn passkey_authenticate(
+        &self,
+        rcr: RequestChallengeResponse,
+    ) -> ui::Result<PublicKeyCredential> {
+        let c_options: web_sys::CredentialRequestOptions = rcr.into();
+
+        let promise = web_sys::window()
+            .context(OtherSnafu {
+                msg: "no browser window",
+            })?
+            .navigator()
+            .credentials()
+            .get_with_options(&c_options)
+            .map_err(|e| Error::Other {
+                msg: format!("failed to create passkey prompt: {e:?}"),
+            })?;
+
+        let assertion = JsFuture::from(promise).await.map_err(|e| Error::Other {
+            msg: format!("prompt cancelled: {e:?}"),
+        })?;
+
+        Ok(PublicKeyCredential::from(
+            web_sys::PublicKeyCredential::from(assertion),
+        ))
     }
 }
 

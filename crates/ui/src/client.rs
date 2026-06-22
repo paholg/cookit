@@ -1,4 +1,14 @@
-use {async_trait::async_trait, db::models::book::Book, dioxus::prelude::*, std::sync::OnceLock};
+use {
+    crate::Result,
+    async_trait::async_trait,
+    db::models::book::Book,
+    dioxus::prelude::*,
+    std::sync::OnceLock,
+    webauthn_rs_proto::{
+        CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
+        RequestChallengeResponse,
+    },
+};
 
 pub const BELL: Asset = asset!("/assets/bell.mp3");
 
@@ -40,6 +50,16 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// On the web, this will update the URL. On other platforms, it will likely
     /// set a header to be used with requests.
     fn set_current_book(&self, book: Option<&Book>);
+
+    async fn passkey_register(
+        &self,
+        ccr: CreationChallengeResponse,
+    ) -> Result<RegisterPublicKeyCredential>;
+
+    async fn passkey_authenticate(
+        &self,
+        rcr: RequestChallengeResponse,
+    ) -> Result<PublicKeyCredential>;
 }
 
 /// A held screen wake lock. Dropping it releases the lock.

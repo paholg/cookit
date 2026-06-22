@@ -16,5 +16,7 @@ pulldown-cmark = { version = "0.13", default-features = false, features = [
 ] }
 serde.workspace = true
 serde_json.workspace = true
+snafu.workspace = true
 strum = { version = "0.28", features = ["derive"] }
 web-time = "1"
+webauthn-rs-proto.workspace = true

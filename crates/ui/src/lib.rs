@@ -3,6 +3,7 @@ pub mod client;
 pub mod client_only;
 pub mod components;
 pub mod confirm;
+pub mod error;
 pub mod format;
 pub mod icons;
 pub mod navbar;
@@ -17,6 +18,7 @@ pub use {
     client::{BELL, Client, WakeLock, client, initialize_client},
     client_only::ClientOnly,
     confirm::{Confirm, ConfirmProvider, use_confirm},
+    error::{Error, Result},
     theme_toggle::ThemeToggle,
     timer_bar::TimerBar,
     timers::RunningTimersCtx,
