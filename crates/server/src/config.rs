@@ -13,11 +13,23 @@ pub struct Config {
     // pub session_secret: SecretString,
     pub database_url: Url,
     pub base_domain: String,
+    #[serde(default)]
+    pub webauthn: WebAuthn,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct WebAuthn {
+    pub origin: Option<Url>,
+    pub rp_id: Option<String>,
 }
 
 impl Config {
     fn new() -> Self {
-        Figment::new().merge(Env::raw()).extract().unwrap()
+        Figment::new()
+            .merge(Env::raw().split("__"))
+            .extract()
+            .unwrap()
     }
 
     pub fn book_slug(&self, host: &str) -> crate::Result<Option<Slug>> {
@@ -45,6 +57,17 @@ impl Config {
             None => self.base_domain.to_string(),
         }
     }
+
+    pub fn webauthn_origin(&self) -> Url {
+        self.webauthn
+            .origin
+            .clone()
+            .unwrap_or_else(|| Url::parse(&format!("https://{}", self.base_domain)).unwrap())
+    }
+
+    pub fn webauth_rp_id(&self) -> &str where {
+        self.webauthn.rp_id.as_ref().unwrap_or(&self.base_domain)
+    }
 }
 
 static CONFIG: LazyLock<Config> = LazyLock::new(Config::new);
@@ -61,6 +84,7 @@ mod tests {
         let slug = Config {
             database_url: Url::parse("http://foo.foo").unwrap(),
             base_domain: "cookit.com".into(),
+            webauthn: WebAuthn::default(),
         }
         .book_slug(host);
 

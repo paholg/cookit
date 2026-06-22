@@ -1,8 +1,24 @@
 use {
     crate::Result,
-    db::{Email, id::UserId, models::user::User, prelude::*, schema::users},
+    db::{
+        Email, Name,
+        id::UserId,
+        models::user::{User, UserCreate},
+        prelude::*,
+        schema::users,
+    },
     diesel_async::AsyncPgConnection,
 };
+
+pub async fn create(mut conn: &AsyncPgConnection, name: Name, email: Email) -> Result<User> {
+    let user = UserCreate { email, name }
+        .insert_into(users::table)
+        .returning(User::as_returning())
+        .get_result(&mut conn)
+        .await?;
+
+    Ok(user)
+}
 
 pub async fn find(mut conn: &AsyncPgConnection, user_id: UserId) -> Result<User> {
     let user = users::table

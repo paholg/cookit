@@ -14,6 +14,12 @@ const PORT = (() => {
 })();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
+// The apex (bookless) host, where account provisioning happens. Reached through
+// Caddy on PORT, so the browser's origin — and thus the origin the server must
+// accept for webauthn — is this exact `scheme://host:port`.
+const BASE_DOMAIN = process.env.BASE_DOMAIN!;
+const APEX_URL = `http://${BASE_DOMAIN}:${PORT}`;
+
 // `dx serve` runs on an internal port; Caddy sits in front on PORT and adds the
 // `X-Forwarded-Host` header (from the request's Host) that the server resolves
 // the book from — standing in for the production/devcontainer proxy.
@@ -48,7 +54,21 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["setup"],
-      testIgnore: /(auth\.setup|cleanup\.teardown)\.ts/,
+      testIgnore: /(auth\.setup\.ts|cleanup\.teardown\.ts|provision\.spec\.ts)/,
+    },
+    // Account provisioning runs on the apex host, unauthenticated (no
+    // storageState), and creates a passkey — so it needs a virtual authenticator
+    // and the apex origin treated as secure (it's served over plain HTTP here).
+    {
+      name: "provision",
+      testMatch: /provision\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: APEX_URL,
+        launchOptions: {
+          args: [`--unsafely-treat-insecure-origin-as-secure=${APEX_URL}`],
+        },
+      },
     },
     // Deletes the test user/book via /api/dev/teardown.
     { name: "cleanup", testMatch: /cleanup\.teardown\.ts/ },
@@ -60,6 +80,10 @@ export default defineConfig({
       command: `dx serve -p web --features development --addr 127.0.0.1 --port ${INTERNAL_PORT} --hot-reload false`,
       cwd: "..",
       url: INTERNAL_URL,
+      // The server is behind Caddy and can't infer its public scheme/port, so
+      // tell it the origin the browser actually uses for the provisioning flow.
+      // Without this, webauthn rejects the credential as an origin mismatch.
+      env: { WEBAUTHN__ORIGIN: APEX_URL },
       // Each run starts a server with an OS-provided port.
       reuseExistingServer: false,
       timeout: 600_000,

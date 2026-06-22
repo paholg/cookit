@@ -36,11 +36,9 @@ pub struct RequestContext {
 
 impl RequestContext {
     // TODO: Passkeys
-    pub async fn login_as(&mut self, user_id: UserId) -> crate::Result<Current> {
-        let user: User = users::table.find(user_id).first(&mut self.conn).await?;
-
+    pub async fn login_as(&mut self, user: User) -> crate::Result<Current> {
         let auth: CookitAuthSession = FullstackContext::extract().await.context(SessionSnafu)?;
-        auth.login_user(AuthUserId(Some(user_id)));
+        auth.login_user(AuthUserId(Some(user.id)));
         auth.remember_user(true);
 
         let book = book::load_home_book(&mut self.conn, user.id).await?;
@@ -59,13 +57,13 @@ impl RequestContext {
 
     // TODO: Passkeys
     pub async fn login_first(&mut self) -> crate::Result<Current> {
-        let user_id: UserId = users::table
+        let user: User = users::table
             .order_by(users::id.asc())
-            .select(users::id)
+            .select(User::as_returning())
             .first(&mut self.conn)
             .await?;
 
-        self.login_as(user_id).await
+        self.login_as(user).await
     }
 
     pub async fn logout() -> crate::Result<()> {

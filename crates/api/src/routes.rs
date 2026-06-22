@@ -39,7 +39,9 @@ pub async fn me() -> Result<Current, ServerFnError> {
 // TODO: Passkeys
 #[post("/api/auth/login", mut ctx: RequestContext)]
 pub async fn login(user_id: UserId) -> Result<Current, ServerFnError> {
-    ctx.login_as(user_id).await.map_err(Into::into)
+    let user = server::user::find(ctx.conn(), user_id).await?;
+
+    ctx.login_as(user).await.map_err(Into::into)
 }
 
 // TODO: Passkeys

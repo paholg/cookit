@@ -27,10 +27,9 @@ pub struct WebauthnClient {
 
 impl WebauthnClient {
     fn new() -> Self {
-        let base_domain = &config::config().base_domain;
-        let origin = Url::parse("https://{base_domain}").unwrap();
+        let config = config::config();
 
-        let webauthn = WebauthnBuilder::new(base_domain, &origin)
+        let webauthn = WebauthnBuilder::new(config.webauth_rp_id(), &config.webauthn_origin())
             .unwrap()
             .rp_name("CookIt!")
             .allow_subdomains(true)

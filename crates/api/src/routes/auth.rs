@@ -1,13 +1,22 @@
 #[cfg(feature = "server")]
 use server::RequestContext;
 use {
-    db::{Email, id::UserId, models::user::Current},
+    db::{Email, Name, id::UserId, models::user::Current},
     dioxus::prelude::*,
     webauthn_rs_proto::{
         CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
         RequestChallengeResponse,
     },
 };
+
+#[post("/api/auth/create-user", mut ctx: RequestContext)]
+pub async fn create_user(name: Name, email: Email) -> Result<Current, ServerFnError> {
+    let user = server::user::create(ctx.conn(), name, email).await?;
+
+    let current = ctx.login_as(user).await?;
+
+    Ok(current)
+}
 
 #[post("/api/register_passkey/start", mut ctx: RequestContext)]
 pub async fn register_start() -> Result<CreationChallengeResponse, ServerFnError> {
@@ -52,11 +61,14 @@ pub async fn authenticate_finish(
     user_id: UserId,
     reg: PublicKeyCredential,
 ) -> Result<Current, ServerFnError> {
+    use server::user;
+
     server::webauthn::client()
         .finish_passkey_authentication(ctx.conn(), user_id, &reg)
         .await?;
 
-    let current = ctx.login_as(user_id).await?;
+    let user = user::find(ctx.conn(), user_id).await?;
+    let current = ctx.login_as(user).await?;
 
     Ok(current)
 }

@@ -5,8 +5,9 @@ use {
         navbar::Navbar,
         timers::{self, RunningTimer},
         views::{
-            IngredientList, MealDetail, MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit,
-            RecipeList, RecipeNew, ShoppingListDetail, ShoppingListList, ShoppingListNew,
+            CreateAccount, CreatePasskey, Home, IngredientList, MealDetail, MealEdit, MealList,
+            MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew, ShoppingListDetail,
+            ShoppingListList, ShoppingListNew,
         },
     },
     api::{APP_NAME, Current, id::ShoppingListId, login_as_first, logout, page_title, routes::me},
@@ -18,7 +19,12 @@ use {
 #[rustfmt::skip]
 pub enum Route {
     #[layout(AppNavbar)]
-    #[redirect("/", || Route::RecipeList {})]
+    #[route("/")]
+    Home {},
+    #[route("/create-account")]
+    CreateAccount {},
+    #[route("/create-passkey")]
+    CreatePasskey {},
     #[route("/recipes")]
     RecipeList {},
     #[route("/recipes/new")]
@@ -112,17 +118,19 @@ pub fn App() -> Element {
 fn AppNavbar() -> Element {
     let user = use_context::<CurrentUserCtx>();
     let logged_in = user.read().is_logged_in();
+    let has_book = user.read().book.is_some();
 
     rsx! {
         Navbar {
-            Link { to: Route::RecipeList {}, "{page_title(APP_NAME)}" }
-            Link { to: Route::RecipeList {}, "Recipes" }
-            // Meals are available to everyone; unauthenticated users get a
-            // localStorage-backed view via `api::meals`.
-            Link { to: Route::MealList {}, "Meals" }
-            Link { to: Route::ShoppingListList {}, "Shopping" }
-            if logged_in {
-                Link { to: Route::IngredientList {}, "Ingredients" }
+            Link { to: Route::Home {}, "{page_title(APP_NAME)}" }
+            if has_book {
+                Link { to: Route::RecipeList {}, "Recipes" }
+                Link { to: Route::MealList {}, "Meals" }
+
+                if logged_in {
+                    Link { to: Route::ShoppingListList {}, "Shopping" }
+                    Link { to: Route::IngredientList {}, "Ingredients" }
+                }
             }
             AuthControls {}
             ThemeToggle {}
