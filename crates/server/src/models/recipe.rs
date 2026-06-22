@@ -1,6 +1,10 @@
 use {
-    crate::{conn::DbConn, ingredient, request_context::RequestContext},
-    anyhow::{Context, anyhow},
+    crate::{
+        conn::DbConn,
+        error::{InternalSnafu, NotFoundSnafu, ValidationSnafu},
+        ingredient,
+        request_context::RequestContext,
+    },
     db::{
         duration::parse_duration,
         id::{BookId, DraftId, IngredientId, RecipeId, RecipeStepId, RecipeStepIngredientId},
@@ -19,11 +23,12 @@ use {
     },
     diesel::prelude::*,
     diesel_async::{AsyncConnection, RunQueryDsl},
+    snafu::prelude::*,
     std::collections::HashMap,
 };
 
 // TODO: Paginate.
-pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Recipe>> {
+pub async fn list_all(session: &mut RequestContext) -> crate::Result<Vec<Recipe>> {
     let rows = recipes::table
         .filter(recipes::book_id.eq(session.book_id()?))
         .order(recipes::name.asc())
@@ -33,7 +38,7 @@ pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Recipe
     Ok(rows)
 }
 
-pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<()> {
+pub async fn delete(session: &mut RequestContext, slug: &str) -> crate::Result<()> {
     let book_id = session.book_id()?;
 
     diesel::delete(
@@ -42,13 +47,12 @@ pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<
             .filter(recipes::slug.eq(slug)),
     )
     .execute(session.conn())
-    .await
-    .context("delete recipe")?;
+    .await?;
 
     Ok(())
 }
 
-pub async fn get(session: &mut RequestContext, slug: &str) -> anyhow::Result<RecipeDetail> {
+pub async fn get(session: &mut RequestContext, slug: &str) -> crate::Result<RecipeDetail> {
     let recipe: Recipe = recipes::table
         .filter(recipes::book_id.eq(session.book_id()?))
         .filter(recipes::slug.eq(slug))
@@ -123,7 +127,7 @@ struct RecipeNew<'a> {
 pub async fn upsert(
     builder: RecipeBuilder,
     session: &mut RequestContext,
-) -> anyhow::Result<RecipeDetail> {
+) -> crate::Result<RecipeDetail> {
     let book_id = session.book_id()?;
     let name = builder.name.trim().to_string();
     let source = builder.source.trim().to_string();
@@ -146,9 +150,10 @@ pub async fn upsert(
                 .returning((recipes::id, recipes::slug))
                 .get_result(conn)
                 .await
-                .optional()
-                .context("update recipe")?
-                .ok_or_else(|| anyhow!("recipe {id:?} not found"))?,
+                .optional()?
+                .context(NotFoundSnafu {
+                    msg: format!("recipe {id:?} not found"),
+                })?,
 
                 DraftId::New(_) => {
                     let slug = unique_recipe_slug(conn, book_id, &slugify(&name)).await?;
@@ -162,8 +167,7 @@ pub async fn upsert(
                         })
                         .returning(recipes::id)
                         .get_result::<RecipeId>(conn)
-                        .await
-                        .context("insert recipe")?;
+                        .await?;
                     (id, slug)
                 }
             };
@@ -182,16 +186,18 @@ pub async fn upsert(
                     .returning(recipe_steps::id)
                     .get_result(conn)
                     .await
-                    .optional()
-                    .context("update step")?
-                    .ok_or_else(|| anyhow!("step {id:?} not found"))?,
+                    .optional()?
+                    .context(NotFoundSnafu {
+                        msg: format!("step {id:?} not found"),
+                    })?,
 
-                    DraftId::New(_) => diesel::insert_into(recipe_steps::table)
-                        .values(&record)
-                        .returning(recipe_steps::id)
-                        .get_result(conn)
-                        .await
-                        .context("insert step")?,
+                    DraftId::New(_) => {
+                        diesel::insert_into(recipe_steps::table)
+                            .values(&record)
+                            .returning(recipe_steps::id)
+                            .get_result(conn)
+                            .await?
+                    }
                 };
 
                 upsert_step_ingredients(conn, book_id, step_id, &step.ingredients).await?;
@@ -206,10 +212,9 @@ pub async fn upsert(
                     .filter(recipe_steps::id.ne_all(keep_steps)),
             )
             .execute(conn)
-            .await
-            .context("prune removed steps")?;
+            .await?;
 
-            Ok::<_, anyhow::Error>(slug)
+            Ok::<_, crate::Error>(slug)
         })
         .await?
     };
@@ -235,10 +240,10 @@ fn step_record(
     book_id: BookId,
     recipe_id: RecipeId,
     position: i32,
-) -> anyhow::Result<RecipeStepRecord> {
+) -> crate::Result<RecipeStepRecord> {
     let duration_s = match step.duration_text.trim() {
         "" => None,
-        t => Some(parse_duration(t).map_err(anyhow::Error::msg)? as i32),
+        t => Some(parse_duration(t).map_err(|msg| ValidationSnafu { msg }.build())? as i32),
     };
 
     Ok(RecipeStepRecord {
@@ -272,14 +277,14 @@ fn rsi_record(
     step_id: RecipeStepId,
     position: i32,
     ingredient_id: IngredientId,
-) -> anyhow::Result<RecipeStepIngredientRecord> {
+) -> crate::Result<RecipeStepIngredientRecord> {
     let unit = parse_unit(&ing.unit);
 
     Ok(RecipeStepIngredientRecord {
         book_id,
         step_id,
         position,
-        quantity: parse_quantity(&ing.quantity).map_err(anyhow::Error::msg)?,
+        quantity: parse_quantity(&ing.quantity).map_err(|msg| ValidationSnafu { msg }.build())?,
         unit_kind: unit.as_ref().map(|u| u.kind().to_string()),
         unit: unit.as_ref().map(|u| u.label()),
         ingredient_id,
@@ -293,7 +298,7 @@ async fn upsert_step_ingredients(
     book_id: BookId,
     step_id: RecipeStepId,
     builders: &[RecipeStepIngredientBuilder],
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let mut keep: Vec<RecipeStepIngredientId> = Vec::new();
     let mut position = 0i32;
 
@@ -316,16 +321,18 @@ async fn upsert_step_ingredients(
             .returning(recipe_step_ingredients::id)
             .get_result(conn)
             .await
-            .optional()
-            .context("update step ingredient")?
-            .ok_or_else(|| anyhow!("ingredient row {id:?} not found"))?,
+            .optional()?
+            .context(NotFoundSnafu {
+                msg: format!("ingredient row {id:?} not found"),
+            })?,
 
-            DraftId::New(_) => diesel::insert_into(recipe_step_ingredients::table)
-                .values(&record)
-                .returning(recipe_step_ingredients::id)
-                .get_result(conn)
-                .await
-                .context("insert step ingredient")?,
+            DraftId::New(_) => {
+                diesel::insert_into(recipe_step_ingredients::table)
+                    .values(&record)
+                    .returning(recipe_step_ingredients::id)
+                    .get_result(conn)
+                    .await?
+            }
         };
 
         keep.push(rsi_id);
@@ -338,8 +345,7 @@ async fn upsert_step_ingredients(
             .filter(recipe_step_ingredients::id.ne_all(keep)),
     )
     .execute(conn)
-    .await
-    .context("prune removed ingredients")?;
+    .await?;
 
     Ok(())
 }
@@ -349,7 +355,7 @@ async fn unique_recipe_slug(
     conn: &mut DbConn,
     book_id: BookId,
     base: &str,
-) -> anyhow::Result<String> {
+) -> crate::Result<String> {
     let mut candidate = base.to_string();
     let mut n: u32 = 2;
 
@@ -360,16 +366,15 @@ async fn unique_recipe_slug(
                 .filter(recipes::slug.eq(candidate.as_str())),
         ))
         .get_result(conn)
-        .await
-        .context("probe recipe slug")?;
+        .await?;
 
         if !taken {
             return Ok(candidate);
         }
 
         candidate = format!("{base}-{n}");
-        n = n
-            .checked_add(1)
-            .ok_or_else(|| anyhow!("slug space exhausted"))?;
+        n = n.checked_add(1).context(InternalSnafu {
+            msg: "slug space exhausted",
+        })?;
     }
 }

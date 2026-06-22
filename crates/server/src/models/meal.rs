@@ -1,6 +1,10 @@
 use {
-    crate::{conn::DbConn, recipe, request_context::RequestContext},
-    anyhow::{Context, anyhow},
+    crate::{
+        conn::DbConn,
+        error::{InternalSnafu, NotFoundSnafu, ValidationSnafu},
+        recipe,
+        request_context::RequestContext,
+    },
     db::{
         id::{BookId, DraftId, MealId, MealRecipeId, RecipeId},
         models::{
@@ -12,11 +16,12 @@ use {
     },
     diesel::prelude::*,
     diesel_async::{AsyncConnection, RunQueryDsl},
+    snafu::prelude::*,
     std::collections::HashMap,
 };
 
 // TODO: Paginate.
-pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Meal>> {
+pub async fn list_all(session: &mut RequestContext) -> crate::Result<Vec<Meal>> {
     let rows = meals::table
         .filter(meals::book_id.eq(session.book_id()?))
         .order(meals::name.asc())
@@ -28,7 +33,7 @@ pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Meal>>
 
 /// Delete a meal by slug within the current book. Meal-recipe rows go via FK
 /// cascade.
-pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<()> {
+pub async fn delete(session: &mut RequestContext, slug: &str) -> crate::Result<()> {
     let book_id = session.book_id()?;
 
     diesel::delete(
@@ -37,13 +42,12 @@ pub async fn delete(session: &mut RequestContext, slug: &str) -> anyhow::Result<
             .filter(meals::slug.eq(slug)),
     )
     .execute(session.conn())
-    .await
-    .context("delete meal")?;
+    .await?;
 
     Ok(())
 }
 
-pub async fn get(session: &mut RequestContext, slug: &str) -> anyhow::Result<MealDetail> {
+pub async fn get(session: &mut RequestContext, slug: &str) -> crate::Result<MealDetail> {
     let meal: Meal = meals::table
         .filter(meals::book_id.eq(session.book_id()?))
         .filter(meals::slug.eq(slug))
@@ -68,9 +72,9 @@ pub async fn get(session: &mut RequestContext, slug: &str) -> anyhow::Result<Mea
 
     let mut recipes_out = Vec::with_capacity(rows.len());
     for meal_recipe in rows {
-        let slug = slugs
-            .get(&meal_recipe.recipe_id)
-            .ok_or_else(|| anyhow!("recipe {:?} not found", meal_recipe.recipe_id))?;
+        let slug = slugs.get(&meal_recipe.recipe_id).context(NotFoundSnafu {
+            msg: format!("recipe {:?} not found", meal_recipe.recipe_id),
+        })?;
         let recipe = recipe::get(session, slug).await?;
         recipes_out.push(MealRecipeDetail {
             meal_recipe,
@@ -109,7 +113,7 @@ struct MealNew<'a> {
 pub async fn upsert(
     builder: MealBuilder,
     session: &mut RequestContext,
-) -> anyhow::Result<MealDetail> {
+) -> crate::Result<MealDetail> {
     let book_id = session.book_id()?;
     let name = builder.name.trim().to_string();
 
@@ -128,9 +132,10 @@ pub async fn upsert(
                 .returning((meals::id, meals::slug))
                 .get_result(conn)
                 .await
-                .optional()
-                .context("update meal")?
-                .ok_or_else(|| anyhow!("meal {id:?} not found"))?,
+                .optional()?
+                .context(NotFoundSnafu {
+                    msg: format!("meal {id:?} not found"),
+                })?,
 
                 DraftId::New(_) => {
                     let slug = unique_meal_slug(conn, book_id, &slugify(&name)).await?;
@@ -142,8 +147,7 @@ pub async fn upsert(
                         })
                         .returning(meals::id)
                         .get_result::<MealId>(conn)
-                        .await
-                        .context("insert meal")?;
+                        .await?;
                     (id, slug)
                 }
             };
@@ -169,16 +173,18 @@ pub async fn upsert(
                     .returning(meal_recipes::id)
                     .get_result(conn)
                     .await
-                    .optional()
-                    .context("update meal recipe")?
-                    .ok_or_else(|| anyhow!("meal recipe {id:?} not found"))?,
+                    .optional()?
+                    .context(NotFoundSnafu {
+                        msg: format!("meal recipe {id:?} not found"),
+                    })?,
 
-                    DraftId::New(_) => diesel::insert_into(meal_recipes::table)
-                        .values(&record)
-                        .returning(meal_recipes::id)
-                        .get_result(conn)
-                        .await
-                        .context("insert meal recipe")?,
+                    DraftId::New(_) => {
+                        diesel::insert_into(meal_recipes::table)
+                            .values(&record)
+                            .returning(meal_recipes::id)
+                            .get_result(conn)
+                            .await?
+                    }
                 };
 
                 keep.push(mr_id);
@@ -191,10 +197,9 @@ pub async fn upsert(
                     .filter(meal_recipes::id.ne_all(keep)),
             )
             .execute(conn)
-            .await
-            .context("prune removed meal recipes")?;
+            .await?;
 
-            Ok::<_, anyhow::Error>(slug)
+            Ok::<_, crate::Error>(slug)
         })
         .await?
     };
@@ -221,12 +226,13 @@ fn meal_recipe_record(
     meal_id: MealId,
     recipe_id: RecipeId,
     position: i32,
-) -> anyhow::Result<MealRecipeRecord> {
+) -> crate::Result<MealRecipeRecord> {
     Ok(MealRecipeRecord {
         book_id,
         meal_id,
         recipe_id,
-        multiplier: parse_multiplier(&row.multiplier).map_err(anyhow::Error::msg)?,
+        multiplier: parse_multiplier(&row.multiplier)
+            .map_err(|msg| ValidationSnafu { msg }.build())?,
         position,
     })
 }
@@ -236,24 +242,21 @@ async fn resolve_recipe_id(
     conn: &mut DbConn,
     book_id: BookId,
     slug: &str,
-) -> anyhow::Result<RecipeId> {
+) -> crate::Result<RecipeId> {
     recipes::table
         .filter(recipes::book_id.eq(book_id))
         .filter(recipes::slug.eq(slug))
         .select(recipes::id)
         .first(conn)
         .await
-        .optional()
-        .context("look up recipe by slug")?
-        .ok_or_else(|| anyhow!("recipe `{slug}` not found"))
+        .optional()?
+        .context(NotFoundSnafu {
+            msg: format!("recipe `{slug}` not found"),
+        })
 }
 
 /// `base`, or `base-2`, `base-3`, … until unused within the book.
-async fn unique_meal_slug(
-    conn: &mut DbConn,
-    book_id: BookId,
-    base: &str,
-) -> anyhow::Result<String> {
+async fn unique_meal_slug(conn: &mut DbConn, book_id: BookId, base: &str) -> crate::Result<String> {
     let mut candidate = base.to_string();
     let mut n: u32 = 2;
 
@@ -264,16 +267,15 @@ async fn unique_meal_slug(
                 .filter(meals::slug.eq(candidate.as_str())),
         ))
         .get_result(conn)
-        .await
-        .context("probe meal slug")?;
+        .await?;
 
         if !taken {
             return Ok(candidate);
         }
 
         candidate = format!("{base}-{n}");
-        n = n
-            .checked_add(1)
-            .ok_or_else(|| anyhow!("slug space exhausted"))?;
+        n = n.checked_add(1).context(InternalSnafu {
+            msg: "slug space exhausted",
+        })?;
     }
 }

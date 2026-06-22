@@ -1,6 +1,5 @@
 use {
     crate::{conn::DbConn, request_context::RequestContext},
-    anyhow::Context,
     db::{
         id::{BookId, IngredientId},
         models::ingredient::Ingredient,
@@ -10,7 +9,7 @@ use {
     diesel_async::RunQueryDsl,
 };
 
-pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Ingredient>> {
+pub async fn list_all(session: &mut RequestContext) -> crate::Result<Vec<Ingredient>> {
     let rows = ingredients::table
         .filter(ingredients::book_id.eq(session.book_id()?))
         .order(ingredients::name.asc())
@@ -35,26 +34,26 @@ pub(crate) async fn get_or_create(
     conn: &mut DbConn,
     book_id: BookId,
     name: &str,
-) -> anyhow::Result<IngredientId> {
+) -> crate::Result<IngredientId> {
     let existing: Option<IngredientId> = ingredients::table
         .filter(ingredients::book_id.eq(book_id))
         .filter(lower(ingredients::name).eq(name.to_lowercase()))
         .select(ingredients::id)
         .first(conn)
         .await
-        .optional()
-        .context("lookup ingredient by name")?;
+        .optional()?;
 
     if let Some(id) = existing {
         return Ok(id);
     }
 
-    diesel::insert_into(ingredients::table)
+    let id = diesel::insert_into(ingredients::table)
         .values(&IngredientNew { book_id, name })
         .returning(ingredients::id)
         .get_result(conn)
-        .await
-        .context("insert ingredient")
+        .await?;
+
+    Ok(id)
 }
 
 diesel::define_sql_function! {

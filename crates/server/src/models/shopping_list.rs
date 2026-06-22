@@ -1,6 +1,10 @@
 use {
-    crate::{conn::DbConn, meal, request_context::RequestContext},
-    anyhow::{Context, anyhow},
+    crate::{
+        conn::DbConn,
+        error::{InternalSnafu, NotFoundSnafu, ValidationSnafu},
+        meal,
+        request_context::RequestContext,
+    },
     db::{
         id::{BookId, IngredientId, ShoppingListId, ShoppingListItemId},
         models::{
@@ -16,10 +20,11 @@ use {
     },
     diesel::prelude::*,
     diesel_async::RunQueryDsl,
+    snafu::prelude::*,
     std::collections::HashMap,
 };
 
-pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<ShoppingList>> {
+pub async fn list_all(session: &mut RequestContext) -> crate::Result<Vec<ShoppingList>> {
     let rows = shopping_lists::table
         .filter(shopping_lists::book_id.eq(session.book_id()?))
         .order(shopping_lists::name.asc())
@@ -30,10 +35,15 @@ pub async fn list_all(session: &mut RequestContext) -> anyhow::Result<Vec<Shoppi
 }
 
 /// Create an empty, named shopping list. Returns its id.
-pub async fn create(session: &mut RequestContext, name: &str) -> anyhow::Result<ShoppingListId> {
+pub async fn create(session: &mut RequestContext, name: &str) -> crate::Result<ShoppingListId> {
     let book_id = session.book_id()?;
     let name = name.trim();
-    anyhow::ensure!(!name.is_empty(), "shopping list name is required");
+    ensure!(
+        !name.is_empty(),
+        ValidationSnafu {
+            msg: "shopping list name is required",
+        }
+    );
 
     let slug = unique_slug(session.conn(), book_id, &slugify(name)).await?;
 
@@ -45,8 +55,7 @@ pub async fn create(session: &mut RequestContext, name: &str) -> anyhow::Result<
         })
         .returning(shopping_lists::id)
         .get_result(session.conn())
-        .await
-        .context("insert shopping list")?;
+        .await?;
 
     Ok(id)
 }
@@ -57,7 +66,7 @@ pub async fn create(session: &mut RequestContext, name: &str) -> anyhow::Result<
 pub async fn create_from_meal(
     session: &mut RequestContext,
     meal_slug: &str,
-) -> anyhow::Result<ShoppingListId> {
+) -> crate::Result<ShoppingListId> {
     let meal_detail = meal::get(session, meal_slug).await?;
     let aggregated = aggregate_meal(&meal_detail);
 
@@ -77,23 +86,21 @@ pub async fn create_from_meal(
                 text: None,
             })
             .execute(session.conn())
-            .await
-            .context("insert aggregated item")?;
+            .await?;
     }
 
     Ok(id)
 }
 
 /// Delete a shopping list by id within the book. Items go via FK cascade.
-pub async fn delete(session: &mut RequestContext, id: ShoppingListId) -> anyhow::Result<()> {
+pub async fn delete(session: &mut RequestContext, id: ShoppingListId) -> crate::Result<()> {
     diesel::delete(
         shopping_lists::table
             .filter(shopping_lists::id.eq(id))
             .filter(shopping_lists::book_id.eq(session.book_id()?)),
     )
     .execute(session.conn())
-    .await
-    .context("delete shopping list")?;
+    .await?;
 
     Ok(())
 }
@@ -101,7 +108,7 @@ pub async fn delete(session: &mut RequestContext, id: ShoppingListId) -> anyhow:
 pub async fn get(
     session: &mut RequestContext,
     id: ShoppingListId,
-) -> anyhow::Result<ShoppingListDetail> {
+) -> crate::Result<ShoppingListDetail> {
     let list: ShoppingList = shopping_lists::table
         .filter(shopping_lists::id.eq(id))
         .filter(shopping_lists::book_id.eq(session.book_id()?))
@@ -147,15 +154,14 @@ pub async fn add_item(
     session: &mut RequestContext,
     list_id: ShoppingListId,
     input: ShoppingListItemInput,
-) -> anyhow::Result<ShoppingListItemId> {
+) -> crate::Result<ShoppingListItemId> {
     let book_id = session.book_id()?;
 
     // Confirm the list is in this book before adding to it.
     let position: i64 = ShoppingListItem::belonging_to(&list_owned(session, list_id).await?)
         .count()
         .get_result(session.conn())
-        .await
-        .context("count items")?;
+        .await?;
 
     let record = item_record(&input, book_id, list_id, position as i32)?;
 
@@ -163,8 +169,7 @@ pub async fn add_item(
         .values(&record)
         .returning(shopping_list_items::id)
         .get_result(session.conn())
-        .await
-        .context("insert shopping list item")?;
+        .await?;
 
     Ok(id)
 }
@@ -174,7 +179,7 @@ pub async fn set_item_checked(
     session: &mut RequestContext,
     item_id: ShoppingListItemId,
     checked: bool,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let affected = diesel::update(
         shopping_list_items::table
             .filter(shopping_list_items::id.eq(item_id))
@@ -182,10 +187,14 @@ pub async fn set_item_checked(
     )
     .set(shopping_list_items::checked.eq(checked))
     .execute(session.conn())
-    .await
-    .context("update item checked")?;
+    .await?;
 
-    anyhow::ensure!(affected == 1, "item {item_id:?} not found");
+    ensure!(
+        affected == 1,
+        NotFoundSnafu {
+            msg: format!("item {item_id:?} not found"),
+        }
+    );
     Ok(())
 }
 
@@ -193,15 +202,14 @@ pub async fn set_item_checked(
 pub async fn delete_item(
     session: &mut RequestContext,
     item_id: ShoppingListItemId,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     diesel::delete(
         shopping_list_items::table
             .filter(shopping_list_items::id.eq(item_id))
             .filter(shopping_list_items::book_id.eq(session.book_id()?)),
     )
     .execute(session.conn())
-    .await
-    .context("delete shopping list item")?;
+    .await?;
 
     Ok(())
 }
@@ -210,15 +218,16 @@ pub async fn delete_item(
 async fn list_owned(
     session: &mut RequestContext,
     list_id: ShoppingListId,
-) -> anyhow::Result<ShoppingList> {
+) -> crate::Result<ShoppingList> {
     shopping_lists::table
         .filter(shopping_lists::id.eq(list_id))
         .filter(shopping_lists::book_id.eq(session.book_id()?))
         .first(session.conn())
         .await
-        .optional()
-        .context("look up shopping list")?
-        .ok_or_else(|| anyhow!("shopping list {list_id:?} not found"))
+        .optional()?
+        .context(NotFoundSnafu {
+            msg: format!("shopping list {list_id:?} not found"),
+        })
 }
 
 /// One aggregated row: an ingredient and a unit, with quantities summed.
@@ -296,9 +305,14 @@ fn item_record(
     book_id: BookId,
     shopping_list_id: ShoppingListId,
     position: i32,
-) -> anyhow::Result<ShoppingListItemRecord> {
+) -> crate::Result<ShoppingListItemRecord> {
     let text = input.text.trim();
-    anyhow::ensure!(!text.is_empty(), "item name is required");
+    ensure!(
+        !text.is_empty(),
+        ValidationSnafu {
+            msg: "item name is required",
+        }
+    );
 
     let unit = parse_unit(&input.unit);
 
@@ -306,7 +320,7 @@ fn item_record(
         book_id,
         shopping_list_id,
         position,
-        quantity: parse_quantity(&input.quantity).map_err(anyhow::Error::msg)?,
+        quantity: parse_quantity(&input.quantity).map_err(|msg| ValidationSnafu { msg }.build())?,
         unit_kind: unit.as_ref().map(|u| u.kind().to_string()),
         unit: unit.as_ref().map(|u| u.label()),
         ingredient_id: None,
@@ -315,7 +329,7 @@ fn item_record(
 }
 
 /// `base`, or `base-2`, `base-3`, … until unused within the book.
-async fn unique_slug(conn: &mut DbConn, book_id: BookId, base: &str) -> anyhow::Result<String> {
+async fn unique_slug(conn: &mut DbConn, book_id: BookId, base: &str) -> crate::Result<String> {
     let mut candidate = base.to_string();
     let mut n: u32 = 2;
 
@@ -326,16 +340,15 @@ async fn unique_slug(conn: &mut DbConn, book_id: BookId, base: &str) -> anyhow::
                 .filter(shopping_lists::slug.eq(candidate.as_str())),
         ))
         .get_result(conn)
-        .await
-        .context("probe shopping list slug")?;
+        .await?;
 
         if !taken {
             return Ok(candidate);
         }
 
         candidate = format!("{base}-{n}");
-        n = n
-            .checked_add(1)
-            .ok_or_else(|| anyhow!("slug space exhausted"))?;
+        n = n.checked_add(1).context(InternalSnafu {
+            msg: "slug space exhausted",
+        })?;
     }
 }

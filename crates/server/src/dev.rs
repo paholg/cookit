@@ -26,32 +26,32 @@ use {
 ///
 /// The suffix keeps each run isolated: a crashed run that never cleaned up
 /// won't collide with the next one's `UNIQUE` email/slug.
-pub async fn create_test_book(
-    conn: &mut DbConn,
-) -> anyhow::Result<(UserId, BookId, UserRoleId, Slug)> {
+pub async fn create_test_book(conn: &mut DbConn) -> (UserId, BookId, UserRoleId, Slug) {
     let suffix = jiff::Timestamp::now().as_nanosecond();
 
-    let email = Email::try_from(format!("e2e-{suffix}@example.com"))?;
-    let slug = Slug::try_from(format!("e2e-{suffix}"))?;
+    let email = Email::try_from(format!("e2e-{suffix}@example.com")).unwrap();
+    let slug = Slug::try_from(format!("e2e-{suffix}")).unwrap();
 
     let user_id: UserId = UserCreate {
         email,
-        name: "E2E Admin".try_into()?,
+        name: "E2E Admin".try_into().unwrap(),
     }
     .insert_into(users::table)
     .returning(users::id)
     .get_result(conn)
-    .await?;
+    .await
+    .unwrap();
 
     let book_id: BookId = BookNew {
-        name: "E2E Book".try_into()?,
+        name: "E2E Book".try_into().unwrap(),
         slug: slug.clone(),
         owner_id: user_id,
     }
     .insert_into(books::table)
     .returning(books::id)
     .get_result(conn)
-    .await?;
+    .await
+    .unwrap();
 
     let user_role_id: UserRoleId = UserRoleNew {
         book_id,
@@ -61,9 +61,10 @@ pub async fn create_test_book(
     .insert_into(user_roles::table)
     .returning(user_roles::id)
     .get_result(conn)
-    .await?;
+    .await
+    .unwrap();
 
-    Ok((user_id, book_id, user_role_id, slug))
+    (user_id, book_id, user_role_id, slug)
 }
 
 /// Delete the test book and user. The book goes first so its `ON DELETE
@@ -73,7 +74,7 @@ pub async fn delete_test_book(
     conn: &mut DbConn,
     user_id: UserId,
     book_id: BookId,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     diesel::delete(books::table.find(book_id))
         .execute(conn)
         .await?;

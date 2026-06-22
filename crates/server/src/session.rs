@@ -1,6 +1,5 @@
 use {
     crate::conn::{DbConn, DbPool, POOL},
-    anyhow::Context as _,
     async_trait::async_trait,
     axum_session::{DatabaseError, DatabasePool, SessionConfig, SessionLayer, SessionStore},
     axum_session_auth::{AuthConfig, AuthSessionLayer, Authentication},
@@ -211,6 +210,8 @@ impl Authentication<AuthUser, AuthUserId, DieselSessionPool> for AuthUser {
         userid: AuthUserId,
         pool: Option<&DieselSessionPool>,
     ) -> anyhow::Result<AuthUser> {
+        use anyhow::Context;
+
         let pool = pool.context("AuthSessionLayer was created without a pool")?;
         let user_id = userid.0.context("no user id in session")?;
 
