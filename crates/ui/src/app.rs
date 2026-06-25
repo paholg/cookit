@@ -5,12 +5,12 @@ use {
         navbar::Navbar,
         timers::{self, RunningTimer},
         views::{
-            CreateAccount, CreatePasskey, Home, IngredientList, MealDetail, MealEdit, MealList,
-            MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew, ShoppingListDetail,
-            ShoppingListList, ShoppingListNew,
+            CreateAccount, CreateBook, CreatePasskey, Home, IngredientList, Login, MealDetail,
+            MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew,
+            ShoppingListDetail, ShoppingListList, ShoppingListNew,
         },
     },
-    api::{APP_NAME, Current, id::ShoppingListId, login_as_first, logout, page_title, routes::me},
+    api::{APP_NAME, Current, id::ShoppingListId, logout, page_title, routes::me},
     dioxus::prelude::*,
     dioxus_sdk::storage::{LocalStorage, use_synced_storage},
 };
@@ -25,6 +25,10 @@ pub enum Route {
     CreateAccount {},
     #[route("/create-passkey")]
     CreatePasskey {},
+    #[route("/create-book")]
+    CreateBook {},
+    #[route("/login")]
+    Login {},
     #[route("/recipes")]
     RecipeList {},
     #[route("/recipes/new")]
@@ -163,20 +167,8 @@ fn AuthControls() -> Element {
                 }
             }
         }
-        // No real login UI yet: log in as the first user (see `login_as_first`).
         None => rsx! {
-            button {
-                r#type: "button",
-                class: "linkish auth-login",
-                onclick: move |_| {
-                    spawn(async move {
-                        if let Ok(current) = login_as_first().await {
-                            client().set_current_book(current.book.as_ref());
-                        }
-                    });
-                },
-                "Log in"
-            }
+            Link { to: Route::Login {}, class: "linkish auth-login", "Log in" }
         },
     };
 

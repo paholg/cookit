@@ -1,6 +1,5 @@
 pub mod config;
 pub mod conn;
-pub mod dev;
 mod error;
 mod middleware;
 mod migrate;

@@ -24,12 +24,12 @@ pub use {
 
 pub const APP_NAME: &str = "CookIt!";
 
-#[cfg(feature = "development")]
+#[cfg(debug_assertions)]
 pub fn page_title(title: &str) -> String {
     format!("[dev] {title}")
 }
 
-#[cfg(not(feature = "development"))]
+#[cfg(not(debug_assertions))]
 pub fn page_title(title: &str) -> String {
     title.to_string()
 }

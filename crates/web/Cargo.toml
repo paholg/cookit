@@ -3,8 +3,11 @@ name = "web"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.cargo-machete]
+ignored = ["api"]  # Used to set web/server feature.
+
 [dependencies]
-api = { workspace = true }
+api.workspace = true
 async-trait.workspace = true
 console_error_panic_hook = "0.1"
 db.workspace = true
@@ -27,6 +30,5 @@ features = [
 
 [features]
 default = []
-development = ["api/development"]
 server = ["api/server", "dep:server", "dioxus/server"]
 web = ["api/web", "dioxus/web"]

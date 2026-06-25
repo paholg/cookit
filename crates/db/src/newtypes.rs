@@ -4,7 +4,7 @@ const SLUG_MIN_LEN: usize = 4;
 
 #[nutype(
     sanitize(trim),
-    validate(not_empty, len_char_min = 4, regex = "^[a-z0-9_-]+$"),
+    validate(not_empty, len_char_min = 4, regex = "^[a-z][a-z0-9_-]+$"),
     derive(
         Debug,
         Clone,

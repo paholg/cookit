@@ -11,6 +11,15 @@ use {
     diesel::prelude::*,
 };
 
+#[derive(Debug)]
+#[cfg_attr(feature = "server", derive(Insertable))]
+#[cfg_attr(feature = "server", diesel(table_name = books))]
+pub struct BookCreate {
+    pub name: Name,
+    pub slug: Slug,
+    pub owner_id: UserId,
+}
+
 /// The unit of tenancy for CookIt.
 ///
 /// Virtually every table has a book_id column, placing it in a user's "cookbook".
@@ -26,13 +35,4 @@ pub struct Book {
     pub owner_id: UserId,
     pub deleted_at: Option<Timestamp>,
     pub created_at: Timestamp,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "server", derive(Insertable))]
-#[cfg_attr(feature = "server", diesel(table_name = books))]
-pub struct BookNew {
-    pub name: Name,
-    pub slug: Slug,
-    pub owner_id: UserId,
 }

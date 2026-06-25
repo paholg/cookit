@@ -3,6 +3,10 @@ name = "db"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.cargo-machete]
+# regex is used by nutype
+ignored = ["regex", "serde_with"]
+
 [dependencies]
 db-macros = { workspace = true }
 diesel = { workspace = true, optional = true }

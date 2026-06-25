@@ -1,12 +1,3 @@
-#[cfg(feature = "development")]
-use db::{
-    Slug,
-    id::{BookId, UserRoleId},
-};
-// The /api/dev/* handlers run their DB ops directly (no session), so they need
-// the connection pool and the test-data helpers — both server-only.
-#[cfg(all(feature = "server", feature = "development"))]
-use server::{conn::get_conn, dev};
 #[cfg(feature = "server")]
 use {
     db::rpc::{Apply, ApplyOp, ListSince},
@@ -14,9 +5,10 @@ use {
 };
 use {
     db::{
-        Timestamp,
-        id::{ShoppingListId, ShoppingListItemId, UserId},
+        Name, Slug, Timestamp,
+        id::{ShoppingListId, ShoppingListItemId},
         models::{
+            book::Book,
             ingredient::{Ingredient, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail},
             recipe::{Recipe, RecipeBuilder, RecipeDetail},
@@ -36,18 +28,25 @@ pub async fn me() -> Result<Current, ServerFnError> {
     Ok(ctx.current)
 }
 
-// TODO: Passkeys
-#[post("/api/auth/login", mut ctx: RequestContext)]
-pub async fn login(user_id: UserId) -> Result<Current, ServerFnError> {
-    let user = server::user::find(ctx.conn(), user_id).await?;
+#[get("/api/books", mut ctx: RequestContext)]
+pub async fn list_books() -> Result<Vec<Book>, ServerFnError> {
+    let Some(user_id) = ctx.current.user.as_ref().map(|u| u.id) else {
+        return Ok(Vec::new());
+    };
 
-    ctx.login_as(user).await.map_err(Into::into)
+    let books = server::book::list(ctx.conn(), user_id).await?;
+
+    Ok(books)
 }
 
-// TODO: Passkeys
-#[post("/api/auth/login-first", mut ctx: RequestContext)]
-pub async fn login_as_first() -> Result<Current, ServerFnError> {
-    ctx.login_first().await.map_err(Into::into)
+/// Create a cookbook owned by the logged-in user (who becomes its admin).
+#[post("/api/books/create", mut ctx: RequestContext)]
+pub async fn create_book(name: Name, slug: Slug) -> Result<Book, ServerFnError> {
+    let user_id = ctx.require_user()?.id;
+
+    let book = server::book::create(ctx.conn(), user_id, name, slug).await?;
+
+    Ok(book)
 }
 
 /// Log out and return the apex host to redirect the now-bookless user to.
@@ -225,47 +224,5 @@ pub async fn set_shopping_list_item_checked(
 pub async fn delete_shopping_list_item(item_id: ShoppingListItemId) -> Result<(), ServerFnError> {
     ctx.require_book()?;
     shopping_list::delete_item(&mut ctx, item_id).await?;
-    Ok(())
-}
-
-// TODO: Delete all this:
-
-/// The ids of the throwaway admin user/book/role created by [`dev_setup`]. The
-/// e2e suite logs in with `user_role_id` and hands `user_id`/`book_id` back to
-/// [`dev_teardown`].
-#[cfg(feature = "development")]
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DevTestData {
-    pub user_id: UserId,
-    pub book_id: BookId,
-    pub user_role_id: UserRoleId,
-    pub slug: Slug,
-}
-
-/// Create an isolated admin user + book + role for an e2e run. Unauthenticated
-/// on purpose — it mints the very user the suite logs in as. Only compiled with
-/// the `development` feature, so it never ships in production.
-#[cfg(feature = "development")]
-#[post("/api/dev/setup")]
-pub async fn dev_setup() -> Result<DevTestData, ServerFnError> {
-    let mut conn = get_conn().await?;
-    let (user_id, book_id, user_role_id, slug) = dev::create_test_book(&mut conn).await;
-
-    Ok(DevTestData {
-        user_id,
-        book_id,
-        user_role_id,
-        slug,
-    })
-}
-
-/// Delete the user + book created by [`dev_setup`]; cascades clean up the role
-/// and all book-scoped rows.
-#[cfg(feature = "development")]
-#[post("/api/dev/teardown")]
-pub async fn dev_teardown(user_id: UserId, book_id: BookId) -> Result<(), ServerFnError> {
-    let mut conn = get_conn().await?;
-    dev::delete_test_book(&mut conn, user_id, book_id).await?;
-
     Ok(())
 }

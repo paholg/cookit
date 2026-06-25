@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 db = { workspace = true }
 dioxus = { workspace = true, features = ["fullstack"] }
-serde = { version = "1", features = ["derive"] }
 server = { workspace = true, optional = true }
 webauthn-rs-proto.workspace = true
 
@@ -22,6 +21,5 @@ uuid.workspace = true
 
 [features]
 default = ["server", "web"]
-development = []
 server = ["db/server", "dep:server", "dioxus/server"]
 web = []

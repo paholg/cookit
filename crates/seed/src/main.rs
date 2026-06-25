@@ -4,7 +4,7 @@ use {
         grocery_section::GrocerySection,
         id::{BookId, DraftId, UserId},
         models::{
-            book::BookNew,
+            book::BookCreate,
             ingredient::{Ingredient, IngredientUpdate},
             meal::MealBuilder,
             meal_recipe::MealRecipeBuilder,
@@ -12,7 +12,7 @@ use {
             recipe_step::RecipeStepBuilder,
             recipe_step_ingredient::RecipeStepIngredientBuilder,
             user::UserCreate,
-            user_role::{Role, UserRoleNew},
+            user_role::{Role, UserRoleCreate},
         },
         rpc::Apply,
         schema::{books, user_roles, users},
@@ -35,7 +35,7 @@ async fn main() -> eyre::Result<()> {
     .get_result(&mut conn)
     .await?;
 
-    let book_id: BookId = BookNew {
+    let book_id: BookId = BookCreate {
         name: Name::try_from("Example Book".to_string())?,
         slug: Slug::try_from("example".to_string())?,
         owner_id: user_id,
@@ -45,7 +45,7 @@ async fn main() -> eyre::Result<()> {
     .get_result(&mut conn)
     .await?;
 
-    UserRoleNew {
+    UserRoleCreate {
         book_id,
         user_id,
         role: Role::Admin,

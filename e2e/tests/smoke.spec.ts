@@ -1,10 +1,10 @@
 import { test, expect } from "./fixtures";
 
 // These run against a live `dx serve` (started automatically by the Playwright
-// config, with `--features development`). The `setup` project creates an
-// isolated user/book via `/api/dev/setup`, logs in, and saves the session
-// cookie, so every test here runs as that admin against a fresh, empty book.
-// Tests that create data delete it again so they're re-runnable.
+// config). The `setup` project provisions a fresh user/passkey/cookbook through
+// the real UI and saves the session, so every test here runs as that book's
+// admin against a fresh, empty book. Tests that create data delete it again so
+// they're re-runnable.
 
 test("home renders the recipe list", async ({ page }) => {
   await page.goto("/");

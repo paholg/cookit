@@ -1,18 +1,17 @@
 use {
-    crate::{CurrentUserCtx, Field, Route, Validated, use_field, use_form_validity},
-    api::{auth::create_user, page_title},
-    db::{Email, Name},
+    crate::{Field, Validated, client::client, use_field, use_form_validity},
+    api::{
+        auth::{authenticate_finish, authenticate_start},
+        page_title,
+    },
+    db::Email,
     dioxus::prelude::*,
 };
 
 #[component]
-pub fn CreateAccount() -> Element {
-    let mut user = use_context::<CurrentUserCtx>();
-    let nav = navigator();
-
+pub fn Login() -> Element {
     let validity = use_form_validity();
 
-    let name = use_field::<Name>();
     let email = use_field::<Email>();
     let mut submitting = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
@@ -22,45 +21,41 @@ pub fn CreateAccount() -> Element {
         error.set(None);
 
         // Guard: the button is disabled unless every field parses.
-        let (Ok(name), Ok(email)) = (name.value(), email.value()) else {
+        let Ok(email) = email.value() else {
             return;
         };
 
         submitting.set(true);
 
-        match create_user(name, email).await {
-            Ok(current) => {
-                user.set(current);
-                nav.push(Route::CreatePasskey {});
-            }
+        let result = async {
+            let (user_id, rcr) = authenticate_start(email).await.map_err(|e| e.to_string())?;
+            let pkc = client()
+                .passkey_authenticate(rcr)
+                .await
+                .map_err(|e| e.to_string())?;
+            authenticate_finish(user_id, pkc)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        .await;
+
+        match result {
+            // Switching to the user's book changes the host.
+            Ok(current) => client().set_current_book(current.book.as_ref()),
             Err(e) => {
-                error.set(Some(e.to_string()));
+                error.set(Some(e));
                 submitting.set(false);
             }
         }
     };
 
     rsx! {
-        document::Title { "{page_title(\"Create account\")}" }
+        document::Title { "{page_title(\"Log in\")}" }
         header { class: "page-header",
-            h1 { "Create account" }
+            h1 { "Log in" }
         }
 
         form { class: "app-form", onsubmit: submit,
-            label {
-                "Name"
-                Validated {
-                    field: name,
-                    render: move |mut f: Field<Name>| rsx! {
-                        input {
-                            r#type: "text",
-                            value: f.text(),
-                            oninput: move |e| f.set(e.value()),
-                        }
-                    },
-                }
-            }
-
             label {
                 "Email"
                 Validated {
@@ -85,9 +80,9 @@ pub fn CreateAccount() -> Element {
                     class: "primary",
                     disabled: submitting() || !validity.all_valid(),
                     if submitting() {
-                        "Creating..."
+                        "Logging in..."
                     } else {
-                        "Create account"
+                        "Log in"
                     }
                 }
             }

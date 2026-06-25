@@ -1,19 +1,16 @@
 use {
-    crate::{CurrentUserCtx, Field, Route, Validated, use_field, use_form_validity},
-    api::{auth::create_user, page_title},
-    db::{Email, Name},
+    crate::{BASE_DOMAIN, Field, Validated, client::client, use_field, use_form_validity},
+    api::{create_book, page_title},
+    db::{Name, Slug},
     dioxus::prelude::*,
 };
 
 #[component]
-pub fn CreateAccount() -> Element {
-    let mut user = use_context::<CurrentUserCtx>();
-    let nav = navigator();
-
+pub fn CreateBook() -> Element {
     let validity = use_form_validity();
 
     let name = use_field::<Name>();
-    let email = use_field::<Email>();
+    let slug = use_field::<Slug>();
     let mut submitting = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
 
@@ -22,17 +19,14 @@ pub fn CreateAccount() -> Element {
         error.set(None);
 
         // Guard: the button is disabled unless every field parses.
-        let (Ok(name), Ok(email)) = (name.value(), email.value()) else {
+        let (Ok(name), Ok(slug)) = (name.value(), slug.value()) else {
             return;
         };
 
         submitting.set(true);
 
-        match create_user(name, email).await {
-            Ok(current) => {
-                user.set(current);
-                nav.push(Route::CreatePasskey {});
-            }
+        match create_book(name, slug).await {
+            Ok(book) => client().set_current_book(Some(&book)),
             Err(e) => {
                 error.set(Some(e.to_string()));
                 submitting.set(false);
@@ -41,9 +35,9 @@ pub fn CreateAccount() -> Element {
     };
 
     rsx! {
-        document::Title { "{page_title(\"Create account\")}" }
+        document::Title { "{page_title(\"Create cookbook\")}" }
         header { class: "page-header",
-            h1 { "Create account" }
+            h1 { "Create cookbook" }
         }
 
         form { class: "app-form", onsubmit: submit,
@@ -62,14 +56,18 @@ pub fn CreateAccount() -> Element {
             }
 
             label {
-                "Email"
+                "Url"
                 Validated {
-                    field: email,
-                    render: move |mut f: Field<Email>| rsx! {
-                        input {
-                            r#type: "email",
-                            value: f.text(),
-                            oninput: move |e| f.set(e.value()),
+                    field: slug,
+                    hint: "Lowercase letters, numbers, dashes and underscores; at least 4 characters.",
+                    render: move |mut f: Field<Slug>| rsx! {
+                        span { class: "slug-field",
+                            input {
+                                r#type: "text",
+                                value: f.text(),
+                                oninput: move |e| f.set(e.value()),
+                            }
+                            span { class: "slug-suffix", ".{BASE_DOMAIN}" }
                         }
                     },
                 }
@@ -87,7 +85,7 @@ pub fn CreateAccount() -> Element {
                     if submitting() {
                         "Creating..."
                     } else {
-                        "Create account"
+                        "Create cookbook"
                     }
                 }
             }

@@ -1,7 +1,7 @@
 set dotenv-load := true
 
 serve *args:
-    dx serve -p web --features development --port 8080 {{args}}
+    dx serve -p web --port 8080 {{args}}
 
 check: lint test
 
@@ -48,8 +48,10 @@ fix:
     cargo clippy --workspace --all-targets --all-features --allow-staged --fix
     just fmt
     script/schema-dump
+    cargo machete --fix
 
 lint: fmt-check clippy
+    cargo machete
 
 fmt-check:
     cargo fmt --all -- --check

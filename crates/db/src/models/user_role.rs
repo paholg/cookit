@@ -31,6 +31,15 @@ impl Role {
     }
 }
 
+#[derive(Debug)]
+#[cfg_attr(feature = "server", derive(Insertable))]
+#[cfg_attr(feature = "server", diesel(table_name = user_roles))]
+pub struct UserRoleCreate {
+    pub book_id: BookId,
+    pub user_id: UserId,
+    pub role: Role,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "server", derive(HasQuery, Identifiable, Associations))]
 #[cfg_attr(feature = "server", diesel(check_for_backend(diesel::pg::Pg)))]
@@ -44,13 +53,4 @@ pub struct UserRole {
     pub role: Role,
     pub deleted_at: Option<Timestamp>,
     pub created_at: Timestamp,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "server", derive(Insertable))]
-#[cfg_attr(feature = "server", diesel(table_name = user_roles))]
-pub struct UserRoleNew {
-    pub book_id: BookId,
-    pub user_id: UserId,
-    pub role: Role,
 }

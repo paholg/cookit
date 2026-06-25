@@ -3,9 +3,9 @@ use {
     db::{
         Email, Name, Slug,
         models::{
-            book::{Book, BookNew},
+            book::{Book, BookCreate},
             user::{User, UserCreate},
-            user_role::{Role, UserRoleNew},
+            user_role::{Role, UserRoleCreate},
         },
         prelude::*,
         schema::{books, user_roles, users},
@@ -53,7 +53,7 @@ impl TestBook {
             .unwrap();
 
         let book: Book = diesel::insert_into(books::table)
-            .values(BookNew {
+            .values(BookCreate {
                 name: Name::try_from("Test Book").unwrap(),
                 slug: slug.clone(),
                 owner_id: user.id,
@@ -64,7 +64,7 @@ impl TestBook {
             .unwrap();
 
         diesel::insert_into(user_roles::table)
-            .values(UserRoleNew {
+            .values(UserRoleCreate {
                 book_id: book.id,
                 user_id: user.id,
                 role: Role::Admin,

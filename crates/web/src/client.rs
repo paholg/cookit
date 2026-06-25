@@ -75,7 +75,11 @@ impl Client for WebClient {
             None => BASE_DOMAIN.to_string(),
         };
 
-        eval(&format!("window.location.hostname = \"{hostname}\";"));
+        // Switch hosts and land on the new book's home.
+        eval(&format!(
+            "const u = new URL(window.location.href); u.hostname = \"{hostname}\"; u.pathname = \
+             \"/\"; window.location.href = u.toString();"
+        ));
     }
 
     async fn passkey_register(
