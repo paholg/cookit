@@ -12,7 +12,6 @@
   "customizations": {
     "devconcurrent": {
       "defaultExec": "/bin/zsh",
-      "worktreeFolder": ".worktrees/",
       "proxy": {
         "enable": true,
         "services": {

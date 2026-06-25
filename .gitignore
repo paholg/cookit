@@ -11,5 +11,4 @@ result
 .direnv/
 dev/*
 !dev/.keep
-.worktrees/
 .devcontainer/.env
