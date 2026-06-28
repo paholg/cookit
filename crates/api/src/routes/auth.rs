@@ -1,7 +1,11 @@
 #[cfg(feature = "server")]
 use server::RequestContext;
 use {
-    db::{Email, Name, id::UserId, models::user::Current},
+    db::{
+        Email, Name,
+        id::{UserId, UserPasskeyId},
+        models::{passkey::PasskeyInfo, user::Current},
+    },
     dioxus::prelude::*,
     webauthn_rs_proto::{
         CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -71,4 +75,22 @@ pub async fn authenticate_finish(
     let current = ctx.login_as(user).await?;
 
     Ok(current)
+}
+
+#[get("/api/passkeys", mut ctx: RequestContext)]
+pub async fn list_passkeys() -> Result<Vec<PasskeyInfo>, ServerFnError> {
+    let user_id = ctx.require_user()?.id;
+
+    let passkeys = server::webauthn::list_passkeys(ctx.conn(), user_id).await?;
+
+    Ok(passkeys)
+}
+
+#[post("/api/passkeys/delete", mut ctx: RequestContext)]
+pub async fn delete_passkey(id: UserPasskeyId) -> Result<(), ServerFnError> {
+    let user_id = ctx.require_user()?.id;
+
+    server::webauthn::delete_passkey(ctx.conn(), user_id, id).await?;
+
+    Ok(())
 }

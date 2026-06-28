@@ -2,16 +2,20 @@ use {
     crate::{
         ConfirmProvider, RunningTimersCtx, ThemeToggle, TimerBar,
         client::{BELL, client},
+        icons::MenuIcon,
         navbar::Navbar,
         timers::{self, RunningTimer},
         views::{
-            CreateAccount, CreateBook, CreatePasskey, Home, IngredientList, Login, MealDetail,
-            MealEdit, MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew,
-            ShoppingListDetail, ShoppingListList, ShoppingListNew,
+            Account, CreateAccount, CreateBook, Home, IngredientList, Login, MealDetail, MealEdit,
+            MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew, ShoppingListDetail,
+            ShoppingListList, ShoppingListNew,
         },
     },
     api::{APP_NAME, Current, id::ShoppingListId, logout, page_title, routes::me},
     dioxus::prelude::*,
+    dioxus_primitives::dropdown_menu::{
+        DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    },
     dioxus_sdk::storage::{LocalStorage, use_synced_storage},
 };
 
@@ -23,8 +27,8 @@ pub enum Route {
     Home {},
     #[route("/create-account")]
     CreateAccount {},
-    #[route("/create-passkey")]
-    CreatePasskey {},
+    #[route("/account")]
+    Account {},
     #[route("/create-book")]
     CreateBook {},
     #[route("/login")]
@@ -126,18 +130,22 @@ fn AppNavbar() -> Element {
 
     rsx! {
         Navbar {
-            Link { to: Route::Home {}, "{page_title(APP_NAME)}" }
-            if has_book {
-                Link { to: Route::RecipeList {}, "Recipes" }
-                Link { to: Route::MealList {}, "Meals" }
+            div { class: "nav-links",
+                Link { to: Route::Home {}, "{page_title(APP_NAME)}" }
+                if has_book {
+                    Link { to: Route::RecipeList {}, "Recipes" }
+                    Link { to: Route::MealList {}, "Meals" }
 
-                if logged_in {
-                    Link { to: Route::ShoppingListList {}, "Shopping" }
-                    Link { to: Route::IngredientList {}, "Ingredients" }
+                    if logged_in {
+                        Link { to: Route::ShoppingListList {}, "Shopping" }
+                        Link { to: Route::IngredientList {}, "Ingredients" }
+                    }
                 }
             }
-            AuthControls {}
-            ThemeToggle {}
+            div { class: "nav-actions",
+                AuthControls {}
+                ThemeToggle {}
+            }
         }
         main { id: "content", Outlet::<Route> {} }
         TimerBar {}
@@ -148,15 +156,45 @@ fn AppNavbar() -> Element {
 fn AuthControls() -> Element {
     let user = use_context::<CurrentUserCtx>();
 
-    let inner = match user.read().user.as_ref() {
-        Some(u) => {
-            let name = u.name.clone();
-            rsx! {
-                span { class: "auth-user", "{name}" }
-                button {
-                    r#type: "button",
-                    class: "linkish auth-logout",
-                    onclick: move |_| {
+    let inner = if user.read().is_logged_in() {
+        rsx! { MainMenu {} }
+    } else {
+        rsx! {
+            Link { to: Route::Login {}, class: "linkish auth-login", "Log in" }
+        }
+    };
+
+    rsx! {
+        div { class: "auth-controls", {inner} }
+    }
+}
+
+#[component]
+fn MainMenu() -> Element {
+    let nav = navigator();
+
+    rsx! {
+        DropdownMenu { class: "main-menu",
+            DropdownMenuTrigger {
+                class: "icon-button main-menu-trigger",
+                aria_label: "Account menu",
+                MenuIcon {}
+            }
+            DropdownMenuContent { class: "main-menu-content",
+                DropdownMenuItem::<()> {
+                    value: (),
+                    index: 0usize,
+                    class: "main-menu-item",
+                    on_select: move |_| {
+                        nav.push(Route::Account {});
+                    },
+                    "Account"
+                }
+                DropdownMenuItem::<()> {
+                    value: (),
+                    index: 1usize,
+                    class: "main-menu-item",
+                    on_select: |_| {
                         spawn(async move {
                             if logout().await.is_ok() {
                                 client().set_current_book(None);
@@ -167,13 +205,6 @@ fn AuthControls() -> Element {
                 }
             }
         }
-        None => rsx! {
-            Link { to: Route::Login {}, class: "linkish auth-login", "Log in" }
-        },
-    };
-
-    rsx! {
-        div { class: "auth-controls", {inner} }
     }
 }
 

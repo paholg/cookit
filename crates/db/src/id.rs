@@ -95,6 +95,7 @@ table_id! {
     sli, ShoppingListItemId, ShoppingListItemDraftId, ShoppingListItemTable;
     url, UserRoleId, UserRoleDraftId, UserRoleTable;
     usr, UserId, UserDraftId, UserTable;
+    pky, UserPasskeyId, UserPasskeyDraftId, UserPasskeyTable;
 }
 
 impl<T> Clone for Id<T> {

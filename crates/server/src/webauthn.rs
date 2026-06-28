@@ -4,14 +4,16 @@ mod user_passkey;
 mod user_passkey_authentication;
 mod user_passkey_registration;
 
-pub use client::{WebauthnClient, client};
 use db::{
     id::{DraftId, Id, TablePrefix},
     table_id,
 };
+pub use {
+    client::{WebauthnClient, client},
+    user_passkey::{delete_passkey, list_passkeys},
+};
 
 table_id! {
-    pky, UserPasskeyId, UserPasskeyDraftId, UserPasskeyTable;
     pka, UserPasskeyAuthenticationId, UserPasskeyAuthenticationDraftId, UserPasskeyAuthenticationTable;
     pkr, UserPasskeyRegistrationId, UserPasskeyRegistrationDraftId, UserPasskeyRegistrationTable;
 }

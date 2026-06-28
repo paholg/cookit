@@ -45,10 +45,15 @@ export async function provision(
   await expect(emailField).toHaveValue(email);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // Register a passkey (the virtual authenticator signs automatically).
-  await page.getByRole("button", { name: "Create passkey" }).click();
+  // Lands on the account page. Register a passkey (the virtual authenticator
+  // signs automatically) and wait for the credential to appear before moving on,
+  // so login tests have a passkey to authenticate with.
+  await page.getByRole("button", { name: "Add passkey" }).click();
+  await expect(page.locator("ul.passkey-list li")).toHaveCount(1);
 
-  // Create a cookbook, which switches to its subdomain and lands on recipes.
+  // New accounts have no cookbook yet; head home to create the first one, which
+  // switches to its subdomain and lands on recipes.
+  await page.getByRole("link", { name: "CookIt!" }).click();
   await page.getByRole("link", { name: "Create cookbook" }).click();
   const bookName = page.getByLabel("Name");
   const bookUrl = page.getByLabel("Url");

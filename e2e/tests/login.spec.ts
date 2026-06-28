@@ -10,8 +10,12 @@ test("log in with a passkey", async ({ page }) => {
 
   const { email } = await provision(page);
 
-  // Log out, which reloads the apex landing.
-  await page.getByRole("button", { name: "Log out" }).click();
+  // Log out from the account menu, which reloads the apex landing. Let the
+  // client hydrate first so the menu trigger's handler is wired up (the cookbook
+  // step above was a full page load onto the book's subdomain).
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("option", { name: "Log out" }).click();
 
   // Go to the login page and let it hydrate before interacting — logout was a
   // full page load, so the form's submit handler isn't wired up until the wasm

@@ -1,8 +1,14 @@
 use {
-    crate::webauthn::{UserPasskeyId, json_wrapper::JsonWrapper},
+    crate::webauthn::json_wrapper::JsonWrapper,
     base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD},
     base64urlsafedata::HumanBinaryData,
-    db::{Timestamp, id::UserId, prelude::*, schema::user_passkeys},
+    db::{
+        Timestamp,
+        id::{UserId, UserPasskeyId},
+        models::passkey::PasskeyInfo,
+        prelude::*,
+        schema::user_passkeys,
+    },
     diesel_async::AsyncPgConnection,
     serde::{Deserialize, Serialize},
     webauthn_rs::prelude::Passkey,
@@ -15,6 +21,27 @@ pub struct UserPasskeyCreate<'a> {
     pub credential_id: &'a str,
     #[diesel(serialize_as = JsonWrapper<Passkey>)]
     pub passkey: &'a Passkey,
+}
+
+pub async fn list_passkeys(
+    conn: &AsyncPgConnection,
+    user_id: UserId,
+) -> crate::Result<Vec<PasskeyInfo>> {
+    let passkeys = UserPasskey::list(conn, user_id).await?;
+
+    Ok(passkeys.iter().map(UserPasskey::info).collect())
+}
+
+pub async fn delete_passkey(
+    conn: &AsyncPgConnection,
+    user_id: UserId,
+    id: UserPasskeyId,
+) -> crate::Result<()> {
+    UserPasskey::delete(conn, id, user_id).await
+}
+
+fn cred_id_to_string(cred_id: &HumanBinaryData) -> String {
+    BASE64_URL_SAFE_NO_PAD.encode(cred_id)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, HasQuery, Identifiable)]
@@ -30,11 +57,14 @@ pub struct UserPasskey {
     pub passkey: Passkey,
 }
 
-fn cred_id_to_string(cred_id: &HumanBinaryData) -> String {
-    BASE64_URL_SAFE_NO_PAD.encode(cred_id)
-}
-
 impl UserPasskey {
+    pub fn info(&self) -> PasskeyInfo {
+        PasskeyInfo {
+            id: self.id,
+            created_at: self.created_at,
+        }
+    }
+
     pub async fn list(mut conn: &AsyncPgConnection, user_id: UserId) -> crate::Result<Vec<Self>> {
         let rows = user_passkeys::table
             .filter(user_passkeys::user_id.eq(user_id))
@@ -86,6 +116,24 @@ impl UserPasskey {
             .filter(user_passkeys::id.eq(id))
             .filter(user_passkeys::deleted_at.is_null())
             .set(user_passkeys::passkey.eq(JsonWrapper(passkey)))
+            .execute(&mut conn)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn delete(
+        mut conn: &AsyncPgConnection,
+        id: UserPasskeyId,
+        user_id: UserId,
+    ) -> crate::Result<()> {
+        let now = Timestamp::new(jiff::Timestamp::now());
+
+        diesel::update(user_passkeys::table)
+            .filter(user_passkeys::id.eq(id))
+            .filter(user_passkeys::user_id.eq(user_id))
+            .filter(user_passkeys::deleted_at.is_null())
+            .set(user_passkeys::deleted_at.eq(now))
             .execute(&mut conn)
             .await?;
 

@@ -2,6 +2,7 @@ pub mod book;
 pub mod ingredient;
 pub mod meal;
 pub mod meal_recipe;
+pub mod passkey;
 pub mod recipe;
 pub mod recipe_step;
 pub mod recipe_step_ingredient;

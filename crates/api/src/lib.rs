@@ -7,6 +7,7 @@ pub use {
             ingredient::{Ingredient, IngredientCreate, IngredientDelete, IngredientUpdate},
             meal::{Meal, MealBuilder, MealDetail, MealError},
             meal_recipe::{MealRecipeBuilder, MealRecipeDetail, MealRecipeError},
+            passkey::PasskeyInfo,
             recipe::{Recipe, RecipeBuilder, RecipeDetail, RecipeError},
             recipe_step::{RecipeStepBuilder, RecipeStepDetail, RecipeStepError},
             recipe_step_ingredient::{

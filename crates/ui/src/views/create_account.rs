@@ -31,7 +31,7 @@ pub fn CreateAccount() -> Element {
         match create_user(name, email).await {
             Ok(current) => {
                 user.set(current);
-                nav.push(Route::CreatePasskey {});
+                nav.push(Route::Account {});
             }
             Err(e) => {
                 error.set(Some(e.to_string()));

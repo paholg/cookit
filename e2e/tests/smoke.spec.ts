@@ -13,8 +13,10 @@ test("home renders the recipe list", async ({ page }) => {
 
 test("starts authenticated as the seeded admin", async ({ page }) => {
   await page.goto("/");
-  // The "Log out" control is only present when a session is active.
-  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
+  // The account menu is only present when a session is active.
+  await expect(
+    page.getByRole("button", { name: "Account menu" }),
+  ).toBeVisible();
 });
 
 test("primary navigation reaches every section", async ({ page }) => {

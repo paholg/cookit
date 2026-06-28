@@ -22,6 +22,24 @@ pub fn TrashIcon() -> Element {
 }
 
 #[component]
+pub fn MenuIcon() -> Element {
+    rsx! {
+        svg {
+            width: "16",
+            height: "16",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            "aria-hidden": "true",
+            path { d: "M3 12H21M3 6H21M3 18H21" }
+        }
+    }
+}
+
+#[component]
 pub fn InsertAboveIcon() -> Element {
     rsx! {
         svg {

@@ -1242,7 +1242,23 @@ main#content {
   padding: 0.75rem 1rem;
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border-subtle);
-  overflow: scroll;
+}
+
+#navbar .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow-x: auto;
+}
+
+#navbar .nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 #navbar a {
@@ -1265,8 +1281,83 @@ main#content {
 }
 
 #navbar .auth-controls {
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 1.25rem;
+}
+
+.main-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.main-menu-content {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 10;
+  min-width: 8rem;
+  padding: 0.25rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-interactive-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.main-menu-item {
+  padding: 0.5rem 0.75rem;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius);
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (hover: hover) {
+  .main-menu -item:hover {
+    background: var(--bg-el-hover);
+  }
+}
+
+.main-menu-item:focus-visible,
+.main-menu-item[tabindex="0"]:focus {
+  background: var(--bg-el-hover);
+  outline: none;
+}
+
+/* Account page sections (passkeys, etc.). */
+.account-section {
+  margin-bottom: 2rem;
+}
+
+.account-section h2 {
+  margin-bottom: 0.25rem;
+}
+
+ul.passkey-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+ul.passkey-list li {
+  margin-bottom: 0.5rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-interactive-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.passkey-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.passkey-added {
+  color: var(--fg-muted);
 }
