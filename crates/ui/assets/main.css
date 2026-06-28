@@ -158,7 +158,7 @@ input[type="radio"] {
    padding/layout; the popovers override the shadow/border for a lifted look. */
 .empty,
 .error,
-ul.recipe-list li,
+ul.card-list li,
 fieldset,
 .ingredient-row-card,
 .shopping-row {
@@ -178,28 +178,29 @@ fieldset,
   color: var(--alert);
 }
 
-ul.recipe-list {
+ul.card-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-ul.recipe-list li {
+ul.card-list li {
   margin-bottom: 0.5rem;
   transition:
     background-color var(--transition),
     border-color var(--transition);
 }
 
-/* The whole row is a link; give it a hover lift like any other control. */
+/* Rows are often a full-width link; give them a hover lift like any control. */
 @media (hover: hover) {
-  ul.recipe-list li:hover {
+  ul.card-list li:hover {
     background: var(--bg-el);
     border-color: var(--border-interactive-strong);
   }
 }
 
-ul.recipe-list li a {
+ul.card-list li a,
+ul.card-list li .row-label {
   display: block;
   padding: 1rem;
   min-height: var(--tap);
@@ -207,24 +208,25 @@ ul.recipe-list li a {
   font-weight: 500;
 }
 
-ul.recipe-list li .meal-row-main {
+ul.card-list li .card-row {
   display: flex;
   align-items: stretch;
 }
 
-ul.recipe-list li .meal-row-main > a {
+ul.card-list li .card-row > a,
+ul.card-list li .card-row > .row-label {
   flex: 1;
 }
 
-ul.recipe-list li .meal-row-main .row-actions {
+ul.card-list li .card-row .row-actions {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding-right: 0.75rem;
 }
 
-ul.recipe-list li .meal-row-main .row-actions > a,
-ul.recipe-list li .meal-row-main .row-actions > button {
+ul.card-list li .card-row .row-actions > a,
+ul.card-list li .card-row .row-actions > button {
   display: inline-flex;
   padding: 0.4rem 0.8rem;
   min-height: 36px;
@@ -635,7 +637,7 @@ legend.step-legend {
   font-weight: normal;
 }
 
-.recipe .source {
+.source {
   color: var(--fg-muted);
   font-size: 0.9rem;
   margin-bottom: 1rem;
@@ -864,11 +866,11 @@ ul.ingredient-rows {
   border-radius: 999px;
 }
 
-.shopping-section {
+.item-group {
   margin-bottom: 1.25rem;
 }
 
-.shopping-section-header {
+.item-group-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -882,7 +884,7 @@ ul.ingredient-rows {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.shopping-section-header h2 {
+.item-group-header h2 {
   margin: 0;
   font-size: 1.05rem;
   text-transform: uppercase;
@@ -890,7 +892,7 @@ ul.ingredient-rows {
   color: var(--fg-muted);
 }
 
-.shopping-section-count {
+.item-group-count {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
   color: var(--fg-muted);
@@ -1327,37 +1329,3 @@ main#content {
   outline: none;
 }
 
-/* Account page sections (passkeys, etc.). */
-.account-section {
-  margin-bottom: 2rem;
-}
-
-.account-section h2 {
-  margin-bottom: 0.25rem;
-}
-
-ul.passkey-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
-}
-
-ul.passkey-list li {
-  margin-bottom: 0.5rem;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-interactive-subtle);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-.passkey-row-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-}
-
-.passkey-added {
-  color: var(--fg-muted);
-}

@@ -55,7 +55,7 @@ fn Passkeys() -> Element {
     };
 
     rsx! {
-        section { class: "account-section",
+        section {
             h2 { "Passkeys" }
 
             match passkeys.cloned() {
@@ -63,7 +63,7 @@ fn Passkeys() -> Element {
                     p { class: "empty", "No passkeys. Please add one so you can login!" }
                 },
                 Some(Ok(list)) => rsx! {
-                    ul { class: "passkey-list",
+                    ul { class: "card-list",
                         for passkey in list {
                             PasskeyRow {
                                 key: "{passkey.id}",
@@ -111,8 +111,8 @@ fn PasskeyRow(passkey: PasskeyInfo, on_deleted: EventHandler<()>) -> Element {
 
     rsx! {
         li {
-            div { class: "passkey-row-main",
-                span { class: "passkey-added", "Added {passkey.created_at}" }
+            div { class: "card-row",
+                span { class: "row-label", "Added {passkey.created_at}" }
                 button {
                     r#type: "button",
                     class: "icon-button trash",

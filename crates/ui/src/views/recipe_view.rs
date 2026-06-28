@@ -16,7 +16,7 @@ pub fn RecipeView(
     let recipe_slug = detail.recipe.slug.to_string();
 
     rsx! {
-        section { class: "recipe",
+        section {
             if !detail.recipe.source.is_empty() {
                 p { class: "source",
                     "Source: "

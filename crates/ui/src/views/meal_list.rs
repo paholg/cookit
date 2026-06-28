@@ -20,7 +20,7 @@ pub fn MealList() -> Element {
                 p { class: "empty", "No meals yet." }
             },
             Some(Ok(list)) => rsx! {
-                ul { class: "recipe-list",
+                ul { class: "card-list",
                     for meal in list {
                         MealRow { key: "{meal.slug}", meal }
                     }
@@ -42,7 +42,7 @@ fn MealRow(meal: Meal) -> Element {
 
     rsx! {
         li {
-            div { class: "meal-row-main",
+            div { class: "card-row",
                 Link {
                     to: Route::MealDetail { meal_key, tab: None },
                     "{meal.name}"

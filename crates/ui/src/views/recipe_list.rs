@@ -22,7 +22,7 @@ pub fn RecipeList() -> Element {
                 p { class: "empty", "No recipes yet." }
             },
             Some(Ok(list)) => rsx! {
-                ul { class: "recipe-list",
+                ul { class: "card-list",
                     for recipe in list {
                         li { key: "{recipe.slug}",
                             Link {

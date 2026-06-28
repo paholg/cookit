@@ -49,7 +49,7 @@ export async function provision(
   // signs automatically) and wait for the credential to appear before moving on,
   // so login tests have a passkey to authenticate with.
   await page.getByRole("button", { name: "Add passkey" }).click();
-  await expect(page.locator("ul.passkey-list li")).toHaveCount(1);
+  await expect(page.locator("ul.card-list li")).toHaveCount(1);
 
   // New accounts have no cookbook yet; head home to create the first one, which
   // switches to its subdomain and lands on recipes.

@@ -130,10 +130,10 @@ fn SectionBlock(
         .count();
 
     rsx! {
-        section { class: "shopping-section",
-            header { class: "shopping-section-header",
+        section { class: "item-group",
+            header { class: "item-group-header",
                 h2 { "{section_label(&section)}" }
-                span { class: "shopping-section-count", "{done}/{total}" }
+                span { class: "item-group-count", "{done}/{total}" }
             }
             ul { class: "shopping-items",
                 for (_, group) in by_name {

@@ -20,7 +20,7 @@ pub fn ShoppingListList() -> Element {
                 p { class: "empty", "No shopping lists yet." }
             },
             Some(Ok(list)) => rsx! {
-                ul { class: "recipe-list",
+                ul { class: "card-list",
                     for sl in list {
                         ShoppingListRow {
                             key: "{sl.id}",
@@ -49,7 +49,7 @@ fn ShoppingListRow(list: ShoppingList, on_deleted: EventHandler<()>) -> Element 
 
     rsx! {
         li {
-            div { class: "meal-row-main",
+            div { class: "card-row",
                 Link { to: Route::ShoppingListDetail { id }, "{list.name}" }
                 button {
                     r#type: "button",
