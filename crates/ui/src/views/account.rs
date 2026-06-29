@@ -1,5 +1,7 @@
 use {
-    crate::{client::client, icons::TrashIcon, require_login_or_message, use_confirm},
+    crate::{
+        FormatTimestamp, client::client, icons::TrashIcon, require_login_or_message, use_confirm,
+    },
     api::{
         PasskeyInfo,
         auth::{delete_passkey, list_passkeys, register_finish, register_start},
@@ -112,7 +114,10 @@ fn PasskeyRow(passkey: PasskeyInfo, on_deleted: EventHandler<()>) -> Element {
     rsx! {
         li {
             div { class: "card-row",
-                span { class: "row-label", "Added {passkey.created_at}" }
+                span { class: "row-label",
+                    "Added "
+                    FormatTimestamp { timestamp: passkey.created_at }
+                }
                 button {
                     r#type: "button",
                     class: "icon-button trash",
