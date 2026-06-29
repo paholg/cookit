@@ -132,6 +132,7 @@
               just
               libpq
               litecli
+              netcat
               nodejs_latest
               openssl
               pgcli
