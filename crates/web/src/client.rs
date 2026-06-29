@@ -41,6 +41,12 @@ impl Client for WebClient {
         eval(include_str!("js/play-bell.js"));
     }
 
+    fn timezone(&self) -> jiff::tz::TimeZone {
+        iana_timezone()
+            .and_then(|name| jiff::tz::TimeZone::get(&name).ok())
+            .unwrap_or(jiff::tz::TimeZone::UTC)
+    }
+
     fn focus_field(&self, key: &str) {
         let safe = key.replace('"', "");
 
@@ -133,6 +139,17 @@ impl Client for WebClient {
             web_sys::PublicKeyCredential::from(assertion),
         ))
     }
+}
+
+fn iana_timezone() -> Option<String> {
+    use web_sys::js_sys::{Array, Intl, JsString, Object, Reflect};
+
+    let format = Intl::DateTimeFormat::new(&Array::new(), &Object::new());
+    let resolved = format.resolved_options();
+
+    Reflect::get(&resolved, &JsString::from("timeZone"))
+        .ok()?
+        .as_string()
 }
 
 /// Guard for the browser wake-lock sentinel stashed on `window`. Dropping it

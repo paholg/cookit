@@ -5,6 +5,7 @@ use {
         icons::MenuIcon,
         navbar::Navbar,
         timers::{self, RunningTimer},
+        timezone::initialize_timezone,
         views::{
             Account, CreateAccount, CreateBook, Home, IngredientList, Login, MealDetail, MealEdit,
             MealList, MealNew, RecipeDetail, RecipeEdit, RecipeList, RecipeNew, ShoppingListDetail,
@@ -103,6 +104,8 @@ pub fn App() -> Element {
         Vec::new,
     );
     use_context_provider(|| timers);
+
+    initialize_timezone();
 
     rsx! {
         // Runs before paint to set the theme attribute the palette keys off of.

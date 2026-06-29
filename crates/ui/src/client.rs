@@ -24,6 +24,9 @@ pub trait Client: Send + Sync + std::fmt::Debug {
     /// Play the timer-expiry bell.
     fn play_bell(&self);
 
+    /// The user's time zone, defaulting to UTC if one cannot be determined.
+    fn timezone(&self) -> jiff::tz::TimeZone;
+
     /// Move keyboard focus to the element tagged with the given focus key.
     /// Deferred to the next frame so it works for elements added in the same
     /// tick. No-op on platforms without a focusable view.
