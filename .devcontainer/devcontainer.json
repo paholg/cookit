@@ -14,7 +14,6 @@
       "defaultExec": "/bin/zsh",
       "proxy": {
         "enable": true,
-        "hostname": "{{workspace}}.{{#unless root}}{{service}}.{{/unless}}test",
         "services": {
           "cookit": {
             "ports": [
