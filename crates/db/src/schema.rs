@@ -171,6 +171,7 @@ diesel::table! {
         user_id -> Uuid,
         credential_id -> Text,
         passkey -> Jsonb,
+        name -> Text,
     }
 }
 

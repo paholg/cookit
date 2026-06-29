@@ -8,7 +8,7 @@ use {
             user_passkey_registration::UserPasskeyRegistration,
         },
     },
-    db::id::UserId,
+    db::{Name, id::UserId},
     diesel_async::{AsyncConnection, AsyncPgConnection},
     snafu::ResultExt,
     std::sync::LazyLock,
@@ -71,6 +71,7 @@ impl WebauthnClient {
         &self,
         conn: &mut AsyncPgConnection,
         user_id: UserId,
+        name: &Name,
         reg: &RegisterPublicKeyCredential,
     ) -> crate::Result<()> {
         let upr = UserPasskeyRegistration::find_by_user(conn, user_id).await?;
@@ -82,7 +83,7 @@ impl WebauthnClient {
 
         conn.transaction(async |conn| {
             tokio::try_join!(
-                UserPasskey::create(conn, user_id, &passkey),
+                UserPasskey::create(conn, user_id, name, &passkey),
                 upr.delete(conn)
             )?;
 

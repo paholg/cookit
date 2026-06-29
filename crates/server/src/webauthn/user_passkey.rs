@@ -3,7 +3,7 @@ use {
     base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD},
     base64urlsafedata::HumanBinaryData,
     db::{
-        Timestamp,
+        Name, Timestamp,
         id::{UserId, UserPasskeyId},
         models::passkey::PasskeyInfo,
         prelude::*,
@@ -19,6 +19,7 @@ use {
 pub struct UserPasskeyCreate<'a> {
     pub user_id: UserId,
     pub credential_id: &'a str,
+    pub name: &'a Name,
     #[diesel(serialize_as = JsonWrapper<Passkey>)]
     pub passkey: &'a Passkey,
 }
@@ -55,12 +56,14 @@ pub struct UserPasskey {
     pub credential_id: String,
     #[diesel(deserialize_as = JsonWrapper<Passkey>)]
     pub passkey: Passkey,
+    pub name: Name,
 }
 
 impl UserPasskey {
     pub fn info(&self) -> PasskeyInfo {
         PasskeyInfo {
             id: self.id,
+            name: self.name.clone(),
             created_at: self.created_at,
         }
     }
@@ -77,6 +80,7 @@ impl UserPasskey {
     pub async fn create(
         mut conn: &AsyncPgConnection,
         user_id: UserId,
+        name: &Name,
         passkey: &Passkey,
     ) -> diesel::result::QueryResult<()> {
         let cred_id = passkey.cred_id();
@@ -85,6 +89,7 @@ impl UserPasskey {
         UserPasskeyCreate {
             user_id,
             credential_id: &cred_id_base64,
+            name,
             passkey,
         }
         .insert_into(user_passkeys::table)

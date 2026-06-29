@@ -1,0 +1,42 @@
+/* Modal dialog chrome. Action buttons use the app's global button styles
+   (.button / .primary in main.css), so only the backdrop, card, and text live
+   here — all keyed off the app's color tokens. Mirrors the alert-dialog chrome. */
+
+.dx-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  background: rgb(0 0 0 / 45%);
+  inset: 0;
+}
+
+.dx-dialog {
+  position: fixed;
+  z-index: 1001;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: 100%;
+  max-width: min(28rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  margin: 0;
+  background: var(--bg);
+  box-shadow: var(--shadow-pop);
+  color: var(--fg);
+  gap: var(--gap);
+  transform: translate(-50%, -50%);
+}
+
+.dx-dialog-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.dx-dialog-description {
+  margin: 0;
+  color: var(--fg-muted);
+}

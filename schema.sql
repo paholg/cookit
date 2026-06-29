@@ -247,6 +247,7 @@ CREATE TABLE "public"."user_passkeys" (
     "user_id" uuid NOT NULL,
     "credential_id" text NOT NULL,
     "passkey" jsonb NOT NULL,
+    "name" text NOT NULL,
     PRIMARY KEY ("id"),
     CONSTRAINT "user_passkeys_credential_id_key" UNIQUE ("credential_id"),
     CONSTRAINT "user_passkeys_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE

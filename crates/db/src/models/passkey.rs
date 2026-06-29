@@ -1,5 +1,5 @@
 use {
-    crate::{Timestamp, id::UserPasskeyId},
+    crate::{Name, Timestamp, id::UserPasskeyId},
     serde::{Deserialize, Serialize},
 };
 
@@ -7,5 +7,6 @@ use {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PasskeyInfo {
     pub id: UserPasskeyId,
+    pub name: Name,
     pub created_at: Timestamp,
 }

@@ -34,11 +34,14 @@ pub async fn register_start() -> Result<CreationChallengeResponse, ServerFnError
 }
 
 #[post("/api/register_passkey/finish", mut ctx: RequestContext)]
-pub async fn register_finish(reg: RegisterPublicKeyCredential) -> Result<(), ServerFnError> {
+pub async fn register_finish(
+    name: Name,
+    reg: RegisterPublicKeyCredential,
+) -> Result<(), ServerFnError> {
     let user_id = ctx.require_user()?.id;
 
     server::webauthn::client()
-        .finish_registration(ctx.conn(), user_id, &reg)
+        .finish_registration(ctx.conn(), user_id, &name, &reg)
         .await?;
 
     Ok(())
