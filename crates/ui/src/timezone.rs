@@ -10,7 +10,7 @@ pub fn initialize_timezone() {
 }
 
 /// Default `strftime` pattern, e.g. `Jun 28, 2026, 3:42 PM`.
-const DEFAULT_FORMAT: &str = "%b %-d, %Y, %-I:%M %p";
+const DEFAULT_FORMAT: &str = "%b %-d, %Y, %-I:%M %p %Z";
 
 /// Render a [`Timestamp`] in the user's time zone.
 #[component]
