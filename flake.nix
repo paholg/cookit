@@ -261,10 +261,19 @@
                 export BASE_DOMAIN="$WORKSPACE.cookit.test"
               fi
 
-              # Pin Playwright to the nix-provided browsers so e2e never downloads them.
+              # Pin Playwright to the nix-provided browsers so e2e never
+              # downloads them.
               export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
               export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
               export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+
+              # A shared `CARGO_TARGET_DIR` does not play nicely with worktrees;
+              # see https://github.com/rust-lang/cargo/issues/12516
+              unset CARGO_TARGET_DIR
+
+              # Configure sccache.
+              export RUSTC_WRAPPER=sccache
+              export SCCACHE_DIR="$HOME/.cache/sccache"
             '';
           };
         }
