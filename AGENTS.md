@@ -1,52 +1,37 @@
-You are an expert [0.7 Dioxus](https://dioxuslabs.com/learn/0.7) assistant. Dioxus 0.7 changes every API — `cx`, `Scope`, and `use_state` are gone.
+# CookIt! Instructions
+
+You are an expert [0.7 Dioxus](https://dioxuslabs.com/learn/0.7) assistant.
+Dioxus 0.7 changes every API — `cx`, `Scope`, and `use_state` are gone.
 
 Provide concise code examples with detailed descriptions.
 
-# Project Architecture
+## Code editing
 
-## Crate Structure
+After any changes, run `just check`. This will perform all validation except for
+end-to-end tests; no other checks are required. To additionally run end-to-end
+tests, run `just e2e`.
+
+## Project Architecture
+
+### Crate Structure
 
 The workspace is split into six crates:
 
-- **`api`** — Shared API types and Dioxus server function definitions. Must compile for both wasm (client) and native (server). All server-only code is cfg-gated behind the `server` feature. Verify wasm compatibility with the client build.
-- **`db`** — Database models and types shared across crates. Has a `server` feature that enables Diesel. The wasm-safe subset (types, enums) is always compiled; Diesel and SQL code is gated behind `server`.
-- **`server`** — Axum server setup, middleware, config, and database connection pool. Server-only; never depended on by `ui`.
-- **`ui`** — Dioxus components and the `Client` trait. Must compile on both server (SSR) and client (wasm) — no browser APIs here. Platform-specific behavior is injected via the `Client` trait.
-- **`web`** — The client binary. Implements the `Client` trait with browser-specific code (`gloo-storage`, `web_time`, `web_sys`, JS eval, etc.) and mounts the Dioxus app.
-- **`seed`** — Database seeding binary. Server-only.
+- **`api`** — Shared API types and Dioxus server function definitions.
+- **`db`** — Database models and types shared across crates.
+- **`server`** — Axum server setup, middleware, config, and database connection
+  pool. Server-only; never depended on by `ui`.
+- **`ui`** — Cross-platform client crate containing dioxus components and the
+  `Client` trait.
+- **`web`** — The web client binary. Implements the `Client` trait with
+  browser-specific code.
+- **`seed`** — Database seeding binary. Development only.
 
 ## Platform-Specific Code: the `Client` Trait
 
-The `Client` trait (defined in `ui::client`) is the seam between platform-agnostic UI logic and browser-specific behavior. `ui` defines the trait and calls it; `web` provides the concrete `WebClient` implementation.
+The `Client` trait abstracts any platform-specific code.
 
-Examples of things that belong behind `Client`: local storage access, sleep/timers, wake locks, audio, `window.confirm`, DOM focus/scroll manipulation.
-
-**Never put `web_sys`, `gloo-*`, or other browser-API code in `ui`.** It must compile on the server.
-
-## Minimize Feature Flags
-
-Strongly prefer **crate separation** over feature flags for splitting code across compilation targets or deployment contexts.
-
-- Feature flags should only be used where crate separation is impractical (e.g., enabling/disabling a Diesel backend within `db`, or the `development` backdoor flag).
-- When in doubt, make a new crate or pass behavior via dependency injection (trait objects, function parameters) rather than `#[cfg(feature = "...")]` blocks.
-
-# Testing
-
-* After any changes, run `just fmt`
-* After a set of changes is complete, validate with `just check`
-* Additionally, you may run playwright tests with `just test-e2e`
-
-# Code Style
-
-Let code breathe. Use blank lines between function/method/component definitions, between `impl` blocks, and between logical groupings of statements within a function (e.g., setup vs. main logic vs. return). Do not pack everything into a single dense block.
-
-# Error Handling
-
-Default to just bubbling errors to the client. The only time we should swallow an error and return a 200 is if we KNOW it's an expected error that users have actually hit, and there's a reasonable rescue path.
-
-Error messages should include enough detail to act on: the env var that was missing, the URL that wouldn't parse, the id that wasn't found. "Internal error" with no context is a step down from a panic.
-
-# RSX
+## RSX
 
 ```rust
 rsx! {
@@ -68,7 +53,7 @@ rsx! {
 }
 ```
 
-# Assets
+## Assets
 
 The `asset!` macro links to local files; paths are relative to the project root.
 
@@ -91,7 +76,7 @@ rsx! {
 }
 ```
 
-# Components
+## Components
 
 Components are functions annotated with `#[component]`. The name must start with a capital letter or contain an underscore. A component re-renders only when its props change (by `PartialEq`) or an internal reactive state it reads is updated.
 
@@ -116,7 +101,7 @@ fn Input(mut value: Signal<String>) -> Element {
 
 Props must be owned values (`String`, `Vec<T>`, not `&str`/`&[T]`), and must implement `PartialEq` and `Clone`. Wrap a prop in `ReadOnlySignal` to make it reactive and `Copy` — memos and resources that read it will automatically re-run when it changes.
 
-# State
+## State
 
 A signal tracks where it's read and written; updating it reruns dependent code. Call a signal like a function (`count()`) to clone the value, `.read()` for a reference, `.write()` for a mutable reference.
 
@@ -158,7 +143,7 @@ fn Child() -> Element {
 }
 ```
 
-# Async
+## Async
 
 `use_resource` manages an async task and exposes its result. It re-runs whenever a signal it reads changes. The result is `None` while loading and `Some(value)` once done.
 
@@ -173,7 +158,7 @@ match data() {
 }
 ```
 
-# Routing
+## Routing
 
 Routes are defined as a `Routable` enum. `:name` segments become typed fields on the variant. `#[layout(Comp)]` wraps child routes in a shared layout; place `Outlet<Route> {}` inside the layout where child content should render.
 
@@ -201,7 +186,7 @@ fn App() -> Element {
 }
 ```
 
-# Server Functions
+## Server Functions
 
 Use `#[post]` / `#[get]` to define server-only async functions. On the server the macro generates an API endpoint; on the client it generates an HTTP call to that endpoint. Server functions live in `api`.
 

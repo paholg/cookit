@@ -5,6 +5,10 @@ serve *args:
 
 check: lint test
 
+# Browser end-to-end tests.
+e2e *args:
+    cd e2e && npm ci && npx playwright test {{args}}
+
 seed:
     cargo run --bin seed
 
@@ -29,9 +33,6 @@ build *args:
 test *args:
     cargo nextest run --workspace --all-targets --no-fail-fast {{args}}
 
-# Browser end-to-end tests.
-test-e2e *args:
-    cd e2e && npm ci && npx playwright test {{args}}
 
 up:
     nix flake update

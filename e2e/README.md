@@ -6,7 +6,7 @@ functions + Postgres) through a real browser.
 ## Running
 
 ```sh
-just test-e2e
+just e2e
 ```
 
 That runs `npm ci` and `npx playwright test`. Everything else is automatic:
