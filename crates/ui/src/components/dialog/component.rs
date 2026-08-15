@@ -1,8 +1,6 @@
 use {
     dioxus::prelude::*,
-    dioxus_primitives::dialog::{
-        self, DialogDescriptionProps, DialogRootProps, DialogTitleProps,
-    },
+    dioxus_primitives::dialog::{self, DialogDescriptionProps, DialogRootProps, DialogTitleProps},
 };
 
 #[css_module("/src/components/dialog/style.css")]

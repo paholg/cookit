@@ -9,7 +9,7 @@ async-trait.workspace = true
 axum = "0.8"
 axum_session.workspace = true
 axum_session_auth.workspace = true
-base64 = "0.22.1"
+base64 = "0.23.1"
 base64urlsafedata = "0.5.5"
 db = { workspace = true, features = ["server"] }
 diesel.workspace = true

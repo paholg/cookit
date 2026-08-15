@@ -2,7 +2,6 @@
   inputs = {
     claude-code = {
       url = "github:sadjow/claude-code-nix";
-      inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     crane.url = "github:ipetkov/crane";
@@ -39,6 +38,7 @@
             inherit system overlays;
             config.allowUnfree = true;
           };
+          inherit (pkgs) lib;
 
           rustMinimal = pkgs.rust-bin.stable.latest.minimal.override {
             targets = [ "wasm32-unknown-unknown" ];
@@ -67,51 +67,34 @@
               name = "source";
             };
 
-          # Extract wasm-bindgen and dioxus-cli from Cargo.lock so we don't have
-          # to worry about version drift.
+          # `dx` shells out to `wasm-bindgen` and requires the exact version the
+          # project builds against, so read that out of Cargo.lock.
           lockFile = builtins.fromTOML (builtins.readFile ./Cargo.lock);
           wasmBindgenVersion =
             (builtins.head (builtins.filter (p: p.name == "wasm-bindgen") lockFile.package)).version;
           dioxusVersion = (builtins.head (builtins.filter (p: p.name == "dioxus") lockFile.package)).version;
 
-          wasmBindgenCli = pkgs.rustPlatform.buildRustPackage rec {
-            pname = "wasm-bindgen-cli";
-            version = wasmBindgenVersion;
-            src = pkgs.fetchCrate {
-              inherit pname version;
-              hash = "sha256-vO4RSxi/sMWxmsEs3GuljdMfIRSu75A+Q+c5wgYToRU=";
-            };
-            cargoHash = "sha256-Inup6vvJSG5ghNyeDPyZbfZo4d0LsMG2OJfStoaeDBs=";
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = [
-              pkgs.openssl
-            ];
-          };
-
-          dioxusCli = pkgs.dioxus-cli.overrideAttrs (
-            old:
+          # nixpkgs ships one attribute per wasm-bindgen release. Fall back to
+          # the newest it has when Cargo.lock runs ahead, so a version gap can
+          # never break eval and block `just up` from closing it.
+          wasmBindgenCli =
             let
-              src = pkgs.fetchCrate {
-                pname = "dioxus-cli";
-                version = dioxusVersion;
-                hash = "sha256-tLMtUlohSJt3okdJh+ARweQNGmzj/vYiNl8iZhDbSAc=";
-              };
+              attr = "wasm-bindgen-cli_${builtins.replaceStrings [ "." ] [ "_" ] wasmBindgenVersion}";
+              available = builtins.filter (lib.hasPrefix "wasm-bindgen-cli_0_") (builtins.attrNames pkgs);
+              versionOf = n: builtins.replaceStrings [ "_" ] [ "." ] (lib.removePrefix "wasm-bindgen-cli_" n);
+              newest = lib.last (
+                builtins.sort (a: b: builtins.compareVersions (versionOf a) (versionOf b) < 0) available
+              );
             in
-            {
-              version = dioxusVersion;
-              inherit src;
+            pkgs.${attr} or (lib.warn "nixpkgs has no ${attr}; falling back to ${newest}" pkgs.${newest});
 
-              # Regenerate the vendored deps from the new source rather than
-              # overriding the old derivation, which drops the recursive
-              # output-hash mode and fails with an "output path ... should be a
-              # non-executable regular file" error.
-              cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-                inherit src;
-                name = "dioxus-cli-${dioxusVersion}-vendor";
-                hash = "sha256-h5wkxHP8ehZLHqcUsro08/dpqSPnPuBbZuUGG8i4nBc=";
-              };
-            }
-          );
+          # nixpkgs is the source of truth for the `dx` version; `just up` pins
+          # the `dioxus` crate to match. Warn rather than assert, because during
+          # `just up` nixpkgs moves first and Cargo.lock trails it by a step.
+          dioxusCli =
+            lib.warnIf (pkgs.dioxus-cli.version != dioxusVersion)
+              "nixpkgs dioxus-cli is ${pkgs.dioxus-cli.version} but Cargo.lock wants dioxus ${dioxusVersion}; run `just up`"
+              pkgs.dioxus-cli;
 
           # NOTE: These are used both by the devShell and the devcontainer.
           devPackages =
@@ -120,6 +103,7 @@
               atlas
               atuin
               bat
+              binaryen
               caddy
               cargo-dist
               cargo-edit
@@ -246,6 +230,8 @@
           packages = {
             default = package;
             docker = dockerImage;
+            # Exposed so `just up` can read the version to pin `dioxus` to.
+            inherit dioxusCli;
           };
           checks = {
             inherit cookit-tests;

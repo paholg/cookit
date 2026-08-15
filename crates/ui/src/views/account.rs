@@ -2,7 +2,7 @@ use {
     crate::{
         Field, FormatTimestamp, Validated,
         client::client,
-        components::dialog::{Dialog, DialogDescription, DialogTitle},
+        components::dialog::{Dialog, DialogTitle},
         icons::TrashIcon,
         require_login_or_message, use_confirm, use_field, use_form_validity,
     },

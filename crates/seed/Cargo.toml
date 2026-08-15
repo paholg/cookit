@@ -7,6 +7,6 @@ edition = "2024"
 db = { workspace = true, features = ["server"] }
 diesel.workspace = true
 diesel-async.workspace = true
-eyre = "0.6.12"
+eyre = "0.6.14"
 server = { workspace = true }
 tokio.workspace = true

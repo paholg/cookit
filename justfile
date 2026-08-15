@@ -36,7 +36,11 @@ test *args:
 
 up:
     nix flake update
-    cargo upgrade -i
+    # `dx` and the `dioxus` crate must be the same version, and nixpkgs can lag
+    # crates.io. Update nixpkgs first, then cap `dioxus` at whatever `dx` it
+    # gives us; everything else goes to the latest it can.
+    cargo upgrade -i --exclude dioxus
+    cargo upgrade -p dioxus@$(nix eval --raw .#dioxusCli.version)
     cd e2e && npm update
 
 fmt:
