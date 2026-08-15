@@ -245,7 +245,7 @@
               if [ -z "''${DATABASE_URL:-}" ] && command -v devconcurrent >/dev/null; then
                 export WORKSPACE="$(devconcurrent show workspace)"
                 export DATABASE_URL="postgres://postgres:postgres@$WORKSPACE.postgres.test:5432/cookit_dev"
-                export BASE_DOMAIN="$WORKSPACE.cookit.test"
+                export BASE_DOMAIN="$WORKSPACE.test"
               fi
 
               # Pin Playwright to the nix-provided browsers so e2e never

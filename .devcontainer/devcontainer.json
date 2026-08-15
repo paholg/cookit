@@ -16,6 +16,7 @@
         "enable": true,
         "services": {
           "cookit": {
+            "hostname": "{{workspace}}.test",
             "ports": [
               {
                 "host": 443,
