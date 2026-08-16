@@ -7,7 +7,9 @@ check: lint test
 
 # Browser end-to-end tests.
 e2e *args:
-    cd e2e && npm ci && npx playwright test {{args}}
+    cd e2e && npm ci
+    script/check-playwright
+    cd e2e && npx playwright test {{args}}
 
 seed:
     cargo run --bin seed
@@ -42,6 +44,14 @@ up:
     cargo upgrade -i --exclude dioxus
     cargo upgrade -p dioxus@$(nix eval --raw .#dioxusCli.version)
     cd e2e && npm update
+    just sync-playwright
+
+# Pin the npm Playwright client to the nix-provided browsers; each release
+# hardcodes the browser revisions it looks for. Runs after `npm update` so the
+# exact pin wins.
+sync-playwright:
+    cd e2e && npm install --save-exact --save-dev \
+        @playwright/test@$(nix eval --raw .#playwright-driver.version)
 
 fmt:
     # Can break rsx :(

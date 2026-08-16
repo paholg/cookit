@@ -230,8 +230,10 @@
           packages = {
             default = package;
             docker = dockerImage;
-            # Exposed so `just up` can read the version to pin `dioxus` to.
+            # Exposed so `just up` can read the versions to pin `dioxus` and
+            # `@playwright/test` to.
             inherit dioxusCli;
+            inherit (pkgs) playwright-driver;
           };
           checks = {
             inherit cookit-tests;
@@ -240,14 +242,6 @@
             packages = devPackages;
 
             shellHook = ''
-              # Inside the devcontainer, these are already set based on the
-              # docker network, so we don't want to overwrite them.
-              if [ -z "''${DATABASE_URL:-}" ] && command -v devconcurrent >/dev/null; then
-                export WORKSPACE="$(devconcurrent show workspace)"
-                export DATABASE_URL="postgres://postgres:postgres@$WORKSPACE.postgres.test:5432/cookit_dev"
-                export BASE_DOMAIN="$WORKSPACE.test"
-              fi
-
               # Pin Playwright to the nix-provided browsers so e2e never
               # downloads them.
               export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"

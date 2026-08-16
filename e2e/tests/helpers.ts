@@ -46,9 +46,17 @@ export async function provision(
   await page.getByRole("button", { name: "Create account" }).click();
 
   // Lands on the account page. Register a passkey (the virtual authenticator
-  // signs automatically) and wait for the credential to appear before moving on,
-  // so login tests have a passkey to authenticate with.
+  // signs automatically), then name it in the modal that opens once the
+  // credential is signed. Wait for the credential to appear before moving on, so
+  // login tests have a passkey to authenticate with.
   await page.getByRole("button", { name: "Add passkey" }).click();
+  const dialog = page.getByRole("dialog", { name: "Name your passkey" });
+  const passkeyName = dialog.getByPlaceholder("Name");
+  await passkeyName.fill("E2E Passkey");
+  // Save stays disabled until the field validates, so confirm the value
+  // round-tripped through the signal before submitting.
+  await expect(passkeyName).toHaveValue("E2E Passkey");
+  await dialog.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("ul.card-list li")).toHaveCount(1);
 
   // New accounts have no cookbook yet; head home to create the first one, which

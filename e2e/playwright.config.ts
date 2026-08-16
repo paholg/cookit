@@ -36,8 +36,9 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
-    // Full Chromium, not `chrome-headless-shell`: the Nix-pinned shell (rev
-    // 1217) mis-renders flex items. Should be fixed by 1223.
+    // Full Chromium, not `chrome-headless-shell`: passkey registration never
+    // resolves in the shell, so the naming dialog never opens. Still true on
+    // browser rev 1228; the older flex-rendering bug is fixed.
     channel: "chromium",
   },
   projects: [

@@ -11,6 +11,10 @@
   ],
   "customizations": {
     "devconcurrent": {
+      "env": {
+        "DATABASE_URL": "postgres://postgres:postgres@{{ hostname 'postgres' }}:5432/cookit_dev",
+        "BASE_DOMAIN": "{{ hostname 'cookit' }}"
+      },
       "proxy": {
         "enable": true,
         "services": {

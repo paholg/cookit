@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Verify the npm Playwright client and the nix-provided browsers agree.
+# `@playwright/test` hardcodes a browser revision per release, so a nixpkgs
+# bump without `just sync-playwright` leaves it looking for a directory that
+# does not exist.
+
+cd "$(dirname "$0")/../e2e"
+
+# Read by path: `exports` in playwright-core hides the subpath from a bare
+# `require("playwright-core/browsers.json")`.
+want=$(node -p \
+  'require("./node_modules/playwright-core/browsers.json").browsers.find(b => b.name === "chromium").revision')
+
+if [ ! -d "$PLAYWRIGHT_BROWSERS_PATH/chromium-$want" ]; then
+  version=$(node -p 'require("@playwright/test/package.json").version')
+  have=""
+  for dir in "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/; do
+    [ -d "$dir" ] || continue
+    have="$have $(basename "$dir")"
+  done
+  echo "@playwright/test $version wants chromium-$want," >&2
+  echo "but nix provides:$have" >&2
+  echo "Run \`just sync-playwright\`." >&2
+  exit 1
+fi
