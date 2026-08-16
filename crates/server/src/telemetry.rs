@@ -1,5 +1,7 @@
 //! Tracing subscriber setup: stdout logs, plus OTLP export when configured.
 
+mod db;
+
 use {
     crate::config::config,
     opentelemetry::trace::TracerProvider as _,
@@ -35,6 +37,12 @@ pub fn init() {
         .with(fmt_layer.with_filter(env_filter()))
         .with(otlp_layer())
         .init();
+
+    // Only the OTLP layer consumes query spans — the fmt layer doesn't print
+    // spans at all — so don't make diesel render every query without one.
+    if PROVIDER.get().is_some() {
+        db::install();
+    }
 }
 
 /// Flush buffered spans when the process is asked to exit.
