@@ -11,23 +11,12 @@
   ],
   "customizations": {
     "devconcurrent": {
-      "defaultExec": "/bin/zsh",
       "proxy": {
         "enable": true,
         "services": {
           "cookit": {
             "hostname": "{{workspace}}.test",
-            "ports": [
-              {
-                "host": 443,
-                "container": 8080,
-                "tls": true
-              },
-              {
-                "host": 80,
-                "container": 8080
-              }
-            ]
+            "containerPort": 8080
           }
         }
       }
