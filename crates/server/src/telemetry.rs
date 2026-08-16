@@ -95,20 +95,24 @@ async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
 }
 
-/// Same defaults dioxus' logger uses, so log output doesn't change when we
-/// take initialization over from it.
+/// `debug` for our own crates in development, `info` for everything else.
+///
+/// A blanket `debug` is unusable: tokio-postgres logs every statement along
+/// with the raw bytes of its parameters, and axum-session-auth logs a line per
+/// session-cache hit. `RUST_LOG`, when set, replaces this wholesale.
 fn env_filter() -> EnvFilter {
+    const OUR_CRATES: [&str; 4] = ["server", "api", "db", "ui"];
+
     let default = if cfg!(debug_assertions) {
-        Level::DEBUG
+        let ours = OUR_CRATES.map(|krate| format!("{krate}=debug")).join(",");
+        format!("info,{ours}")
     } else {
-        Level::INFO
+        "info".to_owned()
     };
 
     EnvFilter::builder()
-        .with_default_directive(default.into())
-        .from_env_lossy()
-        // hyper has spammy `debug!`s.
-        .add_directive("hyper_util=warn".parse().unwrap())
+        .with_default_directive(Level::INFO.into())
+        .parse_lossy(std::env::var("RUST_LOG").unwrap_or(default))
 }
 
 /// Export spans over OTLP when `OTLP_ENDPOINT` is set; `None` otherwise, which
