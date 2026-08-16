@@ -20,10 +20,14 @@ services:
       COLORTERM: truecolor
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/cookit_dev"
       BASE_DOMAIN: "${WORKSPACE_DIR}.test"
+      OTLP_ENDPOINT: "http://jaeger:4318"
       WORKSPACE_DIR: ${WORKSPACE_DIR}
     depends_on:
       postgres:
         condition: service_healthy
+
+  jaeger:
+    image: jaegertracing/jaeger:latest
 
   postgres:
     image: postgres:18.3

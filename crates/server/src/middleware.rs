@@ -1,11 +1,46 @@
 //! Cross-cutting axum middleware.
 
-use axum::{
-    body::{Body, to_bytes},
-    extract::Request,
-    middleware::Next,
-    response::Response,
+use {
+    axum::{
+        body::{Body, to_bytes},
+        extract::Request,
+        middleware::Next,
+        response::Response,
+    },
+    tracing::{Instrument, field::Empty},
 };
+
+/// Opens a span per request, which is what gets exported to the collector.
+///
+/// The `otel.*` fields are the ones `tracing-opentelemetry` maps onto the
+/// OpenTelemetry span itself rather than treating as attributes. Apply this
+/// outside [`log_server_errors`] so its 5xx events land inside the span.
+pub async fn trace_requests(req: Request, next: Next) -> Response {
+    let path = req.uri().path();
+    // Static assets and the devtools socket would drown out real requests.
+    if path.starts_with("/assets/") || path.starts_with("/_dioxus") {
+        return next.run(req).await;
+    }
+
+    let span = tracing::info_span!(
+        "http_request",
+        otel.name = format!("{} {}", req.method(), path),
+        otel.kind = "server",
+        otel.status_code = Empty,
+        http.request.method = %req.method(),
+        url.path = %path,
+        http.response.status_code = Empty,
+    );
+
+    let resp = next.run(req).instrument(span.clone()).await;
+
+    span.record("http.response.status_code", resp.status().as_u16());
+    if resp.status().is_server_error() {
+        span.record("otel.status_code", "ERROR");
+    }
+
+    resp
+}
 
 /// Logs any 5xx response with the request method, URI, status, and body.
 ///

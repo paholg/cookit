@@ -17,6 +17,9 @@
           "cookit": {
             "hostname": "{{workspace}}.test",
             "containerPort": 8080
+          },
+          "jaeger": {
+            "containerPort": 16686
           }
         }
       }

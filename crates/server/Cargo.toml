@@ -16,13 +16,23 @@ diesel.workspace = true
 diesel-async.workspace = true
 diesel_migrations = "2.3"
 dioxus = { workspace = true, features = ["fullstack", "server"] }
+dioxus-cli-config = "0.7"
 figment = { version = "0.10.19", features = ["env"] }
 jiff.workspace = true
+opentelemetry = "0.32"
+# Default features are the http/protobuf transport with the blocking reqwest
+# client, which is what we want; see `telemetry.rs`.
+opentelemetry-otlp = "0.32"
+opentelemetry_sdk = { version = "0.32", default-features = false, features = [
+  "trace"
+] }
 serde.workspace = true
 serde_json.workspace = true
 snafu.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["signal"] }
 tracing = "0.1"
+tracing-opentelemetry = "0.33"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 url.workspace = true
 webauthn-rs = { version = "0.5.5", features = [
   "danger-allow-state-serialisation"

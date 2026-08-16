@@ -14,6 +14,8 @@ pub struct Config {
     pub database_url: Url,
     pub base_domain: String,
     #[serde(default)]
+    pub otlp_endpoint: Option<Url>,
+    #[serde(default)]
     pub webauthn: WebAuthn,
 }
 
@@ -84,6 +86,7 @@ mod tests {
         let slug = Config {
             database_url: Url::parse("http://foo.foo").unwrap(),
             base_domain: "cookit.com".into(),
+            otlp_endpoint: None,
             webauthn: WebAuthn::default(),
         }
         .book_slug(host);
