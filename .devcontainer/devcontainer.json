@@ -3,9 +3,15 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "cookit",
   "workspaceFolder": "/workspace",
-  "initializeCommand": ".devcontainer/initialize.sh",
-  "postCreateCommand": ".devcontainer/post_create.sh",
-  "postStartCommand": ".devcontainer/post_start.sh",
+  "initializeCommand": {
+    "init": ".devcontainer/initialize.sh"
+  },
+  "postCreateCommand": {
+    "create": ".devcontainer/post_create.sh"
+  },
+  "postStartCommand": {
+    "start": ".devcontainer/post_start.sh"
+  },
   "forwardPorts": [
     8080
   ],

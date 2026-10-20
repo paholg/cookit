@@ -12,9 +12,7 @@ dioxus-primitives = { git = "https://github.com/DioxusLabs/components", default-
 dioxus-sdk = { workspace = true, features = ["storage", "time"] }
 futures = "0.3"
 jiff.workspace = true
-pulldown-cmark = { version = "0.13", default-features = false, features = [
-  "html"
-] }
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 serde.workspace = true
 snafu.workspace = true
 strum = { version = "0.28", features = ["derive"] }
